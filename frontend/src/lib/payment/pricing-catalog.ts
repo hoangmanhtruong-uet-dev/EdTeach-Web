@@ -9,15 +9,49 @@ export interface PricingPackage {
   amount: number;
   credits: number;
   isPro: boolean;
+  tier?: "pro" | "max";
 }
 
 export const PRICING_PACKAGES: Record<string, PricingPackage> = {
   pro_monthly: {
     id: "pro_monthly",
     name: "Gói Giáo Viên PRO",
+    amount: 149000,
+    credits: 30000,
+    isPro: true,
+    tier: "pro",
+  },
+  pro_monthly_legacy: {
+    id: "pro_monthly_legacy",
+    name: "Gói Giáo Viên PRO (Ưu Đãi)",
     amount: 99000,
     credits: 30000,
     isPro: true,
+    tier: "pro",
+  },
+  pro_semester: {
+    id: "pro_semester",
+    name: "Gói PRO Học Kỳ (5 Tháng)",
+    amount: 599000,
+    credits: 150000,
+    isPro: true,
+    tier: "pro",
+  },
+  max_monthly: {
+    id: "max_monthly",
+    name: "Gói Luyện Thi MAX",
+    amount: 229000,
+    credits: 100000,
+    isPro: true,
+    tier: "max",
+  },
+  max_semester: {
+    id: "max_semester",
+    name: "Gói MAX Học Kỳ (5 Tháng)",
+    amount: 899000,
+    credits: 500000,
+    isPro: true,
+    tier: "max",
   },
   credits_50: {
     id: "credits_50",

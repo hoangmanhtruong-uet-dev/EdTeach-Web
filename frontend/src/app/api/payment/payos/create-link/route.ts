@@ -51,16 +51,24 @@ export async function POST(req: NextRequest) {
     const protocol = req.headers.get("x-forwarded-proto") || "http";
     const baseUrl = `${protocol}://${host}`;
 
+    const verifiedTier = resolvedPackage.tier || (verifiedIsPro ? "pro" : "free");
+
     const returnUrl = verifiedIsPro
-      ? `${baseUrl}/wallet?status=PAID&orderCode=${orderCode}&tier=pro&credits=${verifiedCredits}`
+      ? `${baseUrl}/pricing?status=PAID&orderCode=${orderCode}&tier=${verifiedTier}&credits=${verifiedCredits}`
       : `${baseUrl}/wallet?status=PAID&orderCode=${orderCode}&credits=${verifiedCredits}`;
-    const cancelUrl = `${baseUrl}/wallet?status=CANCELLED&orderCode=${orderCode}`;
+    const cancelUrl = `${baseUrl}/pricing?status=CANCELLED&orderCode=${orderCode}`;
 
     // 1. Tạo đơn hàng qua cổng PayOS
+    const descriptionText = verifiedTier === "max" 
+      ? "NANG CAP GOI MAX" 
+      : verifiedIsPro 
+        ? "NANG CAP GOI PRO" 
+        : `NAP ${verifiedCredits} CREDITS`;
+
     const payosResult = await payOSService.createPaymentLink({
       orderCode,
       amount: verifiedAmount,
-      description: verifiedIsPro ? "NANG CAP GOI PRO" : `NAP ${verifiedCredits} CREDITS`,
+      description: descriptionText,
       returnUrl,
       cancelUrl,
       buyerEmail: user.email || undefined,

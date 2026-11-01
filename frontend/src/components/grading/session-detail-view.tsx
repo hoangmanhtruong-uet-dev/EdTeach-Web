@@ -24,6 +24,8 @@ import {
   ChevronDown,
   Trash2,
   Eye,
+  Share2,
+  Zap,
   Sparkles,
   Users,
   ShieldCheck,
@@ -34,6 +36,8 @@ import { useAuth } from "@/context/auth-context";
 import { isMaxUser, PricingPlan } from "@/lib/payment/plans";
 import { UpgradeTierModal } from "@/components/modals/upgrade-tier-modal";
 import { PaymentCheckoutModal } from "@/components/modals/payment-checkout-modal";
+import { ZaloShareModal } from "./zalo-share-modal";
+import { RemediationModal } from "./remediation-modal";
 
 export interface GradedStudent {
   id: string;
@@ -102,6 +106,8 @@ export function SessionDetailView({
   } | null>(null);
   const [showAllLinksModal, setShowAllLinksModal] = useState(false);
   const [selectedStudentDetail, setSelectedStudentDetail] = useState<GradedStudent | null>(null);
+  const [zaloShareStudent, setZaloShareStudent] = useState<GradedStudent | null>(null);
+  const [remediationStudent, setRemediationStudent] = useState<GradedStudent | null>(null);
   const [showPrintDropdown, setShowPrintDropdown] = useState(false);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
 
@@ -437,7 +443,7 @@ export function SessionDetailView({
       <div className="mb-6">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-900 transition mb-3 cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500 dark:text-slate-400 hover:text-neutral-900 dark:hover:text-white transition mb-3 cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Các kỳ thi</span>
@@ -445,10 +451,10 @@ export function SessionDetailView({
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 tracking-tight">
+            <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white tracking-tight">
               {session.name}
             </h1>
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="mt-1 text-xs text-neutral-500 dark:text-slate-400">
               {session.questionCount} câu trắc nghiệm · tổng 10 điểm · {session.sheetType} câu · Môn{" "}
               {session.subject}
             </p>
@@ -842,13 +848,35 @@ export function SessionDetailView({
                       )}
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => setSelectedStudentDetail(std)}
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Xem</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setRemediationStudent(std)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition cursor-pointer border border-amber-200 shadow-2xs"
+                          title="AI tạo phiếu luyện bù lỗ hổng"
+                        >
+                          <Zap className="w-3.5 h-3.5" />
+                          <span>Luyện bù</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setZaloShareStudent(std)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition cursor-pointer border border-blue-200 shadow-2xs"
+                          title="Gửi báo cáo qua Zalo cho Phụ huynh"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                          <span>Gửi Zalo</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStudentDetail(std)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 text-xs font-semibold cursor-pointer"
+                          title="Xem chi tiết bài làm"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Xem</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1236,14 +1264,24 @@ export function SessionDetailView({
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => handleGenerateZaloNote(selectedStudentDetail)}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-xs transition cursor-pointer shrink-0 flex items-center justify-center gap-1"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Tạo phiếu Zalo</span>
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setRemediationStudent(selectedStudentDetail)}
+                  className="px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white text-xs font-bold shadow-xs transition cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>⚡ Luyện bù AI</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZaloShareStudent(selectedStudentDetail)}
+                  className="px-3 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow-xs transition cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Phiếu Zalo</span>
+                </button>
+              </div>
             </div>
 
             {/* Question detail grid */}
@@ -1345,6 +1383,26 @@ export function SessionDetailView({
           </div>
         </div>
       )}
+
+      {/* Sprint 2: AI Remediation Sheet Modal */}
+      <RemediationModal
+        isOpen={!!remediationStudent}
+        onClose={() => setRemediationStudent(null)}
+        student={remediationStudent}
+        session={session}
+        teacherName={profile?.full_name || undefined}
+        isTeacherVerified={profile?.is_verified_teacher}
+      />
+
+      {/* Sprint 1: Zalo Parent Report Share Modal */}
+      <ZaloShareModal
+        isOpen={!!zaloShareStudent}
+        onClose={() => setZaloShareStudent(null)}
+        student={zaloShareStudent}
+        session={session}
+        teacherName={profile?.full_name || undefined}
+        isTeacherVerified={profile?.is_verified_teacher}
+      />
 
       {/* Upgrade Tier Modal */}
       <UpgradeTierModal

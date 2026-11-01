@@ -88,6 +88,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user) await fetchProfile(user.id);
   };
 
+  
+  const autoClaimPendingReport = (userId: string) => {
+    try {
+      if (typeof window !== "undefined") {
+        const pending = localStorage.getItem("edutest_pending_claim_report");
+        if (pending) {
+          fetch("/api/student/claim", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: pending, studentId: userId }),
+          })
+            .then(() => {
+              localStorage.removeItem("edutest_pending_claim_report");
+            })
+            .catch(() => {});
+        }
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   const refreshWallet = async () => {
     if (user) await fetchWallet(user.id);
   };
@@ -103,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           fetchProfile(session.user.id),
           fetchWallet(session.user.id),
         ]);
+        autoClaimPendingReport(session.user.id);
       }
       setIsLoading(false);
     };
@@ -119,6 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             fetchProfile(newSession.user.id),
             fetchWallet(newSession.user.id),
           ]);
+          autoClaimPendingReport(newSession.user.id);
         } else {
           setProfile(null);
           setWallet(null);

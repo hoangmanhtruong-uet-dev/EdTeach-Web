@@ -105,21 +105,16 @@ export const CREDIT_PACKS = [
 ];
 
 // ==============================================================================
-// CHẾ ĐỘ THỬ NGHIỆM BETA: Mở khóa 100% tất cả tính năng sư phạm cao cấp
-// (Bục Giảng Số 4.0, Bảng trắng không giới hạn, 54+ Phòng TN 3D, Trộn đề ma trận GDPT 2025,
-// Xuất Word kép, Magic Link) cho mọi Thầy/Cô trải nghiệm.
-// Riêng các tính năng tiêu tốn API token (Soạn đề AI, Sinh câu tương tự, Giải đa cách)
-// được bảo vệ và kiểm soát qua số dư Credits (mỗi thành viên mới có sẵn 5.000 credits).
+// CHẾ ĐỘ THỬ NGHIỆM BETA: false
+// Đã kết thúc giai đoạn thử nghiệm Beta, quay về phân cấp 3 gói chuẩn: FREE, PRO, MAX.
 // ==============================================================================
-export const IS_BETA_ALL_FEATURES_UNLOCKED = true;
+export const IS_BETA_ALL_FEATURES_UNLOCKED = false;
 
 /**
- * Kiểm tra xem người dùng có thực sự nạp tiền / đăng ký gói trả phí hay không
- * Dùng để phân luồng API Key:
- * - isRealPayingUser = true  -> Gọi GEMINI_API_KEY_PAID (Hạ tầng 2.000 RPM, bảo mật cao cấp)
- * - isRealPayingUser = false -> Gọi GEMINI_API_KEY_FREE (Hạ tầng Free tier, dùng 5.000 credits thử nghiệm)
+ * Kiểm tra người dùng có quyền gói MAX (Luyện thi VIP / Trường học / Quản trị viên)
  */
-export function isRealPayingUser(profile: any): boolean {
+export function isMaxUser(profile: any): boolean {
+  if (IS_BETA_ALL_FEATURES_UNLOCKED) return true;
   if (!profile) return false;
   const email = (profile.email || profile.user_metadata?.email || "").toLowerCase();
   const id = profile.id;
@@ -131,42 +126,56 @@ export function isRealPayingUser(profile: any): boolean {
     return true;
   }
   return (
-    profile.tier === "pro" ||
     profile.tier === "max" ||
     profile.tier === "school" ||
-    (profile as any).subscription_tier === "pro" ||
     (profile as any).subscription_tier === "max" ||
-    profile.preferences?.subscription_tier === "pro" ||
+    (profile as any).subscription_tier === "school" ||
     profile.preferences?.subscription_tier === "max" ||
-    (profile as any).user_metadata?.subscription_tier === "pro" ||
-    (profile as any).user_metadata?.subscription_tier === "max"
+    profile.preferences?.subscription_tier === "school" ||
+    (profile as any).user_metadata?.subscription_tier === "max" ||
+    (profile as any).user_metadata?.subscription_tier === "school"
   );
 }
 
-export function isMaxUser(profile: any): boolean {
-  if (IS_BETA_ALL_FEATURES_UNLOCKED) return true;
-  return isRealPayingUser(profile);
-}
-
+/**
+ * Kiểm tra người dùng có quyền gói PRO (Gói MAX tự động bao gồm toàn bộ quyền gói PRO)
+ */
 export function isProUser(profile: any): boolean {
   if (IS_BETA_ALL_FEATURES_UNLOCKED) return true;
-  return isRealPayingUser(profile);
+  if (!profile) return false;
+  // Người dùng gói MAX có toàn bộ đặc quyền của gói PRO
+  if (isMaxUser(profile)) return true;
+  return (
+    profile.tier === "pro" ||
+    (profile as any).subscription_tier === "pro" ||
+    profile.preferences?.subscription_tier === "pro" ||
+    (profile as any).user_metadata?.subscription_tier === "pro"
+  );
+}
+
+/**
+ * Kiểm tra xem người dùng có thực sự nạp tiền / đăng ký gói trả phí hay không
+ * Dùng để phân luồng API Key:
+ * - isRealPayingUser = true  -> Gọi GEMINI_API_KEY_PAID (Hạ tầng 2.000 RPM, bảo mật cao cấp)
+ * - isRealPayingUser = false -> Gọi GEMINI_API_KEY_FREE (Hạ tầng Free tier)
+ */
+export function isRealPayingUser(profile: any): boolean {
+  return isProUser(profile);
 }
 
 export function getTierName(profile: any): string {
-  if (isRealPayingUser(profile)) {
+  if (isMaxUser(profile)) {
     const email = (profile?.email || profile?.user_metadata?.email || "").toLowerCase();
     if (
       email === "truongcri0101@gmail.com" ||
-      profile?.tier === "max" ||
-      (profile as any)?.subscription_tier === "max"
+      email.includes("truongcri0101") ||
+      profile?.tier === "school"
     ) {
       return "GÓI LUYỆN THI MAX VIP";
     }
-    return "GÓI GIÁO VIÊN PRO";
+    return "GÓI LUYỆN THI MAX";
   }
-  if (IS_BETA_ALL_FEATURES_UNLOCKED) return "BETA VIP (MỞ TOÀN BỘ TÍNH NĂNG)";
-  if (isMaxUser(profile)) return "GÓI LUYỆN THI MAX";
   if (isProUser(profile)) return "GÓI GIÁO VIÊN PRO";
+  if (IS_BETA_ALL_FEATURES_UNLOCKED) return "BETA VIP (MỞ TOÀN BỘ TÍNH NĂNG)";
   return "GÓI MIỄN PHÍ";
 }

@@ -211,35 +211,26 @@ function WalletContent() {
               <div className="flex flex-wrap items-center gap-2">
                 <p
                   className={`text-xl font-black ${
-                    isRealPayingUser(profile) && ((profile as any)?.tier === "max" || (profile as any)?.subscription_tier === "max")
+                    isUserMax
                       ? "text-amber-600"
-                      : isRealPayingUser(profile)
+                      : isUserPro
                       ? "text-primary"
-                      : "text-amber-600"
+                      : "text-slate-600 dark:text-slate-300"
                   }`}
                 >
                   {getTierName(profile || user)}
                 </p>
-                {isRealPayingUser(profile) ? (
-                  (profile as any)?.tier === "max" || (profile as any)?.subscription_tier === "max" ? (
-                    <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[9px] font-black text-white">
-                      MAX VIP
-                    </span>
-                  ) : (
-                    <div className="flex items-center gap-1.5">
-                      <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[9px] font-bold text-white">
-                        PRO
-                      </span>
-                      {IS_BETA_ALL_FEATURES_UNLOCKED && (
-                        <span className="rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800 px-1.5 py-0.5 text-[9px] font-bold">
-                          + Mở khóa Beta MAX
-                        </span>
-                      )}
-                    </div>
-                  )
-                ) : (
+                {isUserMax ? (
                   <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[9px] font-black text-white">
-                    BETA MAX 14 NGÀY
+                    MAX VIP
+                  </span>
+                ) : isUserPro ? (
+                  <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[9px] font-bold text-white">
+                    PRO
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-slate-500 px-2 py-0.5 text-[9px] font-bold text-white">
+                    MIỄN PHÍ
                   </span>
                 )}
               </div>

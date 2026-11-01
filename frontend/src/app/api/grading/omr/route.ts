@@ -32,9 +32,40 @@ export async function GET() {
   }
 }
 
+
+// Sprint 6 Security Hardening: In-Memory Rate Limiter for OMR (Finding S5)
+const omrRateLimits = new Map<string, { count: number; resetAt: number }>();
+function checkOmrRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = omrRateLimits.get(ip);
+  if (!entry || now > entry.resetAt) {
+    omrRateLimits.set(ip, { count: 1, resetAt: now + 60000 });
+    return true;
+  }
+  if (entry.count >= 60) return false;
+  entry.count += 1;
+  return true;
+}
+
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for") || "local";
+    if (!checkOmrRateLimit(ip)) {
+      return NextResponse.json(
+        { error: "Đã vượt quá giới hạn quét bài (tối đa 60 bài/phút). Vui lòng chờ giây lát." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
+
+    // Size cap guard: 10MB base64
+    if (body.imageBase64 && body.imageBase64.length > 10 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: "Kích thước ảnh vượt quá giới hạn 10MB." },
+        { status: 413 }
+      );
+    }
     const action = body.action || "grade_single";
 
     if (action === "download_pdf") {

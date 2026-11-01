@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { payOSService } from "@/lib/payment/payos";
 import { getFallbackOrder, markFallbackOrderPaid } from "@/lib/payment/payment-fallback-store";
+import { recordCommission } from "@/lib/affiliate/affiliate-store";
 
 function getServiceSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -121,11 +122,19 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Nâng cấp gói cước MAX hoặc PRO
+      // Nâng cấp gói cước MAX hoặc PRO và tính hạn sử dụng
+      const isSemester = paidAmount === 899000 || paidAmount === 599000;
+      const daysToAdd = isSemester ? 150 : 30; // 5 tháng (học kỳ) hoặc 30 ngày (hàng tháng)
+      const expiresAtIso = new Date(Date.now() + daysToAdd * 24 * 3600 * 1000).toISOString();
+
       if (paidAmount === 229000 || paidAmount === 899000 || data.description?.includes("MAX")) {
         try {
           const { error: tierErr } = await (supabase.from("users") as any)
-            .update({ tier: "max", updated_at: nowIso })
+            .update({ 
+              tier: "max", 
+              subscription_expires_at: expiresAtIso,
+              updated_at: nowIso 
+            })
             .eq("id", userId);
 
           if (tierErr) {
@@ -138,12 +147,13 @@ export async function POST(req: NextRequest) {
             await (supabase.from("users") as any)
               .update({
                 tier: "pro",
+                subscription_expires_at: expiresAtIso,
                 preferences: { ...prefs, subscription_tier: "max" },
                 updated_at: nowIso,
               })
               .eq("id", userId);
           }
-          console.log(`[PayOS Webhook] Đã nâng cấp tài khoản user ${userId} lên gói LUYỆN THI MAX!`);
+          console.log(`[PayOS Webhook] Đã nâng cấp tài khoản user ${userId} lên gói LUYỆN THI MAX (Hạn đến ${expiresAtIso})!`);
         } catch (tierErr) {
           console.warn("Lỗi update tier MAX:", tierErr);
         }
@@ -155,12 +165,37 @@ export async function POST(req: NextRequest) {
       ) {
         try {
           await (supabase.from("users") as any)
-            .update({ tier: "pro", updated_at: nowIso })
+            .update({ 
+              tier: "pro", 
+              subscription_expires_at: expiresAtIso,
+              updated_at: nowIso 
+            })
             .eq("id", userId);
-          console.log(`[PayOS Webhook] Đã nâng cấp tài khoản user ${userId} lên gói PRO!`);
+          console.log(`[PayOS Webhook] Đã nâng cấp tài khoản user ${userId} lên gói PRO (Hạn đến ${expiresAtIso})!`);
         } catch (tierErr) {
           console.warn("Lỗi update tier PRO:", tierErr);
         }
+      }
+
+      // 4. Trích hoa hồng 20% cho người giới thiệu (Affiliate Referral Engine)
+      try {
+        const { data: payingUser } = await (supabase.from("users") as any)
+          .select("referred_by")
+          .eq("id", userId)
+          .maybeSingle();
+
+        if (payingUser?.referred_by && payingUser.referred_by !== userId) {
+          await recordCommission(
+            payingUser.referred_by,
+            userId,
+            orderCodeStr,
+            paidAmount,
+            0.2 // 20% hoa hồng trọn đời
+          );
+          console.log(`[PayOS Webhook] Đã trích 20% hoa hồng (${Math.round(paidAmount * 0.2)}đ) cho inviter ${payingUser.referred_by}`);
+        }
+      } catch (affiliateErr) {
+        console.warn("[PayOS Webhook] Lỗi trích hoa hồng affiliate:", affiliateErr);
       }
     }
 

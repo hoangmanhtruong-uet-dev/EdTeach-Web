@@ -32,6 +32,9 @@ export async function callGeminiJson<T = any>(
 
   let lastError: any = null;
 
+  // Sprint 6 Cost Guard: Prompt Length Fencing (max 25,000 chars)
+  const safePrompt = prompt.length > 25000 ? prompt.slice(0, 25000) : prompt;
+
   for (const model of preferredModels) {
     try {
       // 12-second timeout per model to prevent teacher's UI from hanging
@@ -45,10 +48,11 @@ export async function callGeminiJson<T = any>(
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
           body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
+            contents: [{ parts: [{ text: safePrompt }] }],
             generationConfig: {
               temperature: 0.35,
               responseMimeType: "application/json",
+              maxOutputTokens: 3072, // Sprint 6 Cost Guard: Token cap ceiling
             },
           }),
         }

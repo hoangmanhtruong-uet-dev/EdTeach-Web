@@ -5,6 +5,7 @@ import {
   GraduationCap,
   Bell,
   Shield,
+  ShieldCheck,
   Palette,
   Camera,
   Check,
@@ -39,9 +40,19 @@ import {
   DEFAULT_PREFERENCES,
 } from "@/lib/preferences";
 import { isProUser, isMaxUser, getTierName } from "@/lib/payment/plans";
+import { TeacherVerificationCard } from "@/components/verification/teacher-verification-card";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get("tab");
+      if (tabParam && ["profile", "verification", "teaching", "notifications", "security", "appearance"].includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
+    }
+  }, []);
   const { user, profile, refreshProfile } = useAuth();
 
   // ================= 1. PROFILE STATE =================
@@ -464,6 +475,7 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: "profile", label: "Hồ sơ cá nhân", icon: User },
+    { id: "verification", label: "Xác thực Thẻ ngành (eKYC)", icon: ShieldCheck },
     { id: "teaching", label: "Nghiệp vụ & Soạn đề", icon: GraduationCap },
     { id: "notifications", label: "Thông báo", icon: Bell },
     { id: "security", label: "Bảo mật", icon: Shield },
@@ -716,7 +728,13 @@ export default function SettingsPage() {
           )}
 
           {/* ================= TAB 2: NGHIỆP VỤ & SOẠN ĐỀ ================= */}
-          {activeTab === "teaching" && (
+          {activeTab === "verification" && (
+          <div className="space-y-6 lg:col-span-3">
+            <TeacherVerificationCard />
+          </div>
+        )}
+
+        {activeTab === "teaching" && (
             <form onSubmit={handleSaveTeachingPreferences} className="space-y-6">
               {teachingMessage && (
                 <div

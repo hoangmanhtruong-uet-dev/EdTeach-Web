@@ -17,6 +17,7 @@ import {
   ScanLine,
   Zap,
   CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
@@ -153,9 +154,9 @@ export default function DashboardPage() {
               className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 border border-slate-700/80 px-3 py-1 text-xs text-white shadow-xs hover:bg-slate-950 hover:border-blue-400 transition-all hover:scale-[1.02] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" aria-hidden="true" />
-              <span className="font-bold text-amber-300">v1.0.0 Beta</span>
+              <span className="font-bold text-amber-300">v1.0 ➔ v2.0</span>
               <span className="text-slate-400">•</span>
-              <span className="text-slate-200 font-medium hidden sm:inline">14 ngày PRO & MAX</span>
+              <span className="text-slate-200 font-medium hidden sm:inline">Bản nâng cấp GDPT</span>
               <span className="text-blue-300 font-bold flex items-center gap-0.5 ml-1">
                 Lộ trình v2.0 <ArrowRight className="w-3 h-3" aria-hidden="true" />
               </span>
@@ -188,6 +189,38 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+            {/* Sprint 3: Teacher eKYC Verification Banner */}
+      {!profile?.is_verified_teacher && (
+        <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/90 via-teal-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 dark:border-emerald-900/50 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-bold text-sm text-neutral-900 dark:text-white">
+                  Kích hoạt Tích Xanh Giáo Viên Chính Chủ & Nhận +10.000 Credits
+                </h3>
+                <span className="text-[10px] font-black uppercase px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 rounded">
+                  Sprint 3
+                </span>
+              </div>
+              <p className="text-xs text-neutral-600 dark:text-slate-300 mt-0.5">
+                Xác thực thẻ ngành / thẻ sinh viên sư phạm để bảo chứng uy tín trên báo cáo Zalo gửi phụ huynh và nâng hạn mức 10 đề/ngày.
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/settings?tab=verification"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition shrink-0 self-start sm:self-center"
+          >
+            <span>Xác thực ngay</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
 
       {/* ================= 2. TỐI ƯU 4 THẺ CHỈ SỐ KPI (STATS GRID) ================= */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -542,7 +575,7 @@ export default function DashboardPage() {
                   ? "Tài khoản Giáo viên MAX VIP: Trộn 12 mã đề, AI phân tích câu bẫy, giao bài Magic Link & không giới hạn."
                   : isPro
                   ? "Tài khoản Giáo viên PRO: Mở khóa 54+ phòng thí nghiệm 3D, bục giảng số Split-Screen & chấm OMR không giới hạn."
-                  : "Giai đoạn Beta: Mở khóa 100% tính năng Bục Giảng Số, 54+ Phòng TN 3D, Trộn đề, Bảng trắng & Xuất Word kép. Tặng 5.000 credits cho tài khoản mới để trải nghiệm tạo đề AI."}
+                  : "Tài khoản Miễn phí: Tạo tối đa 3 đề/ngày, trải nghiệm 1 bài thí nghiệm mẫu cho mỗi môn học. Nâng cấp PRO để mở khóa toàn bộ."}
               </p>
 
               <div className="mt-4 flex flex-col gap-2">

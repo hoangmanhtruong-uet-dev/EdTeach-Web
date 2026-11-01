@@ -71,7 +71,7 @@ Bấm 1 nút trên EdTeach:
 2️⃣ Đẻ ngay câu hỏi tương tự đổi số liệu số đẹp kèm Timer 2 phút cho học sinh làm thử.
 3️⃣ Mở mô hình 3D trực quan bật kính vẽ neon khoanh chú thích ngay trên chuyển động vật lý.
 
-Bản thử nghiệm Beta 14 ngày tặng 5.000 credits & mở khóa full tính năng cho Thầy Cô:
+Đăng ký tài khoản miễn phí tặng ngay 5.000 credits trải nghiệm cho Thầy Cô:
 👉 Trải nghiệm ngay: https://ed-teach-rust.vercel.app`,
     },
   ];

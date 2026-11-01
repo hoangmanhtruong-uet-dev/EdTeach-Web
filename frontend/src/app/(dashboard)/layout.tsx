@@ -1,9 +1,12 @@
 "use client";
 
+import { FeedbackModal } from '@/components/feedback/feedback-modal';
+
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BookOpen,
+  GraduationCap,
   LayoutDashboard,
   FilePlus,
   FolderOpen,
@@ -22,6 +25,7 @@ import {
   Sun,
   Moon,
   Search,
+  Gift,
 } from "lucide-react";
 import { useState, useEffect, Suspense, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
@@ -31,12 +35,15 @@ import { CommandPalette } from "@/components/navigation/command-palette";
 
 const sidebarLinks = [
   { href: "/dashboard", label: "Trang chủ", icon: LayoutDashboard },
+  { href: "/student", label: "Cổng Học Sinh", icon: GraduationCap },
   { href: "/exams/create", label: "Soạn đề", icon: FilePlus },
   { href: "/exams", label: "Đề thi của tôi", icon: FolderOpen },
   { href: "/grading", label: "Chấm trắc nghiệm", icon: ScanLine },
   { href: "/labs", label: "Phòng TN 3D", icon: FlaskConical },
   { href: "/whiteboard", label: "Bảng trắng", icon: Presentation },
   { href: "/marketplace", label: "Chợ đề thi", icon: Store },
+  { href: "/pricing", label: "Gói cước PRO", icon: Crown },
+  { href: "/affiliate", label: "Đối tác & Hoa hồng", icon: Gift },
   { href: "/wallet", label: "Nạp điểm", icon: Wallet },
   { href: "/guide", label: "Hướng dẫn", icon: HelpCircle },
   { href: "/settings", label: "Cài đặt", icon: User },
@@ -76,8 +83,15 @@ function DashboardLayoutInner({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
+
+  useEffect(() => {
+    if (profile?.role === "student") {
+      router.replace("/student/exams");
+    }
+  }, [profile?.role, router]);
   const [credits, setCredits] = useState<number | null>(null);
   const [isDark, setIsDark] = useState(false);
 
@@ -205,7 +219,7 @@ function DashboardLayoutInner({
                   Edu<span className="text-primary">Test</span> AI
                 </span>
                 <span className="text-[10px] font-semibold text-muted-foreground truncate">
-                  v1.0.0 Beta (GDPT 2025)
+                  v1.0.0 (GDPT 2025)
                 </span>
               </div>
             </Link>
@@ -309,6 +323,16 @@ function DashboardLayoutInner({
 
           <div className="flex-1" />
 
+          {/* Student Portal Preview Link */}
+          <Link
+            href="/student"
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 min-h-[36px] text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition shadow-2xs mr-1"
+            title="Xem trước Cổng Học Sinh"
+          >
+            <GraduationCap className="h-4 w-4" />
+            <span>Cổng Học Sinh</span>
+          </Link>
+
           {/* Command Palette Quick Launcher */}
           <button
             type="button"
@@ -343,7 +367,7 @@ function DashboardLayoutInner({
           {isMax ? (
             <span className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 px-3 py-1.5 text-xs font-black text-white shadow-xs">
               <Crown className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>GÓI MAX • BETA 14 NGÀY</span>
+              <span>GÓI MAX</span>
             </span>
           ) : isPro ? (
             <span className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs">
@@ -379,6 +403,7 @@ function DashboardLayoutInner({
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
       <CommandPalette />
+      <FeedbackModal />
       </div>
     </div>
   );

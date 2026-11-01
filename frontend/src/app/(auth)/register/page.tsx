@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { BookOpen, CheckCircle2, Gift } from "lucide-react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
@@ -15,6 +15,18 @@ export default function RegisterPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [refCode, setRefCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const ref = urlParams.get("ref") || localStorage.getItem("edutest_ref_code");
+      if (ref) {
+        setRefCode(ref);
+        localStorage.setItem("edutest_ref_code", ref);
+      }
+    }
+  }, []);
 
   const supabase = createClient();
 
@@ -60,6 +72,7 @@ export default function RegisterPage() {
         options: {
           data: {
             full_name: fullName,
+            referral_code: refCode || undefined,
           },
           emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
         },
@@ -118,6 +131,13 @@ export default function RegisterPage() {
             ))}
           </ul>
         </div>
+
+        {refCode && (
+          <div className="rounded-xl bg-amber-50 p-3.5 border border-amber-200 flex items-center gap-2 text-xs text-amber-900 font-bold shadow-xs">
+            <Gift className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>Mã giới thiệu: <strong>{refCode}</strong> — Thầy Cô sẽ nhận ngay +10.000 Credits quà tặng!</span>
+          </div>
+        )}
 
         {/* Register Form */}
         <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">

@@ -45,10 +45,10 @@ export default function LabDetailPage({
       <Navbar />
       <Suspense
         fallback={
-          <div className="flex flex-1 items-center justify-center bg-slate-50">
+          <div className="flex flex-1 items-center justify-center bg-slate-50 dark:bg-slate-950">
             <div className="text-center">
               <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <p className="text-sm text-slate-500">Đang tải phòng thí nghiệm 3D...</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Đang tải phòng thí nghiệm 3D...</p>
             </div>
           </div>
         }

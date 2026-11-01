@@ -46,10 +46,10 @@ export default function LandingPage() {
               >
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-slate-950">
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-900 animate-pulse" />
-                  BETA V1.0.0
+                  PHIÊN BẢN MỚI
                 </span>
                 <span className="font-semibold text-slate-100">
-                  EdTeach v1.0.0 Beta • Bản thử nghiệm 14 ngày mở khóa toàn bộ PRO & MAX
+                  EduTest AI • Nền tảng Bục Giảng Số 4.0 & Tạo đề thi chuẩn GDPT
                 </span>
                 <span className="hidden sm:inline-flex items-center gap-1 font-bold text-amber-300 group-hover:text-amber-200 transition-colors">
                   <span>Xem Lộ Trình v2.0</span>
@@ -291,7 +291,7 @@ export default function LandingPage() {
             {/* Section Header */}
             <div className="text-center max-w-3xl mx-auto space-y-3">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-3.5 py-1 text-xs font-black uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Tính Năng Vượt Trội • Bản Beta v1.0.0
+                <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Tính Năng Vượt Trội Chuẩn GDPT 2025
               </span>
               <h2 className="text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
                 Bộ giải pháp đột phá dành riêng cho Giáo viên Việt Nam
@@ -534,13 +534,13 @@ export default function LandingPage() {
             {/* Header */}
             <div className="text-center max-w-3xl mx-auto space-y-3">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-3.5 py-1 text-xs font-black uppercase tracking-wider">
-                <Crown className="w-3.5 h-3.5 text-amber-600" /> Bảng Giá Minh Bạch • Bản Thử Nghiệm Beta v1.0.0
+                <Crown className="w-3.5 h-3.5 text-amber-600" /> Bảng Giá Minh Bạch & Tiết Kiệm
               </span>
               <h2 className="text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
                 Chọn gói vũ khí phù hợp cho Bục Giảng của Thầy/Cô
               </h2>
               <p className="text-base text-slate-600 dark:text-slate-300">
-                Đăng ký tài khoản hôm nay để nhận ngay <strong>14 ngày trải nghiệm thử nghiệm không giới hạn</strong> toàn bộ tính năng của cả gói PRO và gói MAX!
+                Đăng ký tài khoản hôm nay để nhận ngay <strong>5.000 credits miễn phí</strong> trải nghiệm tạo đề AI và Bục Giảng Số!
               </p>
 
               {/* Billing Cycle Toggle */}
@@ -639,7 +639,7 @@ export default function LandingPage() {
                     <span className="text-xs font-extrabold uppercase text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg">
                       Bục Giảng Số 4.0
                     </span>
-                    <span className="text-xs font-bold text-emerald-600">Beta: Dùng thử 14 ngày</span>
+                    <span className="text-xs font-bold text-emerald-600">Tiêu chuẩn</span>
                   </div>
 
                   <h3 className="text-xl font-bold text-slate-950">Gói Giáo Viên PRO</h3>
@@ -697,7 +697,7 @@ export default function LandingPage() {
                   href="/register?plan=pro"
                   className="w-full rounded-xl bg-blue-600 py-3 text-center text-xs font-bold text-white hover:bg-blue-700 transition shadow-md shadow-blue-500/25 block"
                 >
-                  Trải nghiệm Gói PRO (14 ngày miễn phí)
+                  Nâng cấp Gói PRO
                 </Link>
               </div>
 
@@ -712,7 +712,7 @@ export default function LandingPage() {
                     <span className="text-xs font-black uppercase text-amber-900 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800 px-2.5 py-1 rounded-lg">
                       Luyện Thi MAX
                     </span>
-                    <span className="text-xs font-bold text-amber-700">Beta: Trọn bộ đặc quyền</span>
+                    <span className="text-xs font-bold text-amber-700">Cao cấp VIP</span>
                   </div>
 
                   <h3 className="text-xl font-bold text-slate-950">Gói Luyện Thi MAX</h3>
@@ -774,7 +774,7 @@ export default function LandingPage() {
                   href="/register?plan=max"
                   className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-center text-xs font-black text-slate-950 hover:brightness-105 transition shadow-md shadow-amber-500/20 block"
                 >
-                  Trải nghiệm Gói MAX VIP (14 ngày miễn phí)
+                  Nâng cấp Gói MAX VIP
                 </Link>
               </div>
             </div>
@@ -783,10 +783,10 @@ export default function LandingPage() {
             <div className="rounded-3xl border-2 border-amber-300 dark:border-amber-800/80 bg-amber-50/80 dark:bg-amber-950/30 p-6 text-center space-y-2 shadow-xs">
               <div className="flex items-center justify-center gap-2 text-amber-900 dark:text-amber-300 font-bold text-sm">
                 <Sparkles className="w-4 h-4 text-amber-600" />
-                <span>Chương trình thử nghiệm EdTeach Beta v1.0.0 (14 ngày miễn phí)</span>
+                <span>Chính sách minh bạch — Phục vụ trọn vẹn mọi nhu cầu giảng dạy</span>
               </div>
               <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 max-w-2xl mx-auto font-medium">
-                Tất cả tài khoản giáo viên đăng ký mới trong giai đoạn thử nghiệm đều được kích hoạt dùng thử 14 ngày trọn bộ tính năng PRO và MAX VIP. Hãy tạo đề, bật Bục Giảng Số và trải nghiệm ngay trên lớp học của Thầy/Cô!
+                Tài khoản Miễn phí tặng sẵn 5.000 credits và mở 1 bài thí nghiệm mẫu cho mỗi môn học. Nâng cấp Gói Giáo Viên PRO hoặc Gói Luyện Thi MAX bất kỳ lúc nào để mở khóa toàn bộ 54+ phòng thí nghiệm 3D và bục giảng số không giới hạn!
               </p>
             </div>
           </div>
@@ -796,7 +796,7 @@ export default function LandingPage() {
         <section className="border-t border-slate-200 dark:border-slate-800 bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-[#070b14] py-20">
           <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 space-y-6">
             <h2 className="text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
-              Sẵn sàng nâng tầm tiết học với EdTeach v1.0.0?
+              Sẵn sàng nâng tầm tiết học với EduTest AI?
             </h2>
             <p className="text-base text-slate-700 leading-relaxed max-w-xl mx-auto font-normal">
               Tham gia cùng hàng nghìn thầy cô đang tiết kiệm hàng giờ soạn đề và biến từng tiết chữa đề thành trải nghiệm tương tác số cuốn hút học sinh.

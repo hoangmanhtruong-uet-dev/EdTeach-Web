@@ -220,6 +220,11 @@ function TeachingStudioContent() {
     };
   }, [isDragging]);
   const [fontSize, setFontSize] = useState<"md" | "lg" | "xl">("lg");
+
+  // Live Poll State (Sprint 6)
+  const [showLivePollModal, setShowLivePollModal] = useState(false);
+  const [livePollSession, setLivePollSession] = useState<any | null>(null);
+  const [isOpeningPoll, setIsOpeningPoll] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Right Column 3 Tabs: "whiteboard" | "lab3d" | "multi_method"
@@ -809,6 +814,76 @@ function TeachingStudioContent() {
   const optionFontSizeClass =
     fontSize === "xl" ? "text-xl" : fontSize === "lg" ? "text-lg" : "text-sm";
 
+
+  // Live Poll Interval Hook (Sprint 6)
+  useEffect(() => {
+    if (!showLivePollModal || !livePollSession?.roomCode) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/teach/live-poll/poll?roomCode=${livePollSession.roomCode}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.session) {
+            setLivePollSession(data.session);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [showLivePollModal, livePollSession?.roomCode]);
+
+  const handleToggleLivePoll = async () => {
+    if (!showLivePollModal) {
+      setShowLivePollModal(true);
+      if (!livePollSession) {
+        try {
+          setIsOpeningPoll(true);
+          const currentQ = exam?.questions?.[currentIdx];
+          const res = await fetch("/api/teach/live-poll/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              examId,
+              questionIndex: currentIdx + 1,
+              questionTitle: currentQ?.content || `Câu hỏi số ${currentIdx + 1}`,
+              options: ["A", "B", "C", "D"],
+              correctAnswer: currentQ?.correct_answer || "A",
+            }),
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            setLivePollSession(data.session);
+          }
+        } catch (err: any) {
+          alert("Lỗi mở phòng Live Poll: " + err.message);
+        } finally {
+          setIsOpeningPoll(false);
+        }
+      }
+    } else {
+      setShowLivePollModal(false);
+    }
+  };
+
+  const handleCloseLivePoll = async () => {
+    if (!livePollSession?.roomCode) return;
+    try {
+      const res = await fetch("/api/teach/live-poll/close", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomCode: livePollSession.roomCode }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setLivePollSession(data.session);
+      }
+    } catch (err: any) {
+      alert("Lỗi khóa bình chọn: " + err.message);
+    }
+  };
+
   const currentScaffolding = currentQ ? scaffoldMap[currentQ.id] : undefined;
   const currentRevealedStep = currentQ ? revealedStepCount[currentQ.id] || 0 : 0;
   const currentMultiMethods = currentQ ? multiMethodMap[currentQ.id] : undefined;
@@ -942,6 +1017,21 @@ function TeachingStudioContent() {
               A++
             </button>
           </div>
+
+          {/* Live Poll Button (Sprint 6) */}
+          <button
+            onClick={handleToggleLivePoll}
+            title="Mở khảo sát / bình chọn đáp án thời gian thực với học sinh"
+            className="flex items-center gap-1.5 rounded-lg border border-emerald-500/50 bg-emerald-950/80 hover:bg-emerald-900 px-3 py-1.5 text-xs font-bold text-emerald-300 transition cursor-pointer shadow-sm"
+          >
+            <Flame className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
+            <span className="hidden sm:inline">Live Poll</span>
+            {livePollSession && (
+              <span className="rounded bg-emerald-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2">
+                {livePollSession.roomCode}
+              </span>
+            )}
+          </button>
 
           {/* Fullscreen Button */}
           <button
@@ -1805,6 +1895,142 @@ function TeachingStudioContent() {
             <Sparkles className="w-4 h-4 text-blue-400 shrink-0" />
           )}
           <span>{toast.message}</span>
+        </div>
+      )}
+      {/* 5. TEACHER LIVE POLL PROJECTOR MODAL (SPRINT 6) */}
+      {showLivePollModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 text-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 border border-slate-700 shadow-2xl relative space-y-6 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header with Room Code */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-linear-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center shadow-lg font-black text-xl">
+                  ⚡
+                </div>
+                <div>
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">
+                    Phòng Khảo Sát Thời Gian Thực (Live Poll)
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5">
+                    <span className="text-2xl sm:text-3xl font-mono font-black text-amber-300 tracking-wider">
+                      MÃ PHÒNG: {livePollSession?.roomCode || "..."}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowLivePollModal(false)}
+                className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Instruction Banner */}
+            <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                <span className="text-emerald-200">
+                  Học sinh vào <strong>Cổng Học Sinh (/student/exams)</strong> và nhập mã{" "}
+                  <strong className="text-amber-300 font-mono text-sm">{livePollSession?.roomCode}</strong> để bình chọn!
+                </span>
+              </div>
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-900/60 font-bold text-emerald-300 shrink-0">
+                {livePollSession?.stats?.totalVotes || 0} học sinh đã vote
+              </span>
+            </div>
+
+            {/* Question Snapshot */}
+            <div className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700 space-y-1">
+              <div className="text-[11px] font-bold uppercase text-slate-400">
+                Câu hỏi đang chiếu ({currentIdx + 1}/{exam?.questions?.length || 1}):
+              </div>
+              <div className="text-sm font-semibold text-slate-200 line-clamp-2">
+                {exam?.questions?.[currentIdx]?.content || "Câu hỏi hiện tại"}
+              </div>
+            </div>
+
+            {/* Animated Distribution Bars */}
+            <div className="space-y-3 py-2">
+              {["A", "B", "C", "D"].map((opt) => {
+                const count = livePollSession?.stats?.counts?.[opt] || 0;
+                const pct = livePollSession?.stats?.percentages?.[opt] || 0;
+                const isCorrect = !livePollSession?.isOpen && opt === livePollSession?.correctAnswer;
+
+                return (
+                  <div key={opt} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className={`flex items-center gap-2 ${isCorrect ? "text-emerald-400 font-black text-sm" : "text-slate-300"}`}>
+                        <span className="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center font-mono">
+                          {opt}
+                        </span>
+                        <span>{isCorrect ? "✓ (ĐÁP ÁN CHUẨN)" : `Phương án ${opt}`}</span>
+                      </span>
+                      <span className="text-sm font-mono font-black text-amber-300">
+                        {pct}% <span className="text-xs text-slate-400 font-normal">({count} em)</span>
+                      </span>
+                    </div>
+
+                    <div className="h-4 rounded-xl bg-slate-800 overflow-hidden p-0.5 border border-slate-700">
+                      <div
+                        className={`h-full rounded-lg transition-all duration-500 ${
+                          isCorrect
+                            ? "bg-linear-to-r from-emerald-500 to-teal-400"
+                            : "bg-linear-to-r from-blue-500 to-indigo-500"
+                        }`}
+                        style={{ width: `${Math.max(pct, count > 0 ? 3 : 0)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Action Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-800">
+              <div className="text-xs text-slate-400">
+                {livePollSession?.isOpen ? (
+                  <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    Đang nhận bình chọn trực tiếp...
+                  </span>
+                ) : (
+                  <span className="text-amber-400 font-bold">
+                    ✓ Đã khóa bình chọn & công bố đáp án
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {livePollSession?.isOpen ? (
+                  <button
+                    onClick={handleCloseLivePoll}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs transition shadow-lg shadow-emerald-600/30 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>Khóa Vote & Hiện Đáp Án</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setLivePollSession(null);
+                      handleToggleLivePoll();
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition cursor-pointer"
+                  >
+                    Mở Khảo Sát Mới
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setShowLivePollModal(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition cursor-pointer"
+                >
+                  Thu Nhỏ
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

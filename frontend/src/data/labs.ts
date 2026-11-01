@@ -33,10 +33,10 @@ export const SUBJECT_LABEL: Record<LabSubject, string> = {
 };
 
 export const SUBJECT_COLOR: Record<LabSubject, string> = {
-  phys: "bg-indigo-100 text-indigo-700 border-indigo-200",
-  chem: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  bio: "bg-rose-100 text-rose-700 border-rose-200",
-  geo: "bg-amber-100 text-amber-700 border-amber-200",
+  phys: "bg-indigo-100 dark:bg-indigo-950/90 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/80",
+  chem: "bg-emerald-100 dark:bg-emerald-950/90 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80",
+  bio: "bg-rose-100 dark:bg-rose-950/90 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/80",
+  geo: "bg-amber-100 dark:bg-amber-950/90 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/80",
 };
 
 export const LABS: LabLesson[] = [
