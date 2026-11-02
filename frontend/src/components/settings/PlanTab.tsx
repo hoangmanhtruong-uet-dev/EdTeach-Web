@@ -12,8 +12,6 @@ import {
   ChevronDown,
   MessageCircle,
   Phone,
-  RefreshCw,
-  Layers,
   ArrowRight,
   Info,
 } from "lucide-react";
@@ -149,15 +147,13 @@ export function PlanTab() {
           <span>Trợ lý soạn đề, chấm bài và dạy thêm cho giáo viên Việt Nam</span>
         </div>
 
+        {/* Tiêu đề chuẩn R1 */}
         <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground tracking-tight">
-          Gói Cước & Đặc Quyền{" "}
-          <span className="bg-linear-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-            EduTest AI
-          </span>
+          Gói dịch vụ dành riêng cho Giáo viên Việt Nam
         </h2>
 
         <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-          Tiết kiệm thời gian soạn đề, chấm bài và chăm sóc phụ huynh. Kích hoạt tự động ngay sau khi thanh toán qua VietQR.
+          Tiết kiệm thời gian soạn đề, chấm bài và chăm sóc phụ huynh. Kích hoạt tự động ngay sau khi thanh toán qua VietQR Napas247.
         </p>
 
         {/* Success toast message */}
@@ -168,16 +164,8 @@ export function PlanTab() {
           </div>
         )}
 
-        {/* 2. STATUS CARD - P2 (Thẻ trạng thái gói cước hiện tại) */}
-        <div className="pt-2 text-left">
-          <PlanStatusCard
-            variant="compact"
-            onNavigateToPlan={handleScrollToPlans}
-          />
-        </div>
-
-        {/* 3. BILLING CYCLE TOGGLE (Month vs Semester) - P3 */}
-        <div className="pt-3 flex flex-col items-center justify-center gap-2">
+        {/* 2. TOGGLE CHU KỲ THANH TOÁN (CĂN GIỮA NGAY DƯỚI TIÊU ĐỀ) */}
+        <div className="pt-2 flex flex-col items-center justify-center gap-2">
           <div
             role="tablist"
             aria-label="Chu kỳ thanh toán"
@@ -192,11 +180,11 @@ export function PlanTab() {
               onClick={() => handleCycleChange("monthly")}
               className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 billingCycle === "monthly"
-                  ? "bg-card text-foreground shadow-xs"
+                  ? "bg-card text-foreground shadow-xs font-black"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Thanh toán Hàng Tháng
+              Gói 1 Tháng
             </button>
 
             <button
@@ -208,13 +196,13 @@ export function PlanTab() {
               onClick={() => handleCycleChange("semester")}
               className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
                 billingCycle === "semester"
-                  ? "bg-card text-primary shadow-xs"
+                  ? "bg-card text-emerald-600 dark:text-emerald-400 shadow-xs font-black"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <span>Theo Học Kỳ (5 Tháng)</span>
+              <span>Gói Học Kỳ (5 Tháng)</span>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                Tiết kiệm đến 21%
+                -20%
               </span>
             </button>
           </div>
@@ -225,9 +213,44 @@ export function PlanTab() {
               : "Linh hoạt từng tháng, chủ động gia hạn không ràng buộc"}
           </p>
         </div>
+
+        {/* 3. STATUS CARD - Thẻ trạng thái gói cước hiện tại */}
+        <div className="pt-3 text-left">
+          <PlanStatusCard
+            variant="compact"
+            onNavigateToPlan={handleScrollToPlans}
+          />
+        </div>
       </div>
 
-      {/* 4. PAYMENT & RENEWAL POLICY BLOCK (P7) */}
+      {/* 4. 2-TIER PRICING CARDS - CHỈ HIỂN THỊ 2 THẺ: PRO VÀ MAX */}
+      <div
+        ref={pricingSectionRef}
+        id="pricing-cards-panel"
+        role="region"
+        aria-labelledby={billingCycle === "semester" ? "cycle-tab-semester" : "cycle-tab-monthly"}
+        className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-stretch max-w-5xl mx-auto"
+      >
+        {/* THẺ 1: GÓI GIÁO VIÊN PRO (149.000đ/tháng) */}
+        <PlanCard
+          tier="pro"
+          userState={userPlanState}
+          billingCycle={billingCycle}
+          expiresAt={profile?.subscription_expires_at}
+          onSelectPlan={handleOpenCheckout}
+        />
+
+        {/* THẺ 2: GÓI LUYỆN THI MAX (229.000đ/tháng) */}
+        <PlanCard
+          tier="max"
+          userState={userPlanState}
+          billingCycle={billingCycle}
+          expiresAt={profile?.subscription_expires_at}
+          onSelectPlan={handleOpenCheckout}
+        />
+      </div>
+
+      {/* 5. PAYMENT & RENEWAL POLICY BLOCK */}
       <div className="max-w-5xl mx-auto rounded-3xl bg-muted/30 border border-border p-5 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
           <div className="flex items-center gap-2.5">
@@ -295,43 +318,7 @@ export function PlanTab() {
         </div>
       </div>
 
-      {/* 5. 3-TIER PRICING CARDS - P1 & Giao diện mục 4 */}
-      <div
-        ref={pricingSectionRef}
-        id="pricing-cards-panel"
-        role="region"
-        aria-labelledby={billingCycle === "semester" ? "cycle-tab-semester" : "cycle-tab-monthly"}
-        className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-stretch max-w-6xl mx-auto"
-      >
-        {/* CARD 1: FREE */}
-        <PlanCard
-          tier="free"
-          userState={userPlanState}
-          billingCycle={billingCycle}
-          expiresAt={profile?.subscription_expires_at}
-          onSelectPlan={handleOpenCheckout}
-        />
-
-        {/* CARD 2: PRO */}
-        <PlanCard
-          tier="pro"
-          userState={userPlanState}
-          billingCycle={billingCycle}
-          expiresAt={profile?.subscription_expires_at}
-          onSelectPlan={handleOpenCheckout}
-        />
-
-        {/* CARD 3: MAX */}
-        <PlanCard
-          tier="max"
-          userState={userPlanState}
-          billingCycle={billingCycle}
-          expiresAt={profile?.subscription_expires_at}
-          onSelectPlan={handleOpenCheckout}
-        />
-      </div>
-
-      {/* 6. FEATURE COMPARISON MATRIX TABLE - P5 */}
+      {/* 6. FEATURE COMPARISON MATRIX TABLE */}
       <div className="max-w-5xl mx-auto rounded-3xl bg-card border border-border p-5 sm:p-8 shadow-xs space-y-6">
         <div className="text-center space-y-1">
           <h3 className="text-xl sm:text-2xl font-black text-foreground">
@@ -435,7 +422,7 @@ export function PlanTab() {
                   Tiêu chuẩn sư phạm
                 </td>
                 <td className={`py-3 px-4 text-center font-bold text-purple-600 dark:text-purple-400 ${isCurrentMax ? "bg-purple-500/5" : ""}`}>
-                  AI suy luận nâng cao (chế độ Thinking)
+                  AI suy luận nâng cao (Gemini Thinking)
                 </td>
               </tr>
 
@@ -629,7 +616,7 @@ export function PlanTab() {
         </div>
       </div>
 
-      {/* 7. FAQ ACCORDION SECTION - P8 (≥ 8 câu) */}
+      {/* 7. FAQ ACCORDION SECTION */}
       <div className="max-w-3xl mx-auto space-y-5">
         <div className="text-center space-y-1">
           <h3 className="text-xl sm:text-2xl font-black text-foreground">

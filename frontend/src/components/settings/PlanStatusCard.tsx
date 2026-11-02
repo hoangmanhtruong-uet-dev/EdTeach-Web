@@ -2,12 +2,11 @@
 
 import React from "react";
 import Link from "next/link";
-import { Crown, Sparkles, Shield, ArrowRight, Calendar, RefreshCw, Info } from "lucide-react";
+import { Crown, Sparkles, Shield, ArrowRight } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   isMaxUser,
   isProUser,
-  IS_BETA_ALL_FEATURES_UNLOCKED,
 } from "@/lib/payment/plans";
 import { getUserPlanState } from "@/lib/payment/plan-status";
 
@@ -59,19 +58,25 @@ export function PlanStatusCard({
     try {
       const d = new Date(rawExpires);
       if (!isNaN(d.getTime())) {
-        renewalLabel = "Gia hạn lần tới:";
-        expiryText = d.toLocaleDateString("vi-VN", {
+        const diffMs = d.getTime() - Date.now();
+        const remainingDays = diffMs > 0 ? Math.ceil(diffMs / (1000 * 60 * 60 * 24)) : 0;
+        const formattedDate = d.toLocaleDateString("vi-VN", {
           day: "2-digit",
           month: "2-digit",
           year: "numeric",
         });
+        renewalLabel = "Hết hạn:";
+        expiryText = `${formattedDate}${remainingDays > 0 ? ` (Còn ${remainingDays} ngày)` : " (Đã hết hạn)"}`;
       }
     } catch {
       // fallback
     }
   } else if (isBeta) {
-    renewalLabel = "Trạng thái:";
-    expiryText = "Đang dùng thử Beta đến 31/12/2026";
+    const betaEnd = new Date("2026-12-31T23:59:59Z");
+    const diffMs = betaEnd.getTime() - Date.now();
+    const remainingDays = diffMs > 0 ? Math.ceil(diffMs / (1000 * 60 * 60 * 24)) : 58;
+    renewalLabel = "Hết hạn:";
+    expiryText = `31/12/2026 (Còn ${remainingDays} ngày)`;
   }
 
   // Chu kỳ thanh toán
@@ -80,6 +85,9 @@ export function PlanStatusCard({
     : isMax || isPro
     ? "Hàng tháng"
     : "Mặc định";
+
+  const isFree = !isMax && !isPro && !isBeta;
+  const buttonLabel = isFree ? "Nâng cấp gói" : "Quản lý gói";
 
   if (variant === "compact") {
     return (
@@ -120,7 +128,7 @@ export function PlanStatusCard({
                 {tierBadge}
               </span>
               <span className="text-xs text-muted-foreground truncate">
-                · {isBeta ? "Đang dùng thử Beta đến 31/12/2026" : `${renewalLabel} ${expiryText}`}
+                · {renewalLabel} {expiryText}
               </span>
             </div>
 
@@ -136,7 +144,7 @@ export function PlanStatusCard({
           onClick={onNavigateToPlan}
           className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl border border-border bg-card text-foreground hover:bg-muted hover:border-muted-foreground/30 transition shadow-2xs shrink-0 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary self-start sm:self-auto"
         >
-          <span>Quản lý gói</span>
+          <span>{buttonLabel}</span>
           <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
         </Link>
       </div>
@@ -170,9 +178,7 @@ export function PlanStatusCard({
           <div>
             <h3 className="text-base font-black text-foreground">{tierName}</h3>
             <p className="text-xs text-muted-foreground">
-              {isBeta
-                ? "Đang dùng thử Beta đến 31/12/2026"
-                : `${renewalLabel} ${expiryText}`}
+              {renewalLabel} {expiryText}
             </p>
           </div>
         </div>
@@ -206,7 +212,7 @@ export function PlanStatusCard({
         onClick={onNavigateToPlan}
         className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer"
       >
-        <span>Nâng cấp & Quản lý gói cước</span>
+        <span>{buttonLabel}</span>
         <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
       </Link>
     </div>

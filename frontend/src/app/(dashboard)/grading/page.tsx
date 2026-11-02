@@ -43,6 +43,9 @@ import {
   GradedStudent,
 } from "@/lib/api/grading-sessions";
 import { SessionDetailView } from "@/components/grading/session-detail-view";
+import { CreateExamModal } from "@/components/grading/create-exam-modal";
+import { DownloadOMRModal } from "@/components/grading/download-omr-modal";
+import { PrintSheetModal } from "@/components/grading/print-sheet-modal";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { getUserPreferences } from "@/lib/preferences";
@@ -53,11 +56,14 @@ interface ExamSession {
   name: string;
   subject: string;
   grade: string;
+  targetClasses?: string;
   sheetType: "20" | "40" | "50" | "2025";
   questionCount: number;
   answerKey: Record<number, string>;
+  examCodes?: Record<string, Record<number, string>>;
   createdAt: string;
   examId?: string;
+  status?: "not_started" | "in_progress" | "completed";
   gradedStudents: Array<{
     id: string;
     studentName: string;
@@ -89,6 +95,11 @@ function GradingPageInner() {
   const [showPrintModal, setShowPrintModal] = useState<ExamSession | null>(null);
   const [showScanModal, setShowScanModal] = useState<ExamSession | null>(null);
   const [showScoreboardModal, setShowScoreboardModal] = useState<ExamSession | null>(null);
+  const [showDownloadOMRModal, setShowDownloadOMRModal] = useState(false);
+
+  // Search & Filter Toolbar states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "in_progress" | "not_started" | "completed">("all");
 
   // Form tạo kỳ thi
   const [createSessionName, setCreateSessionName] = useState("");
@@ -310,8 +321,16 @@ function GradingPageInner() {
 
     if (is2025) {
       // CẤU TRÚC ĐỀ THI TỐT NGHIỆP THPT 2025 CHUẨN BỘ GD&ĐT:
-      // PHẦN I: 12 câu trắc nghiệm 4 lựa chọn (0.25đ / câu = 3.0đ)
-      for (let i = 1; i <= 12; i++) {
+      // Phân biệt Môn Toán (22 câu) và Môn Lý/Hóa/Sinh (28 câu)
+      const isScience = ["Vật lí", "Hóa học", "Sinh học"].includes(session.subject) || session.questionCount === 28;
+      const part1Count = isScience ? 18 : 12;
+      const part2Count = 4;
+      const part3Count = 6;
+      const part1Point = 0.25;
+      const part3Point = isScience ? 0.25 : 0.5;
+
+      // PHẦN I: Trắc nghiệm 4 lựa chọn (Toán 12 câu = 3.0đ, Lý/Hóa/Sinh 18 câu = 4.5đ)
+      for (let i = 1; i <= part1Count; i++) {
         const correctVal = session.answerKey[i] || "A";
         let ans = existingAnswers ? existingAnswers[i] : undefined;
         if (ans === undefined) {
@@ -321,7 +340,7 @@ function GradingPageInner() {
         }
         studentAns[i] = ans;
         if (ans === correctVal) {
-          totalScore += 0.25;
+          totalScore += part1Point;
           correctCount++;
         } else if (!ans || ans === "blank") {
           emptyCount++;
@@ -330,9 +349,11 @@ function GradingPageInner() {
         }
       }
 
-      // PHẦN II: 4 câu Đúng/Sai (Câu 13 -> 16, mỗi câu 4 ý a-b-c-d)
+      // PHẦN II: 4 câu Đúng/Sai (Mỗi câu 4 ý a-b-c-d = 4.0đ)
       // Thang điểm Bộ GD&ĐT: Đúng 1 ý = 0.1đ; 2 ý = 0.25đ; 3 ý = 0.5đ; 4 ý = 1.0đ
-      for (let i = 13; i <= 16; i++) {
+      const startP2 = part1Count + 1;
+      const endP2 = part1Count + part2Count;
+      for (let i = startP2; i <= endP2; i++) {
         const correctVal = session.answerKey[i] || "Đ-S-Đ-Đ";
         const correctParts = correctVal.split("-");
         let ans = existingAnswers ? existingAnswers[i] : undefined;
@@ -369,8 +390,10 @@ function GradingPageInner() {
         }
       }
 
-      // PHẦN III: 6 câu Trả lời ngắn / Điền số (Câu 17 -> 22, 0.5đ / câu = 3.0đ)
-      for (let i = 17; i <= 22; i++) {
+      // PHẦN III: 6 câu Trả lời ngắn / Điền số (Toán 0.5đ/câu = 3.0đ, KHTN 0.25đ/câu = 1.5đ)
+      const startP3 = endP2 + 1;
+      const endP3 = part1Count + part2Count + part3Count;
+      for (let i = startP3; i <= endP3; i++) {
         const correctVal = session.answerKey[i] || "15";
         let ans = existingAnswers ? existingAnswers[i] : undefined;
         if (ans === undefined) {
@@ -378,7 +401,7 @@ function GradingPageInner() {
         }
         studentAns[i] = ans;
         if (ans && ans.trim() === correctVal.trim()) {
-          totalScore += 0.5;
+          totalScore += part3Point;
           correctCount++;
         } else if (!ans) {
           emptyCount++;
@@ -1135,123 +1158,100 @@ function GradingPageInner() {
           );
         }
 
+        // Tính toán các kỳ thi sau khi lọc theo từ khóa và trạng thái
+        const filteredSessions = sessions.filter((s) => {
+          if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase().trim();
+            const matchesName = s.name.toLowerCase().includes(q);
+            const matchesSubject = s.subject.toLowerCase().includes(q);
+            const matchesGrade = s.grade.includes(q);
+            const matchesClass = s.targetClasses ? s.targetClasses.toLowerCase().includes(q) : false;
+            if (!matchesName && !matchesSubject && !matchesGrade && !matchesClass) return false;
+          }
+          const totalStudents = s.gradedStudents.length;
+          const isCompleted = totalStudents >= 30;
+          const isStarted = totalStudents > 0;
+          if (statusFilter === "in_progress" && (!isStarted || isCompleted)) return false;
+          if (statusFilter === "not_started" && isStarted) return false;
+          if (statusFilter === "completed" && !isCompleted) return false;
+          return true;
+        });
+
+        const inProgressCount = sessions.filter((s) => s.gradedStudents.length > 0 && s.gradedStudents.length < 30).length;
+        const notStartedCount = sessions.filter((s) => s.gradedStudents.length === 0).length;
+        const completedCount = sessions.filter((s) => s.gradedStudents.length >= 30).length;
+
         return (
           /* Main Container */
-          <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Top Header Match Screenshot */}
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white">
-              Chấm phiếu trắc nghiệm
-            </h1>
-            <p className="mt-2 text-sm text-neutral-600 dark:text-slate-300 max-w-2xl leading-relaxed">
-              Tạo kỳ thi, in phiếu cho học sinh tô, rồi chụp phiếu để chấm. Ảnh phiếu và kết quả được
-              lưu theo tài khoản để xem lại.
-            </p>
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Miễn phí 100% (Chấm tự động không giới hạn bằng OpenCV OMR)</span>
-            </div>
-          </div>
-
-          <button
-            onClick={handleOpenCreateModal}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-semibold text-sm transition-all shadow-xs shrink-0 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Tạo kỳ thi
-          </button>
-        </div>
-
-        {/* ======================================================== */}
-        {/* TRẠNG THÁI 1: CHƯA CÓ KỲ THI NÀO (EMPTY STATE NHƯ ẢNH) */}
-        {/* ======================================================== */}
-        {sessions.length === 0 ? (
-          <div className="bg-white dark:bg-card rounded-2xl border border-neutral-200/90 dark:border-neutral-800 p-12 md:p-16 flex flex-col items-center justify-center text-center shadow-2xs">
-            <div className="w-16 h-16 rounded-xl bg-neutral-100/80 dark:bg-neutral-800 flex items-center justify-center text-neutral-400 dark:text-neutral-500 mb-5">
-              <svg
-                className="w-8 h-8"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-                <path d="m9 14 2 2 4-4" />
-              </svg>
-            </div>
-
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-100 mb-4">
-              Chưa có kỳ thi nào
-            </h2>
-
-            <div className="space-y-1.5 text-sm text-neutral-600 dark:text-neutral-300 max-w-lg mb-7 text-left">
-              <p>
-                <span className="font-semibold text-foreground">1.</span> Tạo kỳ thi: tick các đề đã
-                soạn để AI lập đáp án, hoặc tự nhập.
-              </p>
-              <p>
-                <span className="font-semibold text-foreground">2.</span> In phiếu trả lời cho học sinh
-                tô.
-              </p>
-              <p>
-                <span className="font-semibold text-foreground">3.</span> Chụp phiếu bằng camera hoặc
-                tải ảnh lên để chấm.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <button
-                onClick={handleOpenCreateModal}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-white font-medium text-sm transition-all cursor-pointer shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                Tạo kỳ thi đầu tiên ngay
-              </button>
-
-              <button
-                onClick={handleCreateSampleSession}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground font-semibold text-sm transition-all cursor-pointer shadow-xs"
-              >
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                Thử nhanh kỳ thi mẫu (Toán 6)
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* ======================================================== */
-          /* TRẠNG THÁI 2: ĐÃ CÓ KỲ THI -> DANH SÁCH & QUẢN LÝ KỲ THI */
-          /* ======================================================== */
-          <div className="space-y-6">
-            {/* Quick Stats Bar (Sprint MG-1) */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-card p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Tổng Kỳ Thi</span>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-neutral-900 dark:text-white">{sessions.length}</span>
-                  <span className="text-xs text-neutral-400 dark:text-slate-400">kỳ thi</span>
+          <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+            {/* Top Header */}
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                  Chấm phiếu trắc nghiệm
+                </h1>
+                <p className="mt-1.5 text-sm text-slate-300 max-w-2xl leading-relaxed">
+                  Tạo kỳ thi, in phiếu cho học sinh tô, rồi chụp phiếu để chấm. Hỗ trợ chuẩn GDPT 2025 (3 phần), phiếu 20, 40, 50 câu và đa mã đề.
+                </p>
+                <div className="mt-2 flex items-center gap-2 text-xs text-emerald-400 font-semibold">
+                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span>Miễn phí 100% — Chấm tự động không giới hạn bằng OpenCV OMR & AI Gemini</span>
                 </div>
-                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">🟢 Tự động đồng bộ Cloud</p>
               </div>
 
-              <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-card p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Bài Đã Chấm OMR</span>
+              <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                {/* Nút Tải mẫu phiếu OMR chuẩn (PDF) */}
+                <button
+                  type="button"
+                  onClick={() => setShowDownloadOMRModal(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-900/80 hover:bg-slate-800 hover:border-slate-600 text-slate-200 text-xs font-bold transition shadow-sm cursor-pointer"
+                  title="Tải mẫu phiếu trả lời trắc nghiệm chuẩn PDF A4 của Bộ GD&ĐT"
+                >
+                  <Download className="w-4 h-4 text-blue-400" />
+                  <span>Tải mẫu phiếu OMR chuẩn (PDF)</span>
+                </button>
+
+                {/* Nút Tạo kỳ thi */}
+                <button
+                  type="button"
+                  onClick={handleOpenCreateModal}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs transition shadow-lg shadow-blue-600/25 cursor-pointer active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Tạo kỳ thi mới</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Stats Bar */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm backdrop-blur-sm">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng Kỳ Thi</span>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-blue-600 dark:text-blue-400">
+                  <span className="text-2xl font-black text-white">{sessions.length}</span>
+                  <span className="text-xs text-slate-400">kỳ thi</span>
+                </div>
+                <p className="text-[11px] text-emerald-400 font-medium mt-1 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Đồng bộ Cloud & LocalStorage
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm backdrop-blur-sm">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Bài Đã Chấm OMR</span>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-blue-400">
                     {sessions.reduce((acc, s) => acc + s.gradedStudents.length, 0)}
                   </span>
-                  <span className="text-xs text-neutral-400 dark:text-slate-400">học sinh</span>
+                  <span className="text-xs text-slate-400">bài thi</span>
                 </div>
-                <p className="text-[11px] text-neutral-500 dark:text-slate-400 mt-0.5">Không tốn credit AI</p>
+                <p className="text-[11px] text-blue-400/80 font-medium mt-1">Không tốn credit AI</p>
               </div>
 
-              <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-card p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Điểm Trung Bình</span>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm backdrop-blur-sm">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Điểm Trung Bình</span>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-purple-600 dark:text-purple-400">
+                  <span className="text-2xl font-black text-purple-400">
                     {(() => {
                       const allScores = sessions.flatMap((s) => s.gradedStudents.map((g) => g.score));
                       if (allScores.length === 0) return "--";
@@ -1259,749 +1259,354 @@ function GradingPageInner() {
                       return avg.toFixed(1);
                     })()}
                   </span>
-                  <span className="text-xs text-neutral-400 dark:text-slate-400">/ 10</span>
+                  <span className="text-xs text-slate-400">/ 10</span>
                 </div>
-                <p className="text-[11px] text-neutral-500 dark:text-slate-400 mt-0.5">Phổ điểm toàn khóa</p>
+                <p className="text-[11px] text-purple-400/80 font-medium mt-1">Phổ điểm toàn khóa</p>
               </div>
 
-              <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-card p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Độ Chính Xác OMR</span>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm backdrop-blur-sm">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Độ Chính Xác OMR</span>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">99.2%</span>
-                  <span className="text-xs text-neutral-400 dark:text-slate-400">tự động</span>
+                  <span className="text-2xl font-black text-emerald-400">99.2%</span>
+                  <span className="text-xs text-slate-400">tự động</span>
                 </div>
-                <p className="text-[11px] text-neutral-500 dark:text-slate-400 mt-0.5">Hỗ trợ sửa tay Review</p>
+                <p className="text-[11px] text-emerald-400/80 font-medium mt-1">Hỗ trợ sửa tay Review</p>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs font-semibold text-neutral-500 dark:text-slate-400 uppercase tracking-wider px-1">
-              <span>Danh sách kỳ thi của bạn ({sessions.length})</span>
-              <span>Phiếu tô & Chấm bài OMR AI (Đã nạp Key Thật)</span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              {sessions.map((session) => {
-                const totalStudents = session.gradedStudents.length;
-                const avgScore =
-                  totalStudents > 0
-                    ? Math.round(
-                        (session.gradedStudents.reduce((acc, curr) => acc + curr.score, 0) /
-                          totalStudents) *
-                          10
-                      ) / 10
-                    : 0;
-
-                const isCompleted = totalStudents >= 30;
-                const isStarted = totalStudents > 0;
-
-                return (
-                  <div
-                    key={session.id}
-                    className="bg-white dark:bg-card rounded-2xl border border-neutral-200/90 dark:border-neutral-800 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {/* Status badge */}
-                        {isCompleted ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
-                            ✓ Hoàn thành
-                          </span>
-                        ) : isStarted ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                            Đang chấm ({totalStudents} bài)
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                            Chưa chấm
-                          </span>
-                        )}
-
-                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300">
-                          {session.subject} • Lớp {session.grade}
-                        </span>
-                        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-100 dark:border-blue-900/40">
-                          Phiếu {session.questionCount} câu
-                        </span>
-                        <span className="text-xs text-neutral-400 dark:text-slate-400">• {session.createdAt}</span>
-                      </div>
-
-                      <h3
-                        onClick={() => setActiveSessionId(session.id)}
-                        className="text-lg font-bold text-neutral-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer"
-                      >
-                        {session.name}
-                      </h3>
-
-                      <div className="flex items-center gap-4 text-xs text-neutral-500 dark:text-slate-400">
-                        <span>
-                          Đã chấm:{" "}
-                          <strong className="text-neutral-800 dark:text-slate-200">{totalStudents} bài</strong>
-                        </span>
-                        {totalStudents > 0 && (
-                          <span>
-                            Điểm TB:{" "}
-                            <strong className="text-blue-600 dark:text-blue-400">{avgScore} / 10</strong>
-                          </span>
-                        )}
-                        {session.examId && (
-                          <span className="text-emerald-600 font-semibold flex items-center gap-1">
-                            ✓ Key thật từ đề thi
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-neutral-100 dark:border-neutral-800">
-                      {/* Nút Vào kỳ thi & Tự nộp */}
-                      <button
-                        onClick={() => setActiveSessionId(session.id)}
-                        className="inline-flex min-h-[36px] items-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        Vào xem kỳ thi
-                      </button>
-
-                      {/* Nút In phiếu tô */}
-                      <button
-                        onClick={() => setShowPrintModal(session)}
-                        className="inline-flex min-h-[36px] items-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-200 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                        title="In phiếu trả lời A4 chuẩn Bộ GD&ĐT cho học sinh tô"
-                      >
-                        <Printer className="w-3.5 h-3.5 text-neutral-600" />
-                        In phiếu tô
-                      </button>
-
-                      {/* Nút Chấm bài OMR trực quan (Direct CTA) */}
-                      <button
-                        onClick={() => {
-                          setScanResult(null);
-                          setUploadedImagePreview(null);
-                          setShowScanModal(session);
-                          setScanMode("phone");
-                          initRemoteSession(session);
-                        }}
-                        className="inline-flex min-h-[36px] items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-                        title="Chụp ảnh phiếu hoặc kết nối điện thoại để chấm OMR tự động (Miễn phí)"
-                      >
-                        <Camera className="w-3.5 h-3.5" />
-                        <span>{totalStudents > 0 ? "Tiếp tục chấm bài" : "Bắt đầu chấm OMR"}</span>
-                      </button>
-
-                      {/* Nút Xem bảng điểm */}
-                      <button
-                        onClick={() => setShowScoreboardModal(session)}
-                        className="inline-flex min-h-[36px] items-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-200 text-xs font-semibold transition cursor-pointer shadow-2xs"
-                      >
-                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                        Bảng điểm ({totalStudents})
-                      </button>
-
-                      {/* Nút Xóa */}
-                      <button
-                        onClick={() => handleDeleteSession(session.id, session.name)}
-                        className="h-9 w-9 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
-                        title="Xóa kỳ thi"
-                        aria-label="Xóa kỳ thi"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  })()}
-
-      {/* ======================================================== */}
-      {/* MODAL 1: TẠO KỲ THI MỚI */}
-      {/* ======================================================== */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card text-card-foreground rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-border">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b border-border">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
-                  <Plus className="w-4 h-4" />
-                </span>
-                <h3 className="font-bold text-lg text-foreground">Tạo kỳ thi mới</h3>
-              </div>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-5">
-              {/* Tên kỳ thi */}
-              <div>
-                <label className="block text-xs font-bold uppercase text-muted-foreground mb-1.5">
-                  Tên kỳ thi
-                </label>
+            {/* Thanh công cụ: Ô tìm kiếm & Bộ lọc trạng thái */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
+              {/* Ô tìm kiếm */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
-                  value={createSessionName}
-                  onChange={(e) => setCreateSessionName(e.target.value)}
-                  placeholder="VD: Kiểm tra 1 tiết Toán 10 - Chương 1..."
-                  className="w-full text-sm border border-border bg-background text-foreground rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="🔍 Tìm tên kỳ thi, môn học, lớp..."
+                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-700 bg-slate-950/80 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 />
               </div>
 
-              {/* Môn & Lớp */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase text-neutral-600 mb-1.5">
-                    Môn học
-                  </label>
-                  <select
-                    value={createSubject}
-                    onChange={(e) => setCreateSubject(e.target.value)}
-                    className="w-full text-sm border border-border rounded-xl px-3 py-2.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="Toán">Toán</option>
-                    <option value="Tiếng Anh">Tiếng Anh</option>
-                    <option value="Vật lí">Vật lí</option>
-                    <option value="Hóa học">Hóa học</option>
-                    <option value="Sinh học">Sinh học</option>
-                    <option value="Lịch sử">Lịch sử</option>
-                    <option value="Địa lí">Địa lí</option>
-                    <option value="Tin học">Tin học</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-neutral-600 mb-1.5">
-                    Khối lớp
-                  </label>
-                  <select
-                    value={createGrade}
-                    onChange={(e) => setCreateGrade(e.target.value)}
-                    className="w-full text-sm border border-border rounded-xl px-3 py-2.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="6">Lớp 6</option>
-                    <option value="7">Lớp 7</option>
-                    <option value="8">Lớp 8</option>
-                    <option value="9">Lớp 9</option>
-                    <option value="10">Lớp 10</option>
-                    <option value="11">Lớp 11</option>
-                    <option value="12">Lớp 12</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Loại phiếu tô */}
-              <div>
-                <label className="block text-xs font-bold uppercase text-neutral-600 mb-1.5">
-                  Mẫu phiếu trả lời trắc nghiệm
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { id: "20", label: "20 câu", desc: "15 phút" },
-                    { id: "40", label: "40 câu", desc: "45 phút / 1 tiết" },
-                    { id: "50", label: "50 câu", desc: "Chuẩn thi THPT" },
-                    { id: "2025", label: "Form 2025", desc: "Đúng/Sai + Điền số" },
-                  ].map((p) => (
+              {/* Bộ lọc trạng thái */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+                {[
+                  { id: "all", label: "Tất cả", count: sessions.length },
+                  { id: "in_progress", label: "Đang chấm", count: inProgressCount },
+                  { id: "not_started", label: "Chưa chấm", count: notStartedCount },
+                  { id: "completed", label: "Đã hoàn thành", count: completedCount },
+                ].map((tab) => {
+                  const isActive = statusFilter === tab.id;
+                  return (
                     <button
-                      key={p.id}
+                      key={tab.id}
                       type="button"
-                      onClick={() => handleSheetTypeChange(p.id as any)}
-                      className={`p-3 rounded-xl border text-center transition-all ${
-                        createSheetType === p.id
-                          ? "border-neutral-900 bg-neutral-900 text-white shadow-sm"
-                          : "border-border hover:border-primary/50 text-foreground bg-card"
+                      onClick={() => setStatusFilter(tab.id as any)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                        isActive
+                          ? "bg-blue-600 text-white shadow-sm shadow-blue-500/20"
+                          : "text-slate-400 hover:text-white hover:bg-slate-800/80"
                       }`}
                     >
-                      <div className="font-bold text-sm">{p.label}</div>
-                      <div
-                        className={`text-[10px] mt-0.5 ${
-                          createSheetType === p.id ? "text-neutral-300" : "text-neutral-400"
+                      <span>{tab.label}</span>
+                      <span
+                        className={`ml-1.5 text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
+                          isActive ? "bg-blue-700 text-blue-100" : "bg-slate-800 text-slate-400"
                         }`}
                       >
-                        {p.desc}
-                      </div>
+                        {tab.count}
+                      </span>
                     </button>
-                  ))}
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ======================================================== */}
+            {/* TRẠNG THÁI 1: CHƯA CÓ KỲ THI NÀO (EMPTY STATE) */}
+            {/* ======================================================== */}
+            {sessions.length === 0 ? (
+              <div className="bg-slate-900/60 rounded-2xl border border-slate-800 p-12 md:p-16 flex flex-col items-center justify-center text-center shadow-md">
+                <div className="w-16 h-16 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-5">
+                  <FileText className="w-8 h-8" />
+                </div>
+
+                <h2 className="text-lg font-bold text-white mb-2">
+                  Chưa có kỳ thi nào
+                </h2>
+
+                <p className="text-xs text-slate-400 max-w-md mb-6 leading-relaxed">
+                  Tạo kỳ thi mới theo chuẩn GDPT 2025, in phiếu A4 cho học sinh tô, rồi chụp hoặc quét phiếu bằng điện thoại/webcam để AI chấm điểm tức thì.
+                </p>
+
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    onClick={handleOpenCreateModal}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs transition cursor-pointer shadow-lg shadow-blue-500/20"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Tạo kỳ thi đầu tiên ngay
+                  </button>
+
+                  <button
+                    onClick={handleCreateSampleSession}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-bold text-xs transition cursor-pointer shadow-xs"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    Thử nhanh kỳ thi mẫu (Toán 6)
+                  </button>
                 </div>
               </div>
+            ) : filteredSessions.length === 0 ? (
+              /* TRẠNG THÁI KHÔNG TÌM THẤY KẾT QUẢ THEO BỘ LỌC */
+              <div className="bg-slate-900/40 rounded-2xl border border-slate-800 p-10 text-center">
+                <p className="text-sm font-semibold text-slate-300">
+                  Không tìm thấy kỳ thi nào phù hợp với từ khóa & bộ lọc đã chọn.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("all");
+                  }}
+                  className="mt-3 px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition cursor-pointer"
+                >
+                  Xóa bộ lọc tìm kiếm
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {filteredSessions.map((session) => {
+                  const totalStudents = session.gradedStudents.length;
+                  const avgScore =
+                    totalStudents > 0
+                      ? Math.round(
+                          (session.gradedStudents.reduce((acc, curr) => acc + curr.score, 0) /
+                            totalStudents) *
+                            10
+                        ) / 10
+                      : 0;
 
-              {/* Nguồn đáp án chuẩn */}
-              <div>
-                <label className="block text-xs font-bold uppercase text-neutral-600 mb-2">
-                  Nguồn đáp án chuẩn
-                </label>
-                <div className="flex border border-neutral-200 rounded-xl overflow-hidden mb-3">
-                  <button
-                    type="button"
-                    onClick={() => setCreateSourceType("manual")}
-                    className={`flex-1 py-2 text-xs font-bold transition ${
-                      createSourceType === "manual"
-                        ? "bg-neutral-900 text-white"
-                        : "bg-neutral-50 text-neutral-600 hover:bg-neutral-100"
-                    }`}
-                  >
-                    Tự nhập ma trận đáp án ({createSheetType === "2025" ? 28 : createSheetType} câu)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCreateSourceType("existing_exam")}
-                    className={`flex-1 py-2 text-xs font-bold transition ${
-                      createSourceType === "existing_exam"
-                        ? "bg-neutral-900 text-white"
-                        : "bg-neutral-50 text-neutral-600 hover:bg-neutral-100"
-                    }`}
-                  >
-                    Chọn từ đề đã soạn sẵn
-                  </button>
-                </div>
+                  const isCompleted = totalStudents >= 30;
+                  const isStarted = totalStudents > 0;
 
-                {createSourceType === "existing_exam" ? (
-                  <>
-                  <div className="border border-neutral-200 rounded-xl p-3 max-h-48 overflow-y-auto space-y-2 bg-neutral-50/50">
-                    {loadingExams ? (
-                      <div className="text-center py-4 text-xs text-neutral-500">
-                        Đang tải danh sách đề thi...
-                      </div>
-                    ) : userExams.length === 0 ? (
-                      <div className="text-center py-4 text-xs text-neutral-500">
-                        Chưa có đề thi nào trong tài khoản. Hãy tạo đề ở mục Soạn đề hoặc tự nhập
-                        đáp án.
-                      </div>
-                    ) : (
-                      userExams.map((e) => (
-                        <div
-                          key={e.id}
-                          onClick={() => handleSelectExistingExam(e.id)}
-                          className={`p-2.5 rounded-lg border text-xs cursor-pointer flex items-center justify-between transition ${
-                            selectedExamId === e.id
-                              ? "bg-neutral-900 text-white border-neutral-900"
-                              : "bg-card border-border hover:border-primary/50 text-foreground"
-                          }`}
+                  // Tính số lượng mã đề
+                  const examCodeCount = session.examCodes ? Object.keys(session.examCodes).length : 1;
+
+                  // Phân bổ phổ điểm
+                  const scoreCounts = {
+                    excellent: session.gradedStudents.filter((s) => s.score >= 9.0).length,
+                    good: session.gradedStudents.filter((s) => s.score >= 8.0 && s.score < 9.0).length,
+                    average: session.gradedStudents.filter((s) => s.score >= 5.0 && s.score < 8.0).length,
+                    below: session.gradedStudents.filter((s) => s.score < 5.0).length,
+                  };
+
+                  return (
+                    <div
+                      key={session.id}
+                      className="bg-slate-900/90 rounded-2xl border border-slate-800 hover:border-slate-700/80 p-5 shadow-lg shadow-black/20 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-2.5 flex-1">
+                        {/* Hàng Badges Thông Tin */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Status badge */}
+                          {isCompleted ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                              ✓ Hoàn thành
+                            </span>
+                          ) : isStarted ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                              Đang chấm ({totalStudents} bài)
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+                              Chưa chấm
+                            </span>
+                          )}
+
+                          {/* Môn & Khối */}
+                          <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-300">
+                            {session.subject} • Khối {session.grade}
+                          </span>
+
+                          {/* Lớp áp dụng (nếu có) */}
+                          {session.targetClasses && (
+                            <span className="px-2.5 py-0.5 rounded text-[11px] font-semibold bg-indigo-950/40 text-indigo-300 border border-indigo-800/40">
+                              Lớp: {session.targetClasses}
+                            </span>
+                          )}
+
+                          {/* Mẫu phiếu */}
+                          <span className="px-2.5 py-0.5 rounded text-[11px] font-medium bg-blue-950/40 text-blue-300 border border-blue-900/40">
+                            {session.sheetType === "2025" ? "Form 2025 (3 Phần)" : `Phiếu ${session.questionCount} câu`}
+                          </span>
+
+                          {/* Ngày tạo */}
+                          <span className="text-xs text-slate-500">• {session.createdAt}</span>
+                        </div>
+
+                        {/* Tiêu đề kỳ thi */}
+                        <h3
+                          onClick={() => setActiveSessionId(session.id)}
+                          className="text-lg font-bold text-white hover:text-blue-400 transition cursor-pointer"
                         >
-                          <div>
-                            <div className="font-bold">{e.name}</div>
-                            <div
-                              className={`text-[10px] ${
-                                selectedExamId === e.id ? "text-neutral-300" : "text-neutral-400"
-                              }`}
-                            >
-                              {e.subject} • Lớp {e.grade} • {e.question_count} câu
-                            </div>
-                          </div>
-                          {selectedExamId === e.id && (
-                            <Check className="w-4 h-4 text-emerald-400" />
+                          {session.name}
+                        </h3>
+
+                        {/* Hàng Badges Tính Năng: Đa mã đề & Kho đề AI */}
+                        <div className="flex items-center gap-3 flex-wrap text-xs">
+                          {/* Badge Đã nạp đáp án chuẩn */}
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-950/30 text-emerald-400 border border-emerald-800/40 font-semibold text-[11px]">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>✓ Đã nạp đáp án chuẩn ({examCodeCount} mã đề)</span>
+                          </span>
+
+                          {/* Badge Đồng bộ từ Kho đề AI */}
+                          {session.examId && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-950/30 text-purple-300 border border-purple-800/40 font-semibold text-[11px]">
+                              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                              <span>✓ Đồng bộ từ Kho đề AI</span>
+                            </span>
+                          )}
+
+                          <span className="text-slate-400">
+                            Đã chấm: <strong className="text-slate-200">{totalStudents} bài</strong>
+                          </span>
+
+                          {totalStudents > 0 && (
+                            <span className="text-slate-400">
+                              Điểm TB: <strong className="text-blue-400">{avgScore} / 10</strong>
+                            </span>
                           )}
                         </div>
-                      ))
-                    )}
-                  </div>
 
-                  {/* Hộp xem trước Đáp Án Thật trích xuất từ đề thi (Sprint MG-1) */}
-                  {selectedExamId && (
-                    <div className="mt-3 p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 text-xs space-y-2">
-                      <div className="flex items-center justify-between text-emerald-900 dark:text-emerald-300 font-bold">
-                        <span className="flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          {isExtractingExam
-                            ? "Đang trích xuất đáp án thật..."
-                            : `Đã nạp chính xác ${extractedQuestions.length || Object.keys(manualAnswers).length} đáp án thật từ đề thi`}
-                        </span>
-                        <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium hidden sm:inline">
-                          Chuẩn GDPT 2025
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5 max-h-36 overflow-y-auto p-1 bg-white/80 dark:bg-slate-900/80 rounded-lg border border-emerald-200/60">
-                        {Object.entries(manualAnswers).map(([num, ans]) => (
-                          <div
-                            key={num}
-                            className="bg-white dark:bg-slate-800 p-1 rounded border text-center shadow-2xs"
-                          >
-                            <div className="text-[10px] text-muted-foreground font-semibold">C{num}</div>
-                            <div className="text-xs font-bold text-blue-600 dark:text-blue-400 truncate">{ans}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-                ) : (
-                  /* Ma trận nhập đáp án A, B, C, D nhanh */
-                  <div className="border border-neutral-200 rounded-xl p-3 bg-neutral-50/50 max-h-56 overflow-y-auto">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {Array.from({
-                        length: createSheetType === "2025" ? 28 : parseInt(createSheetType),
-                      }).map((_, idx) => {
-                        const qNum = idx + 1;
-                        const currentVal = manualAnswers[qNum] || "A";
-                        return (
-                          <div
-                            key={qNum}
-                            className="bg-white p-2 rounded-lg border border-neutral-200 flex items-center justify-between text-xs"
-                          >
-                            <span className="font-bold text-neutral-600">Câu {qNum}:</span>
-                            <div className="flex gap-1">
-                              {["A", "B", "C", "D"].map((choice) => (
-                                <button
-                                  key={choice}
-                                  type="button"
-                                  onClick={() =>
-                                    setManualAnswers({ ...manualAnswers, [qNum]: choice })
-                                  }
-                                  className={`w-5 h-5 rounded text-[11px] font-bold flex items-center justify-center transition ${
-                                    currentVal === choice
-                                      ? "bg-neutral-900 text-white"
-                                      : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-                                  }`}
-                                >
-                                  {choice}
-                                </button>
-                              ))}
+                        {/* Thanh Tiến Độ Chấm & Phân Bổ Điểm */}
+                        {totalStudents > 0 && (
+                          <div className="space-y-1.5 pt-1 max-w-md">
+                            <div className="flex items-center justify-between text-[11px] text-slate-400">
+                              <span>Tiến độ chấm bài thi</span>
+                              <span className="font-semibold text-slate-300">
+                                {totalStudents}/35 bài ({Math.min(100, Math.round((totalStudents / 35) * 100))}%)
+                              </span>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-5 border-t border-border flex items-center justify-end gap-3 bg-neutral-50/50 rounded-b-2xl">
-              <button
-                type="button"
-                onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 rounded-xl text-neutral-600 hover:bg-neutral-200/60 text-xs font-semibold transition"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmCreateSession}
-                className="px-5 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold transition shadow-sm"
-              >
-                Tạo kỳ thi ngay
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-      {/* ======================================================== */}
-      {/* MODAL 2: IN PHIẾU TÔ TRẮC NGHIỆM CHUẨN A4 BỘ GD&ĐT */}
-      {/* ======================================================== */}
-      {showPrintModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-neutral-200 overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-neutral-200 bg-neutral-50">
-              <div>
-                <h3 className="font-bold text-neutral-900 text-base">
-                  Mẫu Phiếu Trả Lời Trắc Nghiệm: {showPrintModal.name}
-                </h3>
-                <p className="text-xs text-neutral-500">
-                  Phiếu chuẩn A4 độ phân giải cao cho học sinh tô bút chì 2B
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleDownloadPdf}
-                  disabled={isDownloadingPdf}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition disabled:opacity-50"
-                  title="Tải file PDF chuẩn in ấn A4 khớp tọa độ quang học OMR"
-                >
-                  <Download className="w-4 h-4" />
-                  {isDownloadingPdf ? "Đang tạo PDF..." : "Tải PDF In (Chuẩn OMR)"}
-                </button>
-                <button
-                  onClick={handlePrintSheet}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold shadow-sm transition"
-                >
-                  <Printer className="w-4 h-4" />
-                  In ngay ra giấy A4
-                </button>
-                <button
-                  onClick={() => setShowPrintModal(null)}
-                  className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200 transition"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Printable Paper Preview (Chuẩn tỉ lệ A4) */}
-            <div className="flex-1 overflow-y-auto p-6 bg-neutral-200/50 flex justify-center">
-              <div
-                id="printable-sheet"
-                className="bg-white shadow-lg border border-neutral-300 w-full max-w-[210mm] min-h-[297mm] p-8 text-neutral-900 font-sans"
-              >
-                {/* Header phiếu */}
-                <div className="flex justify-between items-start border-b-2 border-neutral-900 pb-4 mb-4">
-                  <div className="text-center w-5/12">
-                    <div className="text-xs uppercase font-bold tracking-wider">
-                      SỞ GIÁO DỤC VÀ ĐÀO TẠO
-                    </div>
-                    <div className="text-xs uppercase font-semibold">TRƯỜNG THPT / THCS</div>
-                    <div className="text-[10px] italic text-neutral-500 mt-1">
-                      Kỳ thi: {showPrintModal.name}
-                    </div>
-                  </div>
-
-                  <div className="text-center w-7/12">
-                    <h2 className="text-base font-black uppercase tracking-tight text-neutral-900">
-                      PHIẾU TRẢ LỜI TRẮC NGHIỆM
-                    </h2>
-                    <div className="text-xs font-semibold text-neutral-700">
-                      Môn thi: {showPrintModal.subject} — Khối lớp: {showPrintModal.grade}
-                    </div>
-                    <div className="text-[10px] text-neutral-500 italic mt-0.5">
-                      (Dùng bút chì 2B tô kín vòng tròn tương ứng với đáp án đúng)
-                    </div>
-                  </div>
-                </div>
-
-                {/* Khung thông tin học sinh & SBD & Mã đề */}
-                <div className="grid grid-cols-12 gap-3 border border-neutral-800 p-3 rounded mb-6 text-xs">
-                  {/* Họ tên học sinh */}
-                  <div className="col-span-6 space-y-2 border-r border-neutral-300 pr-3">
-                    <div>
-                      <span className="font-semibold">Họ và tên thí sinh:</span>
-                      <div className="border-b border-dotted border-neutral-500 h-5 mt-1" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <span className="font-semibold">Lớp:</span>
-                        <div className="border-b border-dotted border-neutral-500 h-5 mt-1" />
-                      </div>
-                      <div>
-                        <span className="font-semibold">Phòng thi:</span>
-                        <div className="border-b border-dotted border-neutral-500 h-5 mt-1" />
-                      </div>
-                    </div>
-                    <div>
-                      <span className="font-semibold">Chữ ký giám thị:</span>
-                      <div className="border-b border-dotted border-neutral-500 h-5 mt-1" />
-                    </div>
-                  </div>
-
-                  {/* Ô tô Số Báo Danh (SBD) */}
-                  <div className="col-span-3 text-center border-r border-neutral-300 pr-2">
-                    <div className="font-bold uppercase text-[11px] mb-1">Số Báo Danh</div>
-                    <div className="grid grid-cols-4 gap-1 mb-1">
-                      {[0, 1, 2, 3].map((i) => (
-                        <div
-                          key={i}
-                          className="h-6 border border-neutral-800 rounded text-center text-xs font-bold leading-6"
-                        />
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-4 gap-1">
-                      {[0, 1, 2, 3].map((col) => (
-                        <div key={col} className="space-y-0.5">
-                          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((row) => (
-                            <div
-                              key={row}
-                              className="w-4 h-4 mx-auto border border-neutral-600 rounded-full text-[9px] flex items-center justify-center font-mono font-medium"
-                            >
-                              {row}
-                            </div>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Ô tô Mã Đề */}
-                  <div className="col-span-3 text-center">
-                    <div className="font-bold uppercase text-[11px] mb-1">Mã Đề Thi</div>
-                    <div className="grid grid-cols-3 gap-1 mb-1">
-                      {[0, 1, 2].map((i) => (
-                        <div
-                          key={i}
-                          className="h-6 border border-neutral-800 rounded text-center text-xs font-bold leading-6"
-                        />
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-3 gap-1">
-                      {[0, 1, 2].map((col) => (
-                        <div key={col} className="space-y-0.5">
-                          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((row) => (
-                            <div
-                              key={row}
-                              className="w-4 h-4 mx-auto border border-neutral-600 rounded-full text-[9px] flex items-center justify-center font-mono font-medium"
-                            >
-                              {row}
-                            </div>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Phần bài làm trắc nghiệm: Hỗ trợ cả chuẩn GDPT 2025 và phiếu truyền thống */}
-                <div>
-                  {showPrintModal.sheetType === "2025" ? (
-                    <div className="space-y-4">
-                      {/* PHẦN I: TRẮC NGHIỆM NHIỀU LỰA CHỌN (12 CÂU) */}
-                      <div>
-                        <div className="font-black text-[11px] uppercase tracking-wider mb-1.5 border-b border-neutral-800 pb-0.5 flex justify-between items-center">
-                          <span>PHẦN I: CÂU TRẮC NGHIỆM NHIỀU LỰA CHỌN (12 CÂU - 3.0 ĐIỂM)</span>
-                          <span className="text-[10px] font-normal normal-case text-neutral-500">Mỗi câu chỉ chọn một đáp án</span>
-                        </div>
-                        <div className="grid grid-cols-4 gap-2">
-                          {Array.from({ length: 12 }).map((_, idx) => {
-                            const qNumber = idx + 1;
-                            return (
+                            <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
                               <div
-                                key={qNumber}
-                                className="flex items-center justify-between text-xs py-0.5 px-1.5 border border-neutral-200 rounded"
-                              >
-                                <span className="font-bold w-5">{qNumber}.</span>
-                                <div className="flex gap-1">
-                                  {["A", "B", "C", "D"].map((opt) => (
-                                    <div
-                                      key={opt}
-                                      className="w-4 h-4 rounded-full border border-neutral-800 text-[9px] font-bold flex items-center justify-center"
-                                    >
-                                      {opt}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* PHẦN II: CÂU TRẮC NGHIỆM ĐÚNG / SAI (4 CÂU) */}
-                      <div>
-                        <div className="font-black text-[11px] uppercase tracking-wider mb-1.5 border-b border-neutral-800 pb-0.5 flex justify-between items-center">
-                          <span>PHẦN II: CÂU HỎI ĐÚNG / SAI (4 CÂU - 4.0 ĐIỂM)</span>
-                          <span className="text-[10px] font-normal normal-case text-neutral-500">Thí sinh chọn Đúng (Đ) hoặc Sai (S) cho từng ý</span>
-                        </div>
-                        <div className="grid grid-cols-4 gap-2">
-                          {[1, 2, 3, 4].map((c) => (
-                            <div key={c} className="border border-neutral-800 p-1.5 rounded space-y-1">
-                              <div className="font-bold text-[11px] border-b border-neutral-200 pb-0.5 text-center">
-                                Câu {c}
-                              </div>
-                              {["a", "b", "c", "d"].map((sub) => (
-                                <div key={sub} className="flex items-center justify-between text-[11px]">
-                                  <span className="font-medium uppercase">{sub})</span>
-                                  <div className="flex gap-1.5">
-                                    <div className="w-4 h-4 rounded-full border border-neutral-800 text-[9px] font-bold flex items-center justify-center">
-                                      Đ
-                                    </div>
-                                    <div className="w-4 h-4 rounded-full border border-neutral-800 text-[9px] font-bold flex items-center justify-center">
-                                      S
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
+                                className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all duration-300"
+                                style={{ width: `${Math.min(100, (totalStudents / 35) * 100)}%` }}
+                              />
                             </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* PHẦN III: CÂU TRẮC NGHIỆM TRẢ LỜI NGẮN (6 CÂU) */}
-                      <div>
-                        <div className="font-black text-[11px] uppercase tracking-wider mb-1.5 border-b border-neutral-800 pb-0.5 flex justify-between items-center">
-                          <span>PHẦN III: TRẢ LỜI NGẮN / ĐIỀN SỐ (6 CÂU - 3.0 ĐIỂM)</span>
-                          <span className="text-[10px] font-normal normal-case text-neutral-500">Ghi đáp số và tô các chữ số tương ứng</span>
-                        </div>
-                        <div className="grid grid-cols-6 gap-2">
-                          {[1, 2, 3, 4, 5, 6].map((c) => (
-                            <div key={c} className="border border-neutral-800 p-1.5 rounded text-center">
-                              <div className="font-bold text-[10px] mb-1">Câu {c}</div>
-                              <div className="h-6 border border-neutral-800 rounded mb-1 text-[11px] flex items-center justify-center font-mono font-bold bg-neutral-50" />
-                              <div className="flex justify-center gap-0.5">
-                                {[0, 1, 2].map((col) => (
-                                  <div key={col} className="space-y-0.5">
-                                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
-                                      <div
-                                        key={digit}
-                                        className="w-3.5 h-3.5 rounded-full border border-neutral-600 text-[8px] flex items-center justify-center"
-                                      >
-                                        {digit}
-                                      </div>
-                                    ))}
-                                  </div>
-                                ))}
-                              </div>
+                            {/* Phổ điểm mini */}
+                            <div className="flex items-center gap-2 text-[10px] text-slate-400 pt-0.5">
+                              <span className="text-emerald-400 font-medium">9-10đ: {scoreCounts.excellent}</span>
+                              <span>•</span>
+                              <span className="text-blue-400 font-medium">8-8.9đ: {scoreCounts.good}</span>
+                              <span>•</span>
+                              <span className="text-amber-400 font-medium">5-7.9đ: {scoreCounts.average}</span>
+                              <span>•</span>
+                              <span className="text-rose-400 font-medium">&lt;5đ: {scoreCounts.below}</span>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="font-black text-xs uppercase tracking-wider mb-2 border-b border-neutral-800 pb-1">
-                        PHẦN TRẢ LỜI CỦA THÍ SINH ({showPrintModal.questionCount} CÂU)
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {Array.from({
-                          length: Math.ceil(showPrintModal.questionCount / 10),
-                        }).map((_, colIdx) => (
-                          <div key={colIdx} className="space-y-1">
-                            {Array.from({ length: 10 }).map((_, rowIdx) => {
-                              const qNumber = colIdx * 10 + rowIdx + 1;
-                              if (qNumber > showPrintModal.questionCount) return null;
-
-                              return (
-                                <div
-                                  key={qNumber}
-                                  className="flex items-center justify-between text-xs py-0.5 px-1 border-b border-border"
-                                >
-                                  <span className="font-bold w-6 text-right pr-1">
-                                    {qNumber}.
-                                  </span>
-                                  <div className="flex gap-1.5">
-                                    {["A", "B", "C", "D"].map((opt) => (
-                                      <div
-                                        key={opt}
-                                        className="w-4 h-4 rounded-full border border-neutral-800 text-[10px] font-bold flex items-center justify-center"
-                                      >
-                                        {opt}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
                           </div>
-                        ))}
+                        )}
+                      </div>
+
+                      {/* Nút Hành Động Thẻ Kỳ Thi */}
+                      <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-800">
+                        {/* Vào xem kỳ thi */}
+                        <button
+                          onClick={() => setActiveSessionId(session.id)}
+                          className="inline-flex min-h-[36px] items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Vào xem kỳ thi</span>
+                        </button>
+
+                        {/* In phiếu tô */}
+                        <button
+                          onClick={() => setShowPrintModal(session)}
+                          className="inline-flex min-h-[36px] items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-700 bg-slate-800/40 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition cursor-pointer shadow-2xs"
+                          title="In phiếu trả lời A4 chuẩn Bộ GD&ĐT (chọn in trắng hoặc in sẵn SBD/mã đề)"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-blue-400" />
+                          <span>In phiếu tô</span>
+                        </button>
+
+                        {/* Chấm bài OMR */}
+                        <button
+                          onClick={() => {
+                            setScanResult(null);
+                            setUploadedImagePreview(null);
+                            setShowScanModal(session);
+                            setScanMode("phone");
+                            initRemoteSession(session);
+                          }}
+                          className="inline-flex min-h-[36px] items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition shadow-md bg-blue-600 hover:bg-blue-500 text-white cursor-pointer"
+                          title="Chụp ảnh phiếu hoặc kết nối điện thoại để chấm OMR tự động (Miễn phí)"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>{totalStudents > 0 ? "Tiếp tục chấm" : "Bắt đầu chấm OMR"}</span>
+                        </button>
+
+                        {/* Bảng điểm */}
+                        <button
+                          onClick={() => setShowScoreboardModal(session)}
+                          className="inline-flex min-h-[36px] items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-700 bg-slate-800/40 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition cursor-pointer shadow-2xs"
+                        >
+                          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Bảng điểm ({totalStudents})</span>
+                        </button>
+
+                        {/* Xóa kỳ thi */}
+                        <button
+                          onClick={() => handleDeleteSession(session.id, session.name)}
+                          className="h-9 w-9 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-950/30 transition cursor-pointer"
+                          title="Xóa kỳ thi"
+                          aria-label="Xóa kỳ thi"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-                  )}
-                </div>
-
-                {/* Hướng dẫn tô */}
-                <div className="mt-8 border-t border-neutral-300 pt-3 flex items-center justify-between text-[11px] text-neutral-500">
-                  <div>
-                    Cách tô đúng: <span className="inline-block w-3.5 h-3.5 rounded-full bg-neutral-900 align-middle ml-1" />
-                  </div>
-                  <div>
-                    Cách tô sai: <span className="inline-block w-3.5 h-3.5 rounded-full border border-neutral-800 text-center leading-3 align-middle ml-1">✕</span>
-                    <span className="inline-block w-3.5 h-3.5 rounded-full border border-neutral-800 text-center leading-3 align-middle ml-1">✓</span>
-                  </div>
-                  <div>Hệ thống EdTeach OMR Scanner</div>
-                </div>
+                  );
+                })}
               </div>
-            </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
+
+      {/* ======================================================== */}
+      {/* MODAL 1: TẠO KỲ THI MỚI CHUẨN GDPT 2025 & ĐA MÃ ĐỀ */}
+      {/* ======================================================== */}
+      <CreateExamModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreated={(newSession) => {
+          saveSessions([newSession, ...sessions]);
+          setActiveSessionId(newSession.id);
+          showToast(`Đã tạo thành công kỳ thi: ${newSession.name}`, "success");
+        }}
+        userExams={userExams}
+        defaultSubject={createSubject}
+        defaultGrade={createGrade}
+        defaultSheetType={createSheetType}
+      />
+
+      {/* ======================================================== */}
+      {/* MODAL 2: TẢI MẪU PHIẾU OMR CHUẨN (PDF) */}
+      {/* ======================================================== */}
+      <DownloadOMRModal
+        isOpen={showDownloadOMRModal}
+        onClose={() => setShowDownloadOMRModal(false)}
+      />
+
+      {/* ======================================================== */}
+      {/* MODAL 3: IN PHIẾU TÔ TRẮC NGHIỆM CHUẨN A4 BỘ GD&ĐT */}
+      {/* ======================================================== */}
+      <PrintSheetModal
+        session={showPrintModal}
+        onClose={() => setShowPrintModal(null)}
+      />
 
       {/* ======================================================== */}
       {/* MODAL 3: CHẤM BÀI BẰNG ẢNH HOẶC CAMERA OMR */}

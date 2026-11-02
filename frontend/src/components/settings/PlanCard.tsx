@@ -85,98 +85,123 @@ export function PlanCard({
       )}
 
       <div className="space-y-5">
-        {/* Plan Header */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <span
-              className={`text-xs font-bold uppercase tracking-wider ${
-                isMaxTier
-                  ? "text-purple-600 dark:text-purple-400"
-                  : isPopular
-                  ? "text-indigo-600 dark:text-indigo-400"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {tier === "free"
-                ? "Khởi đầu"
-                : tier === "pro"
-                ? "Tiêu chuẩn giảng dạy"
-                : "Toàn năng sư phạm & dạy thêm"}
-            </span>
-
-            {isCurrentPlan && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
-                Gói của bạn
+        {/* Plan Header + Right Top Price Corner */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1.5 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className={`text-xs font-bold uppercase tracking-wider ${
+                  isMaxTier
+                    ? "text-purple-600 dark:text-purple-400"
+                    : isPopular
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {tier === "free"
+                  ? "Khởi đầu"
+                  : tier === "pro"
+                  ? "Tiêu chuẩn giảng dạy"
+                  : "Toàn năng sư phạm & dạy thêm"}
               </span>
-            )}
-          </div>
 
-          <h3 className="text-2xl font-black text-foreground flex items-center gap-2">
-            <span>
-              {tier === "free"
-                ? "Gói Miễn Phí"
-                : tier === "pro"
-                ? "Giáo Viên PRO"
-                : "Luyện Thi MAX"}
-            </span>
-            {tier === "free" && <Shield className="w-5 h-5 text-muted-foreground" aria-hidden="true" />}
-            {tier === "pro" && <Sparkles className="w-5 h-5 text-amber-500" aria-hidden="true" />}
-            {tier === "max" && <Crown className="w-5 h-5 text-amber-500" aria-hidden="true" />}
-          </h3>
+              {isCurrentPlan && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                  Gói của bạn
+                </span>
+              )}
+            </div>
 
-          <p className="text-xs text-muted-foreground min-h-[32px] leading-relaxed">
-            {tier === "free" && "Trải nghiệm các tính năng soạn đề & khảo thí sư phạm cơ bản"}
-            {tier === "pro" && "Dành cho Giáo viên trường THCS / THPT đứng lớp tiêu chuẩn"}
-            {tier === "max" && "Dành cho Gia sư, Giáo viên dạy thêm chuyên nghiệp và Trung tâm luyện thi"}
-          </p>
-        </div>
-
-        {/* Price Block */}
-        <div className="py-2 space-y-1 border-t border-border pt-4">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-3xl sm:text-4xl font-black text-foreground tracking-tight">
-              {pricing.displayPrice}
-            </span>
-            <span className="text-xs font-medium text-muted-foreground">
-              {pricing.periodLabel}
-            </span>
-
-            {pricing.originalPriceText && (
-              <span className="text-xs line-through text-muted-foreground/70">
-                {pricing.originalPriceText}
+            <h3 className="text-2xl font-black text-foreground flex items-center gap-2">
+              <span>
+                {tier === "free"
+                  ? "Gói Miễn Phí"
+                  : tier === "pro"
+                  ? "Gói Giáo Viên PRO"
+                  : "Gói Luyện Thi MAX"}
               </span>
-            )}
+              {tier === "free" && <Shield className="w-5 h-5 text-muted-foreground" aria-hidden="true" />}
+              {tier === "pro" && <Sparkles className="w-5 h-5 text-amber-500" aria-hidden="true" />}
+              {tier === "max" && <Crown className="w-5 h-5 text-amber-500" aria-hidden="true" />}
+            </h3>
 
-            {pricing.savingsBadge && (
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                {pricing.savingsBadge}
-              </span>
-            )}
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            {pricing.totalPriceText}
-          </p>
-
-          {/* Credits summary note */}
-          {tier !== "free" && (
-            <p
-              className={`text-xs font-semibold pt-1 ${
-                isMaxTier
-                  ? "text-purple-600 dark:text-purple-400"
-                  : "text-indigo-600 dark:text-indigo-400"
-              }`}
-            >
-              Cộng ngay{" "}
-              <strong>+{pricing.credits.toLocaleString("vi-VN")} Credits</strong> vào ví
+            <p className="text-xs text-muted-foreground min-h-[32px] leading-relaxed">
+              {tier === "free" && "Trải nghiệm các tính năng soạn đề & khảo thí sư phạm cơ bản"}
+              {tier === "pro" && "Dành cho Giáo viên trường THCS / THPT đứng lớp tiêu chuẩn"}
+              {tier === "max" && "Dành cho Gia sư, Giáo viên dạy thêm chuyên nghiệp và Trung tâm luyện thi"}
             </p>
-          )}
+          </div>
+
+          {/* Góc trên bên phải: Xóa chữ '/tháng' thừa, khi bật Học kỳ (-20%) hiển thị giá gốc gạch ngang và giá chính giảm 20% */}
+          <div className="text-right shrink-0 pt-0.5">
+            {tier === "free" ? (
+              <div className="flex items-baseline justify-end gap-1">
+                <span className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">0đ</span>
+                <span className="text-xs font-medium text-muted-foreground">/mãi mãi</span>
+              </div>
+            ) : billingCycle === "semester" ? (
+              <div className="space-y-0.5">
+                {/* Giá gốc gạch ngang */}
+                <div className="text-xs font-semibold text-muted-foreground/70 line-through">
+                  {tier === "pro" ? "149.000đ/tháng" : "229.000đ/tháng"}
+                </div>
+                {/* Giá chính sau khi giảm 20% */}
+                <div className="flex items-baseline justify-end gap-1">
+                  <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+                    {tier === "pro" ? "119.200đ" : "179.800đ"}
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground">/tháng</span>
+                </div>
+                {/* Badge giảm 20% & Tổng thanh toán kỳ */}
+                <div className="flex items-center justify-end gap-1.5 pt-0.5">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    -20%
+                  </span>
+                  <span className="text-[11px] font-medium text-muted-foreground hidden sm:inline">
+                    {tier === "pro" ? "599.000đ / 5 tháng" : "899.000đ / 5 tháng"}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-baseline justify-end gap-1">
+                  <span className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+                    {tier === "pro" ? "149.000đ" : "229.000đ"}
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground">/tháng</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">Thanh toán từng tháng</p>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Credits Summary Banner */}
+        {tier !== "free" && (
+          <div
+            className={`p-3 rounded-2xl border text-xs font-semibold flex items-center justify-between ${
+              isMaxTier
+                ? "bg-purple-500/10 border-purple-500/20 text-purple-700 dark:text-purple-300"
+                : "bg-indigo-500/10 border-indigo-500/20 text-indigo-700 dark:text-indigo-300"
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-500 shrink-0" aria-hidden="true" />
+              <span>Cộng vào ví khi kích hoạt:</span>
+            </span>
+            <strong className="text-sm font-black">
+              +{billingCycle === "semester"
+                ? (tier === "pro" ? "150.000" : "500.000")
+                : (tier === "pro" ? "30.000" : "100.000")}{" "}
+              Credits
+            </strong>
+          </div>
+        )}
 
         {/* Feature List */}
-        <div className="space-y-3 pt-3 border-t border-border">
+        <div className="space-y-3 pt-2 border-t border-border">
           <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            Quyền lợi bao gồm:
+            Đặc quyền sư phạm bao gồm:
           </p>
 
           <ul className="space-y-2.5 text-xs text-foreground/90">
@@ -224,7 +249,7 @@ export function PlanCard({
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 font-bold" aria-hidden="true" />
                   <span>
-                    <strong>Xuất file Word & PDF sạch 100%</strong> (Không watermark)
+                    <strong>Xuất file Word & PDF sạch 100%</strong> (Không watermark web)
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
@@ -245,7 +270,7 @@ export function PlanCard({
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 font-bold" aria-hidden="true" />
-                  <span>Phí sàn Chợ đề thi ưu đãi 15%</span>
+                  <span>Phí sàn Chợ đề thi ưu đãi chỉ 15%</span>
                 </li>
               </>
             )}
@@ -254,12 +279,12 @@ export function PlanCard({
               <>
                 <li className="flex items-start gap-2.5 font-bold text-purple-950 dark:text-purple-200">
                   <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>Toàn bộ đặc quyền của Gói PRO</span>
+                  <span>Toàn bộ đặc quyền của Gói Giáo Viên PRO</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" aria-hidden="true" />
                   <span>
-                    <strong>AI suy luận nâng cao (chế độ Thinking)</strong>
+                    <strong>AI suy luận nâng cao (chế độ Gemini Thinking)</strong>
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
@@ -277,12 +302,12 @@ export function PlanCard({
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" aria-hidden="true" />
                   <span>
-                    <strong>Trộn đề công nghiệp từ 8 đến 12 mã đề</strong> chống quay cóp
+                    <strong>Trộn đề công nghiệp từ 8 đến 12 mã đề</strong> độc lập chống quay cóp
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>Giao đề Online qua Magic Link/QR tự chấm & nhận xét AI gửi Zalo</span>
+                  <span>Giao đề Online qua Magic Link/QR tự chấm & nhận xét AI gửi Zalo phụ huynh</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" aria-hidden="true" />
@@ -294,7 +319,7 @@ export function PlanCard({
         </div>
       </div>
 
-      {/* CTA Button at bottom (using mt-auto for equal balance) */}
+      {/* CTA Button at bottom */}
       <div className="pt-6 mt-auto">
         {cta.helperText && (
           <p className="text-[11px] text-center font-medium text-muted-foreground mb-2">
