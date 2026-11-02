@@ -126,7 +126,7 @@ export default function WhiteboardEditor({
   const [isLaserActive, setIsLaserActive] = useState(false);
 
   // Multi-page state (Sprint STEM-1)
-  const initialPages: WhiteboardPage[] =
+  const rawPagesList: WhiteboardPage[] =
     initialBoard.pages && initialBoard.pages.length > 0
       ? initialBoard.pages
       : (initialBoard.app_state as any)?.pages && (initialBoard.app_state as any).pages.length > 0
@@ -141,6 +141,10 @@ export default function WhiteboardEditor({
             thumbnail_url: initialBoard.thumbnail_url,
           },
         ];
+  const initialPages: WhiteboardPage[] = rawPagesList.map((p) => ({
+    ...p,
+    elements: sanitizeExcalidrawElements(p.elements || []),
+  }));
   const [pages, setPages] = useState<WhiteboardPage[]>(initialPages);
   const [currentPageIndex, setCurrentPageIndex] = useState<number>(0);
 
@@ -368,9 +372,13 @@ export default function WhiteboardEditor({
       y: ((el as any).y || 0) + 100,
     }));
 
+    const sanitizedNextElements = sanitizeExcalidrawElements([...currentElements, ...newElements]);
+
     excalidrawAPI.updateScene({
-      elements: [...currentElements, ...newElements],
+      elements: sanitizedNextElements,
     });
+    latestDataRef.current.elements = sanitizedNextElements;
+    performSave(sanitizedNextElements, latestDataRef.current.appState);
     setShowStemMenu(false);
   };
 
@@ -404,8 +412,10 @@ export default function WhiteboardEditor({
       grade: options?.grade,
     });
 
+    const sanitizedAllElements = sanitizeExcalidrawElements([...currentElements, ...newQuestionElements]);
+
     excalidrawAPI.updateScene({
-      elements: [...currentElements, ...newQuestionElements],
+      elements: sanitizedAllElements,
     });
 
     try {
@@ -414,8 +424,8 @@ export default function WhiteboardEditor({
       // fallback
     }
 
-    latestDataRef.current.elements = [...currentElements, ...newQuestionElements];
-    performSave(latestDataRef.current.elements, latestDataRef.current.appState);
+    latestDataRef.current.elements = sanitizedAllElements;
+    performSave(sanitizedAllElements, latestDataRef.current.appState);
   };
 
   // ================= MULTI-PAGE SLIDE HANDLERS =================
@@ -563,12 +573,13 @@ export default function WhiteboardEditor({
       customData: { type: "latex", rawLatex },
     };
 
+    const nextElements = sanitizeExcalidrawElements([...currentElements, newElement]);
     excalidrawAPI.updateScene({
-      elements: [...currentElements, newElement],
+      elements: nextElements,
     });
 
-    latestDataRef.current.elements = [...currentElements, newElement];
-    performSave(latestDataRef.current.elements, latestDataRef.current.appState);
+    latestDataRef.current.elements = nextElements;
+    performSave(nextElements, latestDataRef.current.appState);
   };
 
   const handlePasteFromCasio = (calcText: string) => {
@@ -597,11 +608,12 @@ export default function WhiteboardEditor({
       isDeleted: false,
     };
 
+    const nextCasioElements = sanitizeExcalidrawElements([...currentElements, textElement]);
     excalidrawAPI.updateScene({
-      elements: [...currentElements, textElement],
+      elements: nextCasioElements,
     });
-    latestDataRef.current.elements = [...currentElements, textElement];
-    performSave(latestDataRef.current.elements, latestDataRef.current.appState);
+    latestDataRef.current.elements = nextCasioElements;
+    performSave(nextCasioElements, latestDataRef.current.appState);
   };
 
   const handleSnapshotFromLab = (lab: any) => {
@@ -644,11 +656,12 @@ export default function WhiteboardEditor({
       isDeleted: false,
     };
 
+    const nextLabElements = sanitizeExcalidrawElements([...currentElements, labBox, labText]);
     excalidrawAPI.updateScene({
-      elements: [...currentElements, labBox, labText],
+      elements: nextLabElements,
     });
-    latestDataRef.current.elements = [...currentElements, labBox, labText];
-    performSave(latestDataRef.current.elements, latestDataRef.current.appState);
+    latestDataRef.current.elements = nextLabElements;
+    performSave(nextLabElements, latestDataRef.current.appState);
   };
 
   const handleTriggerAiGeometryDraw = (question: any) => {
@@ -776,12 +789,13 @@ export default function WhiteboardEditor({
       currentY += 280;
     });
 
+    const nextBatchElements = sanitizeExcalidrawElements([...currentElements, ...batchElements]);
     excalidrawAPI.updateScene({
-      elements: [...currentElements, ...batchElements],
+      elements: nextBatchElements,
     });
 
-    latestDataRef.current.elements = [...currentElements, ...batchElements];
-    performSave(latestDataRef.current.elements, latestDataRef.current.appState);
+    latestDataRef.current.elements = nextBatchElements;
+    performSave(nextBatchElements, latestDataRef.current.appState);
   };
 
   // AI Live Cloner: Đẻ câu tương tự đặt cạnh câu hỏi
@@ -823,12 +837,13 @@ export default function WhiteboardEditor({
           grade,
         });
 
+        const nextCloneElements = sanitizeExcalidrawElements([...currentElements, ...cloneElements]);
         excalidrawAPI.updateScene({
-          elements: [...currentElements, ...cloneElements],
+          elements: nextCloneElements,
         });
 
-        latestDataRef.current.elements = [...currentElements, ...cloneElements];
-        performSave(latestDataRef.current.elements, latestDataRef.current.appState);
+        latestDataRef.current.elements = nextCloneElements;
+        performSave(nextCloneElements, latestDataRef.current.appState);
       }
     } catch (err: any) {
       console.error("Lỗi Live Clone:", err);

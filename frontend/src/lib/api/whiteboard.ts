@@ -46,12 +46,20 @@ export async function getWhiteboardById(id: string): Promise<Whiteboard | null> 
 
   // Khôi phục dữ liệu pages và files từ app_state nếu bảng chưa có cột tương ứng
   const appState = (data.app_state as Record<string, unknown>) || {};
-  const pages =
+  const rawPages =
     data.pages && Array.isArray(data.pages) && data.pages.length > 0
       ? data.pages
       : appState.pages && Array.isArray(appState.pages) && appState.pages.length > 0
       ? appState.pages
       : undefined;
+
+  const pages = Array.isArray(rawPages)
+    ? rawPages.map((p: any) => ({
+        ...p,
+        elements: sanitizeExcalidrawElements(p?.elements || []),
+        files: p?.files && typeof p.files === "object" && !Array.isArray(p.files) ? p.files : {},
+      }))
+    : undefined;
 
   const files =
     data.files && typeof data.files === "object" && !Array.isArray(data.files)

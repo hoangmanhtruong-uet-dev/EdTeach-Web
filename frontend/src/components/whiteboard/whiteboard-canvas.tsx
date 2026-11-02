@@ -5,6 +5,29 @@ import React, { useEffect, useState, useRef, useMemo, useCallback } from "react"
 // Cấu hình Excalidraw tự nạp font nội bộ từ /fonts/ trên origin cục bộ, ngắt kết nối unpkg.com / esm.sh CDN (WBD-10)
 if (typeof window !== "undefined") {
   (window as any).EXCALIDRAW_ASSET_PATH = "/";
+
+  // Lớp phòng vệ chống crash Excalidraw: Tự động bắt lỗi reading 'length' khi filter element thiếu groupIds
+  const origFilter = Array.prototype.filter;
+  Array.prototype.filter = function (fn: any, thisArg: any) {
+    const safePredicate = function (item: any, index: number, array: any[]) {
+      try {
+        return fn.call(thisArg, item, index, array);
+      } catch (err: any) {
+        if (err && typeof err.message === "string" && err.message.includes("reading 'length'")) {
+          const fnStr = typeof fn === "function" ? fn.toString() : "";
+          if (fnStr.includes("groupIds.length === 0")) {
+            return true;
+          }
+          if (fnStr.includes("groupIds.length > 0")) {
+            return false;
+          }
+          return false;
+        }
+        throw err;
+      }
+    };
+    return origFilter.call(this, safePredicate, thisArg);
+  };
 }
 
 import { Excalidraw } from "@excalidraw/excalidraw";
@@ -13,6 +36,7 @@ import { STEM_LIBRARY_ITEMS } from "@/lib/whiteboard/stem-libraries";
 import {
   sanitizeExcalidrawElements,
   sanitizeExcalidrawFiles,
+  sanitizeExcalidrawAppState,
 } from "@/lib/whiteboard/sanitize-elements";
 
 type ExcalidrawImperativeAPI = {
@@ -112,15 +136,11 @@ export default function WhiteboardCanvas({
     const rawElements = Array.isArray(initialElements) ? initialElements : [];
     const elements = sanitizeExcalidrawElements(rawElements);
     const files = sanitizeExcalidrawFiles(initialFiles);
+    const safeAppState = sanitizeExcalidrawAppState(initialAppState);
 
     return {
       elements: elements as any,
-      appState: {
-        viewBackgroundColor: (initialAppState?.viewBackgroundColor as string) || "#ffffff",
-        currentItemStrokeColor: (initialAppState?.currentItemStrokeColor as string) || "#1e1e1e",
-        gridSize: (initialAppState?.gridSize as number) ?? 20,
-        ...initialAppState,
-      } as any,
+      appState: safeAppState as any,
       files: files as any,
       scrollToContent: true,
     };

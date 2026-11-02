@@ -1,3 +1,5 @@
+import { sanitizeExcalidrawElements } from "@/lib/whiteboard/sanitize-elements";
+
 /**
  * Thư viện các hình vẽ STEM & Giáo dục (Vật lý, Toán học, Sơ đồ)
  * Dành riêng cho gói Pro của EdTeach
@@ -11,7 +13,7 @@ export interface ExcalidrawLibraryItem {
   category?: string;
 }
 
-export const STEM_LIBRARY_ITEMS: ExcalidrawLibraryItem[] = [
+const RAW_STEM_LIBRARY_ITEMS: ExcalidrawLibraryItem[] = [
   // 1. Hệ trục toạ độ Oxy
   {
     id: "stem-coord-oxy",
@@ -346,3 +348,8 @@ export const STEM_LIBRARY_ITEMS: ExcalidrawLibraryItem[] = [
     ]
   }
 ];
+
+export const STEM_LIBRARY_ITEMS: ExcalidrawLibraryItem[] = RAW_STEM_LIBRARY_ITEMS.map((item) => ({
+  ...item,
+  elements: sanitizeExcalidrawElements(item.elements),
+}));
