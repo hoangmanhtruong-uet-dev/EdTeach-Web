@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,6 +12,7 @@ import {
   X,
   Edit2,
   Check,
+  GripVertical,
 } from "lucide-react";
 import { WhiteboardPage } from "@/types/whiteboard";
 
@@ -73,10 +74,79 @@ export function BottomSlideBar({
     setEditingIndex(null);
   };
 
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const startPosRef = useRef({ x: 0, y: 0, initialLeft: 0, initialTop: 0 });
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("input")) return;
+    if (!dragRef.current) return;
+
+    const rect = dragRef.current.getBoundingClientRect();
+    isDraggingRef.current = true;
+    startPosRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      initialLeft: rect.left,
+      initialTop: rect.top,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingRef.current || !dragRef.current) return;
+    const dx = e.clientX - startPosRef.current.x;
+    const dy = e.clientY - startPosRef.current.y;
+    const rect = dragRef.current.getBoundingClientRect();
+
+    const minX = 8;
+    const maxX = window.innerWidth - rect.width - 8;
+    const minY = 56;
+    const maxY = window.innerHeight - rect.height - 8;
+
+    const newX = Math.min(Math.max(minX, startPosRef.current.initialLeft + dx), maxX);
+    const newY = Math.min(Math.max(minY, startPosRef.current.initialTop + dy), maxY);
+
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+    }
+  };
+
   return (
     <>
-      {/* Bottom Floating Slide Bar */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl border border-border bg-card/95 backdrop-blur-md text-card-foreground shadow-xl select-none text-xs">
+      {/* Bottom Floating Slide Bar (Hỗ trợ kéo thả tự do) */}
+      <div
+        ref={dragRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        style={
+          position
+            ? { left: `${position.x}px`, top: `${position.y}px`, transform: "none", bottom: "auto" }
+            : undefined
+        }
+        className={`fixed z-40 flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl border border-border bg-card/95 backdrop-blur-md text-card-foreground shadow-xl select-none text-xs touch-none ${
+          !position ? "bottom-4 left-1/2 -translate-x-1/2" : ""
+        }`}
+      >
+        {/* Nút tay cầm kéo thả Grip */}
+        <div
+          className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground/60 hover:text-foreground flex items-center justify-center touch-none rounded-full hover:bg-muted transition mr-0.5"
+          title="Giữ chuột và kéo để di chuyển thanh slide đến bất kỳ vị trí nào"
+        >
+          <GripVertical className="w-3.5 h-3.5" />
+        </div>
         {/* Prev Slide */}
         <button
           onClick={handlePrev}
@@ -159,7 +229,21 @@ export function BottomSlideBar({
 
       {/* Slide Drawer (Thumbnails and management) */}
       {showDrawer && (
-        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-40 w-[94vw] max-w-3xl rounded-2xl border border-border bg-card/95 backdrop-blur-md shadow-2xl p-4 animate-in slide-in-from-bottom-2 duration-150">
+        <div
+          style={
+            position
+              ? {
+                  left: `${Math.min(Math.max(10, position.x), typeof window !== "undefined" ? window.innerWidth - 680 : 600)}px`,
+                  top: position.y > 300 ? `${position.y - 250}px` : `${position.y + 55}px`,
+                  bottom: "auto",
+                  transform: "none",
+                }
+              : undefined
+          }
+          className={`fixed z-50 w-[94vw] max-w-3xl rounded-2xl border border-border bg-card/95 backdrop-blur-md shadow-2xl p-4 animate-in slide-in-from-bottom-2 duration-150 ${
+            !position ? "bottom-16 left-1/2 -translate-x-1/2" : ""
+          }`}
+        >
           <div className="flex items-center justify-between pb-3 border-b border-border mb-3">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-blue-600" />

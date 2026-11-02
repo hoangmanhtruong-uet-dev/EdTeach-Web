@@ -15,6 +15,7 @@ import {
   Calculator,
   FlaskConical,
   Box,
+  GripVertical,
 } from "lucide-react";
 
 interface FloatingClassroomToolsProps {
@@ -129,13 +130,80 @@ export function FloatingClassroomTools({
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<HTMLElement>(null);
+  const isDraggingRef = useRef(false);
+  const startPosRef = useRef({ x: 0, y: 0, initialLeft: 0, initialTop: 0 });
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("input")) return;
+    if (!dragRef.current) return;
+
+    const rect = dragRef.current.getBoundingClientRect();
+    isDraggingRef.current = true;
+    startPosRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      initialLeft: rect.left,
+      initialTop: rect.top,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingRef.current || !dragRef.current) return;
+    const dx = e.clientX - startPosRef.current.x;
+    const dy = e.clientY - startPosRef.current.y;
+    const rect = dragRef.current.getBoundingClientRect();
+
+    const minX = 8;
+    const maxX = window.innerWidth - rect.width - 8;
+    const minY = 56;
+    const maxY = window.innerHeight - rect.height - 8;
+
+    const newX = Math.min(Math.max(minX, startPosRef.current.initialLeft + dx), maxX);
+    const newY = Math.min(Math.max(minY, startPosRef.current.initialTop + dy), maxY);
+
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+    }
+  };
+
   return (
     <>
-      {/* 1. THANH CÔNG CỤ NỔI (FLOATING DOCK Ở GÓC DƯỚI PHẢI TRÊN DESKTOP, TRÊN SLIDE BAR NẾU MÀN HẸP) */}
+      {/* 1. THANH CÔNG CỤ NỔI (HỖ TRỢ KÉO THẢ TỰ DO ĐẾN BẤT KỲ VỊ TRÍ NÀO) */}
       <aside
+        ref={dragRef}
         aria-label="Thanh công cụ bục giảng nổi"
-        className="fixed bottom-4 right-14 z-40 max-xl:bottom-16 max-xl:left-1/2 max-xl:-translate-x-1/2 max-xl:right-auto flex items-center gap-1.5 rounded-full border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-3 py-1.5 shadow-xl backdrop-blur-md transition-all hover:scale-[1.02]"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        style={
+          position
+            ? { left: `${position.x}px`, top: `${position.y}px`, transform: "none", bottom: "auto", right: "auto" }
+            : undefined
+        }
+        className={`fixed z-40 flex items-center gap-1 rounded-full border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-2 py-1.5 shadow-xl backdrop-blur-md select-none touch-none ${
+          !position ? "bottom-4 right-14 max-xl:bottom-16 max-xl:left-1/2 max-xl:-translate-x-1/2 max-xl:right-auto" : ""
+        }`}
       >
+        {/* Nút tay cầm kéo thả */}
+        <div
+          className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center touch-none rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          title="Giữ chuột và kéo để di chuyển thanh công cụ bục giảng đến bất kỳ vị trí nào"
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </div>
         {/* Nút Timer Mini */}
         <button
           onClick={() => setShowTimerModal(!showTimerModal)}
@@ -234,7 +302,22 @@ export function FloatingClassroomTools({
 
       {/* 2. CỬA SỔ TIMER ĐẾM NGƯỢC NỔI (KHI MỞ CHI TIẾT) */}
       {showTimerModal && (
-        <div className="fixed bottom-16 right-14 z-50 max-xl:bottom-28 max-xl:left-1/2 max-xl:-translate-x-1/2 max-xl:right-auto w-80 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
+        <div
+          style={
+            position
+              ? {
+                  left: `${Math.min(Math.max(10, position.x), typeof window !== "undefined" ? window.innerWidth - 330 : 600)}px`,
+                  top: position.y > 320 ? `${position.y - 250}px` : `${position.y + 55}px`,
+                  bottom: "auto",
+                  right: "auto",
+                  transform: "none",
+                }
+              : undefined
+          }
+          className={`fixed z-50 w-80 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 ${
+            !position ? "bottom-16 right-14 max-xl:bottom-28 max-xl:left-1/2 max-xl:-translate-x-1/2 max-xl:right-auto" : ""
+          }`}
+        >
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <Timer className="h-4 w-4 text-amber-500" />
