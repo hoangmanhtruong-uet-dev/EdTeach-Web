@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveGeminiApiKey } from "@/lib/ai/gemini-client";
+import { isProUser } from "@/lib/payment/plans";
+import { createClient } from "@/lib/supabase/server";
 
 const AI_SERVICE_BASE =
   process.env.INTERNAL_AI_SERVICE_URL ||
@@ -32,8 +35,7 @@ export async function GET() {
   }
 }
 
-
-// Sprint 6 Security Hardening: In-Memory Rate Limiter for OMR (Finding S5)
+// Sprint 6 Security Hardening: In-Memory Rate Limiter for OMR
 const omrRateLimits = new Map<string, { count: number; resetAt: number }>();
 function checkOmrRateLimit(ip: string): boolean {
   const now = Date.now();
@@ -55,6 +57,32 @@ export async function POST(req: NextRequest) {
         { error: "Đã vượt quá giới hạn quét bài (tối đa 60 bài/phút). Vui lòng chờ giây lát." },
         { status: 429 }
       );
+    }
+
+    // Kiểm tra phân quyền: Chấm tự động chỉ dành cho người dùng trả phí (PRO & MAX)
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("tier, subscription_expires_at, email")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const userProfile = profile || { email: user.email, tier: "free" };
+      if (!isProUser(userProfile)) {
+        return NextResponse.json(
+          {
+            error: "TIER_UPGRADE_REQUIRED",
+            message:
+              "Tính năng Chấm phiếu trắc nghiệm tự động bằng OMR / Camera dành riêng cho Gói Giáo Viên PRO. Vui lòng nâng cấp gói để tiếp tục.",
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const body = await req.json();
@@ -144,7 +172,7 @@ export async function POST(req: NextRequest) {
       console.warn("Python OMR service unreachable, falling back to Gemini Vision OMR:", localOmrErr);
     }
 
-    // Fallback: Gemini Vision OMR (cho môi trường Vercel Cloud khi không có Python OpenCV)
+    // Fallback: Gemini Vision OMR (Dùng GEMINI_API_KEY_PRO riêng biệt theo V2)
     const visionData = await runGeminiVisionOMR(
       body.imageBase64,
       sheetType,
@@ -163,20 +191,17 @@ export async function POST(req: NextRequest) {
 /**
  * Fallback Gemini Vision OMR Engine
  * Đọc trực tiếp các ô tròn tô đen từ ảnh phiếu thi với độ chính xác cao
+ * Độc quyền cho Giáo viên PRO và MAX khi thuật toán cắt góc OpenCV lỗi ≥ 3 lần
  */
 async function runGeminiVisionOMR(
   imageBase64: string,
   sheetType: string,
   answerKey: Record<string, any> = {}
 ) {
-  const geminiKey =
-    process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_AI_API_KEY ||
-    process.env.GEMINI_API_KEY_PAID ||
-    "";
+  const geminiKey = resolveGeminiApiKey("pro");
 
   if (!geminiKey) {
-    throw new Error("Không có kết nối OMR Service và chưa cấu hình Gemini API Key");
+    throw new Error("Không có kết nối OMR Service và chưa cấu hình Gemini PRO API Key.");
   }
 
   // Chuẩn hóa chuỗi base64
@@ -221,9 +246,9 @@ YÊU CẦU ĐẶC BIỆT: Trả về DUY NHẤT một chuỗi JSON thuần túy 
 }`;
 
   const models = [
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
-    "gemini-3-flash-preview",
+    "gemini-flash-lite-latest",
+    "gemini-flash-latest",
+    "gemini-3.8-flash",
   ];
 
   for (const model of models) {
@@ -309,4 +334,3 @@ YÊU CẦU ĐẶC BIỆT: Trả về DUY NHẤT một chuỗi JSON thuần túy 
 
   throw new Error("Không thể phân tích ảnh phiếu thi bằng Vision");
 }
-

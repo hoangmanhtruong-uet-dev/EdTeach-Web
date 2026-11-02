@@ -27,11 +27,13 @@ export const PRO_MONTHLY: PricingPlan = {
   description: "Dành cho Giáo viên trường THCS / THPT đứng lớp tiêu chuẩn",
   features: [
     "Cộng +30.000 Credits/tháng vào ví",
-    "Trợ lý AI phân tích Thí nghiệm 3D, Kính vẽ bục giảng & Tự động sinh đề từ mô phỏng (54 bài mở miễn phí)",
-    "Xuất file Word (.docx) & PDF sạch 100% (Không dính watermark của web)",
+    "Mở khóa Chấm trắc nghiệm OMR tự động không giới hạn (2 camera cùng lúc & Gemini Vision Fallback)",
+    "Tạo đề thi trắc nghiệm AI không giới hạn chuẩn ma trận GDPT 2025",
+    "Số hóa đề thi tự động từ đường dẫn Web (URL)",
+    "Xuất file Word (.docx) & PDF sạch 100% (Không dính watermark hệ thống)",
     "Trộn tối đa 4 mã đề chuẩn GDPT 2025 (kèm Barem ma trận đặc tả)",
-    "Chấm trắc nghiệm OMR & lưu lịch sử theo từng lớp",
-    "Xuất bảng điểm Excel & Thống kê 'Top câu hỏi cả lớp sai nhiều nhất'",
+    "Mở khóa trọn bộ 54+ Thí nghiệm 3D (Labs) & Kính vẽ Neon bục giảng",
+    "Phí sàn Chợ đề thi ưu đãi 15% & Giảm 20% credits mua đề",
   ],
 };
 
@@ -67,14 +69,16 @@ export const MAX_MONTHLY: PricingPlan = {
   badge: "Dành cho gia sư & trung tâm",
   description: "Dành cho Giáo viên Luyện thi / Dạy thêm chuyên nghiệp / Trung tâm",
   features: [
-    "Bao gồm toàn bộ quyền lợi của Gói PRO",
-    "Cộng +100.000 Credits/tháng (AI suy luận nâng cao - chế độ Thinking)",
+    "Toàn bộ đặc quyền của Gói Giáo Viên PRO",
+    "Cộng +100.000 Credits/tháng (Hạ tầng AI VIP - Chế độ Gemini Thinking / DeepSeek R1)",
+    "Chấm OMR không giới hạn thiết bị & Tự khớp danh sách lớp (Roster import)",
     "Tải lên PDF/Ảnh đề cũ -> AI bóc tách & 'Nhân bản đề tương tự'",
-    "Trộn đề công nghiệp: Trộn từ 8 đến 12 mã đề thi độc lập",
-    "Đóng dấu Watermark thương hiệu riêng của Giáo viên / Lớp học chống lộ đề",
-    "Giao đề Online qua Magic Link / QR: Học sinh làm trực tuyến tự chấm",
-    "Tạo phiếu nhận xét cá nhân hóa từng học sinh bằng AI gửi Zalo phụ huynh",
-    "Đặc quyền Chợ đề thi: Giảm 50% credit mua đề VIP & Phí sàn chỉ 5%",
+    "Bộ công cụ sư phạm độc quyền: Live Clone biến thể câu hỏi, Scaffold gợi ý giải & Đa phương pháp",
+    "Tự động sinh bài tập Bù lỗ hổng kiến thức (Remediation) & Báo cáo AI gửi Zalo phụ huynh",
+    "Trộn đề công nghiệp từ 8 đến 12 mã đề thi độc lập chống quay cóp",
+    "Đóng dấu Watermark thương hiệu riêng (Logo, Tên GV, SĐT, cơ sở dạy thêm)",
+    "Phòng học Whiteboard tương tác 2 chiều (Học sinh vẽ trực tiếp & Live Poll)",
+    "Phí sàn Chợ đề thi chỉ 5% & Giảm 50% credits mua đề VIP",
   ],
 };
 
@@ -108,7 +112,7 @@ export const CREDIT_PACKS = [
 // CHẾ ĐỘ THỬ NGHIỆM BETA: false
 // Đã kết thúc giai đoạn thử nghiệm Beta, quay về phân cấp 3 gói chuẩn: FREE, PRO, MAX.
 // ==============================================================================
-export const IS_BETA_ALL_FEATURES_UNLOCKED = true;
+export const IS_BETA_ALL_FEATURES_UNLOCKED = false;
 
 /**
  * Kiểm tra xem gói thuê bao có còn hạn sử dụng hay không.

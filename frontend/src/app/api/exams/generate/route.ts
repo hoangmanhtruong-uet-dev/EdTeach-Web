@@ -1,4 +1,4 @@
-import { isRealPayingUser, isMaxUser } from "@/lib/payment/plans";
+import { isRealPayingUser, isMaxUser, isProUser } from "@/lib/payment/plans";
 import { getGeminiApiKey } from "@/lib/ai/gemini-client";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +11,7 @@ const AI_SERVICE_URL =
 
 // Simple in-memory IP rate limiter: max 5 requests per IP per day
 const ipRateLimits = new Map<string, { count: number; date: string }>();
+const freeUserDailyCounts = new Map<string, number>();
 
 function checkIpRateLimit(ip: string): boolean {
   const today = new Date().toISOString().slice(0, 10);
@@ -282,6 +283,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const isHighModel = model_tier === "high" || body.thinking_mode === true;
+    if (isHighModel && !isMaxUser(userProfile)) {
+      return NextResponse.json(
+        {
+          error: "TIER_RESTRICTED",
+          message: "Chế độ AI Suy luận sâu (Gemini Thinking / DeepSeek R1) chỉ dành riêng cho tài khoản Gói MAX. Thầy/Cô vui lòng nâng cấp gói để sử dụng.",
+        },
+        { status: 403 }
+      );
+    }
+
+    // Gói Free: Trần 3 lượt tạo đề/ngày
+    if (!isProUser(userProfile)) {
+      const today = new Date().toISOString().slice(0, 10);
+      const userLimitKey = `free_exam_gen:${user.id}:${today}`;
+      const currentCount = freeUserDailyCounts.get(userLimitKey) || 0;
+      if (currentCount >= 3) {
+        return NextResponse.json(
+          {
+            error: "DAILY_LIMIT_EXCEEDED",
+            message: "Gói Miễn phí đã sử dụng hết hạn mức 3 lượt tạo đề/ngày. Thầy/Cô vui lòng nâng cấp Gói PRO để tạo đề thi không giới hạn!",
+          },
+          { status: 429 }
+        );
+      }
+      freeUserDailyCounts.set(userLimitKey, currentCount + 1);
+    }
+
     let wallet: any = null;
     try {
       const { data } = await (db.from("wallets") as any)
@@ -312,7 +341,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Phân bổ chi phí theo Model Tier (Gemini Flash vs Pro/Thinking)
-    const isHighModel = model_tier === "high";
     const requiredCredits = isHighModel ? 1600 : 500;
 
     let balance = wallet?.balance ?? 5000;
@@ -410,8 +438,8 @@ export async function POST(req: NextRequest) {
 
     // 4. Gọi Python AI Service hoặc trực tiếp Google Gemini API
     let generatedQuestions: any[] = [];
-    const isPaidUser = isRealPayingUser(userProfile);
-    const geminiKey = getGeminiApiKey(isPaidUser);
+    const userTier = isMaxUser(userProfile) ? "max" : isProUser(userProfile) ? "pro" : "free";
+    const geminiKey = getGeminiApiKey(userTier);
 
     try {
       const aiResponse = await fetch(`${AI_SERVICE_URL}/ai/generate`, {

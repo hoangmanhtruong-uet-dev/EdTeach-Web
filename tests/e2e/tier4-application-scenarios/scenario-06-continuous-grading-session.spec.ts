@@ -353,7 +353,9 @@ test.describe('Tier 4: Scenario 6 - Continuous Grading Session Flow', () => {
     await expect(page.locator('text=Căn tờ phiếu vào khung')).toBeVisible();
 
     // 3. Navigation to /scan PIN landing
-    await page.goto('/scan');
-    await expect(page.locator('input[placeholder*="8216"]')).toBeVisible();
+    const pinPage = await page.context().newPage();
+    await pinPage.goto('/scan');
+    await expect(pinPage.locator('input[placeholder*="8216"]')).toBeVisible();
+    await pinPage.close();
   });
 });

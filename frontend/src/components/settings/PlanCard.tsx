@@ -216,20 +216,24 @@ export function PlanCard({
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
                   <span>
-                    Tối đa <strong>3 lượt tạo đề/ngày</strong>
+                    Tối đa <strong>3 lượt tạo đề/ngày</strong> (Gemini Flash cơ bản)
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>Chấm trắc nghiệm OMR cơ bản qua camera</span>
+                  <span>Trộn tối đa <strong>2 mã đề</strong> kiểm tra</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
+                  <span>Nhập điểm thủ công bằng tay (<strong>Chấm OMR tự động yêu cầu PRO</strong>)</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>1 bài thí nghiệm 3D mẫu / mỗi môn học</span>
+                  <span>1 bài thí nghiệm 3D mẫu / mỗi môn học (4 bài)</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>Trải nghiệm 2 link Báo cáo Zalo mẫu</span>
+                  <span>Xuất file Word & PDF có Watermark mờ chân trang</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
@@ -243,19 +247,25 @@ export function PlanCard({
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 font-bold" aria-hidden="true" />
                   <span>
-                    <strong>Mở khóa trọn bộ 54+ Labs</strong> & Kính vẽ Neon
+                    <strong>Mở khóa Chấm OMR tự động không giới hạn</strong> (2 camera cùng lúc)
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 font-bold" aria-hidden="true" />
                   <span>
-                    <strong>Xuất file Word & PDF sạch 100%</strong> (Không watermark web)
+                    Kích hoạt <strong>Gemini Vision Fallback</strong> khi cắt góc lỗi ≥ 3 lần
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 font-bold" aria-hidden="true" />
                   <span>
-                    <strong>Báo cáo Zalo Magic Link KHÔNG GIỚI HẠN</strong>
+                    Tạo đề trắc nghiệm AI không giới hạn chuẩn GDPT & Số hóa đề từ URL Web
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 font-bold" aria-hidden="true" />
+                  <span>
+                    <strong>Xuất file Word & PDF sạch 100%</strong> (Không watermark hệ thống)
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
@@ -266,11 +276,13 @@ export function PlanCard({
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 font-bold" aria-hidden="true" />
-                  <span>Chấm OMR lưu lịch sử lớp & xuất bảng điểm Excel</span>
+                  <span>
+                    <strong>Mở khóa trọn bộ 54+ Labs 3D</strong> & Kính vẽ Neon bục giảng
+                  </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 font-bold" aria-hidden="true" />
-                  <span>Phí sàn Chợ đề thi ưu đãi chỉ 15%</span>
+                  <span>Báo cáo Zalo Magic Link không giới hạn & Phí sàn Chợ đề 15%</span>
                 </li>
               </>
             )}
@@ -284,19 +296,31 @@ export function PlanCard({
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" aria-hidden="true" />
                   <span>
-                    <strong>AI suy luận nâng cao (chế độ Gemini Thinking)</strong>
+                    <strong>AI suy luận nâng cao (Gemini Thinking / DeepSeek R1)</strong>
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" aria-hidden="true" />
                   <span>
-                    <strong>⚡ AI Luyện Bù Lỗ Hổng Kiến Thức:</strong> Tự đẻ câu tương tự số đẹp từ câu sai
+                    <strong>Bóc tách PDF/Ảnh đề cũ</strong> & Nhân bản đề tương tự
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" aria-hidden="true" />
                   <span>
-                    <strong>Đóng dấu Watermark thương hiệu riêng:</strong> Tên Gia sư, SĐT & Logo trung tâm
+                    <strong>Bộ công cụ sư phạm:</strong> Live Clone biến thể, Scaffold gợi ý giải & Đa phương pháp
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" aria-hidden="true" />
+                  <span>
+                    <strong>⚡ Tự động sinh bài Bù lỗ hổng kiến thức</strong> & Báo cáo AI gửi Zalo PH
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" aria-hidden="true" />
+                  <span>
+                    <strong>Đóng dấu Watermark thương hiệu riêng:</strong> Tên GV, Logo & Hotline trung tâm
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
@@ -307,7 +331,15 @@ export function PlanCard({
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>Giao đề Online qua Magic Link/QR tự chấm & nhận xét AI gửi Zalo phụ huynh</span>
+                  <span>
+                    Chấm OMR không giới hạn thiết bị & Tự khớp danh sách lớp (Roster import)
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" aria-hidden="true" />
+                  <span>
+                    Phòng học Whiteboard tương tác 2 chiều (HS vẽ trực tiếp & Live Poll)
+                  </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" aria-hidden="true" />

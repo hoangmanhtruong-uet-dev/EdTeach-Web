@@ -520,7 +520,7 @@ export async function exportExamToDocx(
         spacing: { before: 200 },
         children: [
           new TextRun({
-            text: "Đề thi được tạo tự động bởi EduTest AI - Nền tảng soạn đề thi thông minh cho giáo viên",
+            text: "Đề thi được tạo tự động bởi EdTeach (Bản dùng thử) - Nâng cấp Gói PRO để xóa ghi chú này",
             italics: true,
             size: 16,
             color: "6B7280",
@@ -940,7 +940,7 @@ export async function exportShuffledExamsToDocx(
         spacing: { before: 300 },
         children: [
           new TextRun({
-            text: "Bộ đề và ma trận đáp án được tạo tự động bởi EduTest AI",
+            text: "Bộ đề và ma trận đáp án được tạo tự động bởi EdTeach (Bản dùng thử) - Nâng cấp Gói PRO để xóa ghi chú này",
             italics: true,
             size: 16,
             color: "6B7280",

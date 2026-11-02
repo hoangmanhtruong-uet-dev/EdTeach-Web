@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callGeminiJson } from "@/lib/ai/gemini-client";
 import { createClient } from "@/lib/supabase/server";
-import { isRealPayingUser } from "@/lib/payment/plans";
+import { isMaxUser } from "@/lib/payment/plans";
 
 const COST_PER_CALL = 50; // 50 credits mỗi lượt gọi AI
 
@@ -44,7 +44,16 @@ export async function POST(req: NextRequest) {
       .select("*")
       .eq("id", user.id)
       .maybeSingle();
-    const isPaid = isRealPayingUser(profile);
+    const isMax = isMaxUser(profile);
+    if (!isMax) {
+      return NextResponse.json(
+        {
+          error: "TIER_UPGRADE_REQUIRED",
+          message: "Tính năng sư phạm nâng cao này là đặc quyền dành riêng cho Gói Luyện Thi MAX. Vui lòng nâng cấp để sử dụng.",
+        },
+        { status: 403 }
+      );
+    }
 
     const prompt = `
 Bạn là chuyên gia giảng dạy và thủ khoa luyện thi môn ${subject || "Toán"} lớp ${grade || "12"} chuẩn Bộ GD&ĐT 2025.
@@ -102,7 +111,7 @@ TRẢ VỀ DUY NHẤT ĐỊNH DẠNG JSON với cấu trúc:
 }
 `;
 
-    const result = await callGeminiJson(prompt, ["gemini-flash-lite-latest", "gemini-flash-latest"], isPaid);
+    const result = await callGeminiJson(prompt, ["gemini-flash-lite-latest", "gemini-flash-latest"], "max");
 
     // 3. Trừ ${COST_PER_CALL} credits sau khi sinh kết quả thành công
     try {

@@ -1,30 +1,64 @@
 // Server-side Gemini AI caller with automatic fallback models, abort timeouts, and resilient JSON parsing
 
+export type GeminiTier = "free" | "pro" | "max";
+
 /**
- * Smart API Key Router:
- * - isPaidUser = true: Sử dụng GEMINI_API_KEY_PAID (Prepaid thẻ Visa, 2.000 RPM, không train dữ liệu)
- * - isPaidUser = false (Thành viên dùng thử 5.000 credits): Sử dụng GEMINI_API_KEY_FREE hoặc GEMINI_API_KEY
- * - Có cơ chế Fallback tự động giữa các key nếu 1 trong 2 key chưa được cấu hình
+ * Smart API Key Router phân tầng theo 3 gói (FREE - PRO - MAX):
+ * - tier = 'max': Sử dụng GEMINI_API_KEY_MAX (Thinking, Live Clone, Scaffold, Multi-method, Remediation)
+ * - tier = 'pro': Sử dụng GEMINI_API_KEY_PRO (Tạo đề GDPT, URL import, Vision OMR Fallback)
+ * - tier = 'free': Sử dụng GEMINI_API_KEY_FREE (Tạo đề Flash cơ bản, tối đa 3 lượt/ngày)
+ * - Fallback tự động về GEMINI_API_KEY_PAID / GEMINI_API_KEY chung nếu biến môi trường riêng chưa cấu hình.
  */
-export function getGeminiApiKey(isPaidUser: boolean = false): string {
-  if (isPaidUser && process.env.GEMINI_API_KEY_PAID) {
-    return process.env.GEMINI_API_KEY_PAID;
+export function resolveGeminiApiKey(tierOrPaid: GeminiTier | boolean = "free"): string {
+  let tier: GeminiTier = "free";
+  if (typeof tierOrPaid === "boolean") {
+    tier = tierOrPaid ? "pro" : "free";
+  } else {
+    tier = tierOrPaid;
   }
+
+  if (tier === "max") {
+    return (
+      process.env.GEMINI_API_KEY_MAX ||
+      process.env.GEMINI_API_KEY_PRO ||
+      process.env.GEMINI_API_KEY_PAID ||
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_AI_API_KEY ||
+      ""
+    );
+  }
+
+  if (tier === "pro") {
+    return (
+      process.env.GEMINI_API_KEY_PRO ||
+      process.env.GEMINI_API_KEY_PAID ||
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_AI_API_KEY ||
+      ""
+    );
+  }
+
+  // Free tier
   return (
     process.env.GEMINI_API_KEY_FREE ||
     process.env.GEMINI_API_KEY ||
     process.env.GOOGLE_AI_API_KEY ||
+    process.env.GEMINI_API_KEY_PRO ||
     process.env.GEMINI_API_KEY_PAID ||
     ""
   );
 }
 
+export function getGeminiApiKey(tierOrPaid: GeminiTier | boolean = false): string {
+  return resolveGeminiApiKey(tierOrPaid);
+}
+
 export async function callGeminiJson<T = any>(
   prompt: string,
   preferredModels: string[] = ["gemini-flash-lite-latest", "gemini-flash-latest", "gemini-3.8-flash"],
-  isPaidUser: boolean = false
+  tierOrPaid: GeminiTier | boolean = false
 ): Promise<T> {
-  const geminiKey = getGeminiApiKey(isPaidUser);
+  const geminiKey = resolveGeminiApiKey(tierOrPaid);
 
   if (!geminiKey) {
     throw new Error("Chưa cấu hình GEMINI_API_KEY trong hệ thống.");

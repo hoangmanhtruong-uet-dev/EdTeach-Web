@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { safeFetchWithAntiSSRF, validateUrlAgainstSSRF } from "@/lib/security/anti-ssrf";
+import { resolveGeminiApiKey } from "@/lib/ai/gemini-client";
+import { isProUser } from "@/lib/payment/plans";
 
 export const runtime = "nodejs";
 
@@ -21,6 +23,22 @@ export async function POST(req: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Vui lòng đăng nhập để nhập đề thi." }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("users")
+      .select("tier, subscription_expires_at, email")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (!isProUser(profile || { email: user.email, tier: "free" })) {
+      return NextResponse.json(
+        {
+          error: "TIER_UPGRADE_REQUIRED",
+          message: "Tính năng Số hóa đề thi từ liên kết Web (URL) dành riêng cho Gói Giáo Viên PRO. Vui lòng nâng cấp gói để tiếp tục.",
+        },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();
@@ -91,7 +109,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+    const geminiKey = resolveGeminiApiKey("pro");
     let parsedData: any = null;
 
     if (geminiKey) {

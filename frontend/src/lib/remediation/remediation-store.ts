@@ -225,7 +225,7 @@ export async function generateIsomorphicQuestions(params: {
     targetQuestions: params.targetQuestions,
   });
 
-  const geminiKey = getGeminiApiKey();
+  const geminiKey = getGeminiApiKey("max");
   if (!geminiKey || params.targetQuestions.length === 0) {
     return fallback;
   }
@@ -284,7 +284,7 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON với mảng danh sách câu hỏi:
     const result = await callGeminiJson<ClonedQuestion[]>(
       prompt,
       ["gemini-flash-lite-latest", "gemini-flash-latest"],
-      false
+      "max"
     );
 
     if (Array.isArray(result) && result.length > 0) {

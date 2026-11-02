@@ -7,6 +7,7 @@ import {
 } from "@/lib/grading/continuous-session-store";
 import { createClient } from "@/lib/supabase/server";
 import { getBaseUrl } from "@/lib/constants";
+import { isProUser } from "@/lib/payment/plans";
 
 export async function GET(req: NextRequest) {
   try {
@@ -55,6 +56,27 @@ export async function POST(req: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
+    // Rào cản phân quyền: Gói Free bị khóa hoàn toàn chức năng chấm tự động
+    if (user) {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("tier, subscription_expires_at, email")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const userProfile = profile || { email: user.email, tier: "free" };
+      if (!isProUser(userProfile)) {
+        return NextResponse.json(
+          {
+            error: "TIER_UPGRADE_REQUIRED",
+            message:
+              "Tính năng Chấm phiếu trắc nghiệm tự động bằng AI / Phiên quét liên tục dành riêng cho Gói Giáo Viên PRO. Vui lòng nâng cấp gói để sử dụng.",
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     const body = await req.json();
     const {
@@ -124,31 +146,31 @@ export async function PATCH(req: NextRequest) {
           { status: 404 }
         );
       }
-      return NextResponse.json({
-        success: true,
-        message: "Phiên chấm đã được kết thúc thành công.",
-      });
+      return NextResponse.json({ success: true, message: "Đã kết thúc phiên chấm." });
     }
 
     if (action === "update_roster") {
       if (!Array.isArray(roster)) {
         return NextResponse.json(
-          { error: "Dữ liệu danh sách lớp không hợp lệ." },
+          { error: "Dữ liệu roster không hợp lệ (cần danh sách mảng)." },
           { status: 400 }
         );
       }
       const updated = await updateSessionRoster(target, roster);
-      return NextResponse.json({
-        success: updated,
-        message: "Đã cập nhật danh sách lớp cho phiên chấm.",
-      });
+      if (!updated) {
+        return NextResponse.json(
+          { error: "Không tìm thấy phiên để cập nhật danh sách lớp." },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({ success: true, message: "Đã cập nhật danh sách lớp." });
     }
 
     return NextResponse.json({ error: "Hành động không hợp lệ." }, { status: 400 });
   } catch (err: any) {
     console.error("PATCH continuous-session error:", err);
     return NextResponse.json(
-      { error: err.message || "Lỗi cập nhật phiên chấm." },
+      { error: err.message || "Lỗi cập nhật phiên." },
       { status: 500 }
     );
   }

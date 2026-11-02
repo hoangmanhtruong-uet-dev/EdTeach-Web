@@ -292,7 +292,7 @@ export async function generateAIPedagogicalInsight(params: {
   examTitle: string;
 }): Promise<AIPedagogicalFeedback> {
   const fallback = generateHeuristicPedagogicalReview(params);
-  const geminiKey = getGeminiApiKey();
+  const geminiKey = getGeminiApiKey("max");
 
   if (!geminiKey) {
     return fallback;
@@ -328,7 +328,7 @@ Hãy trả về định dạng JSON DUY NHẤT với cấu trúc:
     const result = await callGeminiJson<AIPedagogicalFeedback>(
       prompt,
       ["gemini-flash-lite-latest", "gemini-flash-latest"],
-      false
+      "max"
     );
 
     if (result && result.overview && Array.isArray(result.strengths)) {
