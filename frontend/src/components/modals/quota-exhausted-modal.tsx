@@ -219,7 +219,7 @@ export function QuotaExhaustedModal({
                     value={colleagueCode}
                     onChange={(e) => setColleagueCode(e.target.value.toUpperCase())}
                     placeholder="VD: EDU8K2M"
-                    className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-mono uppercase focus:border-blue-500 focus:outline-none"
+                    className="flex-1 rounded-lg border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 px-3 py-2 text-xs font-mono uppercase focus:border-blue-500 focus:outline-none"
                   />
                   <button
                     onClick={handleApplyColleagueCode}

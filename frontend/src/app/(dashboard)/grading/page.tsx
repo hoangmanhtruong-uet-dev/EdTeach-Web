@@ -1190,15 +1190,15 @@ function GradingPageInner() {
 
             <div className="space-y-1.5 text-sm text-neutral-600 dark:text-neutral-300 max-w-lg mb-7 text-left">
               <p>
-                <span className="font-semibold text-neutral-700">1.</span> Tạo kỳ thi: tick các đề đã
+                <span className="font-semibold text-foreground">1.</span> Tạo kỳ thi: tick các đề đã
                 soạn để AI lập đáp án, hoặc tự nhập.
               </p>
               <p>
-                <span className="font-semibold text-neutral-700">2.</span> In phiếu trả lời cho học sinh
+                <span className="font-semibold text-foreground">2.</span> In phiếu trả lời cho học sinh
                 tô.
               </p>
               <p>
-                <span className="font-semibold text-neutral-700">3.</span> Chụp phiếu bằng camera hoặc
+                <span className="font-semibold text-foreground">3.</span> Chụp phiếu bằng camera hoặc
                 tải ảnh lên để chấm.
               </p>
             </div>
@@ -1214,7 +1214,7 @@ function GradingPageInner() {
 
               <button
                 onClick={handleCreateSampleSession}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-semibold text-sm transition-all cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground font-semibold text-sm transition-all cursor-pointer shadow-xs"
               >
                 <Sparkles className="w-4 h-4 text-amber-500" />
                 Thử nhanh kỳ thi mẫu (Toán 6)
@@ -1422,9 +1422,9 @@ function GradingPageInner() {
       {/* ======================================================== */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-neutral-200">
+          <div className="bg-card text-card-foreground rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-border">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b border-neutral-100">
+            <div className="flex items-center justify-between p-5 border-b border-border">
               <div className="flex items-center gap-2">
                 <span className="p-1.5 rounded-lg bg-neutral-100 text-neutral-900">
                   <Plus className="w-4 h-4" />
@@ -1464,7 +1464,7 @@ function GradingPageInner() {
                   <select
                     value={createSubject}
                     onChange={(e) => setCreateSubject(e.target.value)}
-                    className="w-full text-sm border border-neutral-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full text-sm border border-border rounded-xl px-3 py-2.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="Toán">Toán</option>
                     <option value="Tiếng Anh">Tiếng Anh</option>
@@ -1484,7 +1484,7 @@ function GradingPageInner() {
                   <select
                     value={createGrade}
                     onChange={(e) => setCreateGrade(e.target.value)}
-                    className="w-full text-sm border border-neutral-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full text-sm border border-border rounded-xl px-3 py-2.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="6">Lớp 6</option>
                     <option value="7">Lớp 7</option>
@@ -1516,7 +1516,7 @@ function GradingPageInner() {
                       className={`p-3 rounded-xl border text-center transition-all ${
                         createSheetType === p.id
                           ? "border-neutral-900 bg-neutral-900 text-white shadow-sm"
-                          : "border-neutral-200 hover:border-neutral-400 text-neutral-700 bg-white"
+                          : "border-border hover:border-primary/50 text-foreground bg-card"
                       }`}
                     >
                       <div className="font-bold text-sm">{p.label}</div>
@@ -1582,7 +1582,7 @@ function GradingPageInner() {
                           className={`p-2.5 rounded-lg border text-xs cursor-pointer flex items-center justify-between transition ${
                             selectedExamId === e.id
                               ? "bg-neutral-900 text-white border-neutral-900"
-                              : "bg-white border-neutral-200 hover:border-neutral-300 text-neutral-800"
+                              : "bg-card border-border hover:border-primary/50 text-foreground"
                           }`}
                         >
                           <div>
@@ -1674,7 +1674,7 @@ function GradingPageInner() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-5 border-t border-neutral-100 flex items-center justify-end gap-3 bg-neutral-50/50 rounded-b-2xl">
+            <div className="p-5 border-t border-border flex items-center justify-end gap-3 bg-neutral-50/50 rounded-b-2xl">
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
@@ -1961,7 +1961,7 @@ function GradingPageInner() {
                               return (
                                 <div
                                   key={qNumber}
-                                  className="flex items-center justify-between text-xs py-0.5 px-1 border-b border-neutral-100"
+                                  className="flex items-center justify-between text-xs py-0.5 px-1 border-b border-border"
                                 >
                                   <span className="font-bold w-6 text-right pr-1">
                                     {qNumber}.
@@ -2008,9 +2008,9 @@ function GradingPageInner() {
       {/* ======================================================== */}
       {showScanModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-neutral-200">
+          <div className="bg-card text-card-foreground rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-border">
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-neutral-100">
+            <div className="flex items-center justify-between p-5 border-b border-border">
               <div>
                 <h3 className="font-bold text-lg text-neutral-900">
                   Chấm phiếu trắc nghiệm bằng AI
@@ -2352,7 +2352,7 @@ function GradingPageInner() {
               {/* =================================================== */}
               {scanMode === "batch" && (
                 <div className="border border-neutral-200 rounded-2xl p-5 bg-gradient-to-b from-neutral-50/80 to-white space-y-4">
-                  <div className="border-2 border-dashed border-neutral-300 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition bg-white relative">
+                  <div className="border-2 border-dashed border-border hover:border-primary rounded-2xl p-6 text-center cursor-pointer transition bg-card text-foreground relative">
                     <input
                       type="file"
                       accept="image/*"
@@ -2525,9 +2525,9 @@ function GradingPageInner() {
               {/* MA TRẬN BONG BÓNG THÔNG MINH (CLICK-TO-CORRECT)       */}
               {/* =================================================== */}
               {scanResult && (
-                <div className="bg-white border-2 border-emerald-500/40 rounded-2xl p-5 space-y-4 shadow-xl animate-in zoom-in-95 duration-200">
+                <div className="bg-card text-card-foreground border-2 border-emerald-500/40 rounded-2xl p-5 space-y-4 shadow-xl animate-in zoom-in-95 duration-200">
                   {/* Header kết quả */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-100 pb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
@@ -2644,7 +2644,7 @@ function GradingPageInner() {
                                       const isCorrectKey = correctVal === opt;
 
                                       let circleStyle =
-                                        "border border-neutral-300 bg-white text-neutral-600 hover:border-neutral-500";
+                                        "border border-border bg-card text-foreground hover:border-primary";
                                       if (isSelected && isCorrect && isManual) {
                                         circleStyle = "bg-amber-500 text-white border-amber-500 font-black ring-2 ring-amber-200";
                                       } else if (isSelected && isCorrect) {
@@ -2820,7 +2820,7 @@ function GradingPageInner() {
                                   const isCorrectKey = correctVal === opt;
 
                                   let circleStyle =
-                                    "border border-neutral-300 bg-white text-neutral-600 hover:border-neutral-500";
+                                    "border border-border bg-card text-foreground hover:border-primary";
 
                                   if (isSelected && isCorrect && isManual) {
                                     circleStyle = "bg-amber-500 text-white border-amber-500 font-black ring-2 ring-amber-200";
@@ -2900,9 +2900,9 @@ function GradingPageInner() {
       {/* ======================================================== */}
       {showScoreboardModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-neutral-200 overflow-hidden">
+          <div className="bg-card text-card-foreground rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-border overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-neutral-100">
+            <div className="flex items-center justify-between p-5 border-b border-border">
               <div>
                 <h3 className="font-bold text-lg text-neutral-900">
                   Bảng điểm kỳ thi: {showScoreboardModal.name}
@@ -2969,7 +2969,7 @@ function GradingPageInner() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-neutral-100 flex items-center justify-between bg-neutral-50">
+            <div className="p-4 border-t border-border flex items-center justify-between bg-neutral-50">
               <span className="text-xs text-neutral-500">
                 Hỗ trợ xuất định dạng Excel, CSV chuẩn SMAS, VnEdu
               </span>

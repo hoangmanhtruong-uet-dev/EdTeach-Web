@@ -468,7 +468,7 @@ export function SessionDetailView({
                 fetchSessionData();
                 setShowAllLinksModal(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-xs font-semibold transition shadow-xs cursor-pointer"
             >
               <LinkIcon className="w-3.5 h-3.5 text-neutral-500" />
               <span>Link đã tạo</span>
@@ -483,7 +483,7 @@ export function SessionDetailView({
             <div className="relative">
               <button
                 onClick={() => setShowPrintDropdown(!showPrintDropdown)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-xs font-semibold transition shadow-xs cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5 text-neutral-600" />
                 <span>In phiếu đáp án</span>
@@ -493,14 +493,14 @@ export function SessionDetailView({
               {showPrintDropdown && (
                 <div
                   onMouseLeave={() => setShowPrintDropdown(false)}
-                  className="absolute right-0 top-full mt-1 w-48 rounded-xl border border-neutral-200 bg-white py-1 shadow-lg z-30 text-xs"
+                  className="absolute right-0 top-full mt-1 w-48 rounded-xl border border-border bg-card py-1 shadow-lg z-30 text-xs text-foreground"
                 >
                   <button
                     onClick={() => {
                       setShowPrintDropdown(false);
                       onOpenPrintModal(session);
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-neutral-700 hover:bg-neutral-50"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-foreground hover:bg-muted"
                   >
                     <Printer className="w-3.5 h-3.5 text-neutral-500" />
                     <span>In phiếu tô A4 chuẩn</span>
@@ -510,7 +510,7 @@ export function SessionDetailView({
                       setShowPrintDropdown(false);
                       window.print();
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-neutral-700 hover:bg-neutral-50"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-foreground hover:bg-muted"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-neutral-500" />
                     <span>In bảng đáp án mẫu</span>
@@ -523,7 +523,7 @@ export function SessionDetailView({
             <div className="relative">
               <button
                 onClick={() => setShowOptionsMenu(!showOptionsMenu)}
-                className="p-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-500 transition shadow-xs cursor-pointer"
+                className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground transition shadow-xs cursor-pointer"
               >
                 <MoreHorizontal className="w-4 h-4" />
               </button>
@@ -531,7 +531,7 @@ export function SessionDetailView({
               {showOptionsMenu && (
                 <div
                   onMouseLeave={() => setShowOptionsMenu(false)}
-                  className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-neutral-200 bg-white py-1 shadow-lg z-30 text-xs"
+                  className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-border bg-card py-1 shadow-lg z-30 text-xs text-foreground"
                 >
                   <button
                     onClick={() => {
@@ -552,49 +552,49 @@ export function SessionDetailView({
 
       {/* 2. 3 Stat Cards (Đã chấm, Điểm trung bình, Cần xem lại) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-neutral-200/90 p-5 shadow-xs">
-          <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">
+        <div className="bg-card rounded-xl border border-border p-5 shadow-xs">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
             Đã chấm
           </div>
-          <div className="text-3xl font-extrabold text-neutral-900">{totalGraded}</div>
+          <div className="text-3xl font-extrabold text-foreground">{totalGraded}</div>
         </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200/90 p-5 shadow-xs">
-          <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">
+        <div className="bg-card rounded-xl border border-border p-5 shadow-xs">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
             Điểm trung bình
           </div>
-          <div className="text-3xl font-extrabold text-neutral-900">
+          <div className="text-3xl font-extrabold text-foreground">
             {totalGraded > 0 ? avgScore.toFixed(1) : "—"}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200/90 p-5 shadow-xs">
-          <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">
+        <div className="bg-card rounded-xl border border-border p-5 shadow-xs">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
             Cần xem lại
           </div>
-          <div className="text-3xl font-extrabold text-neutral-900">0</div>
+          <div className="text-3xl font-extrabold text-foreground">0</div>
         </div>
       </div>
 
       {/* 3. 2 Action Cards (Chấm bài từ ảnh VS Học sinh tự nộp) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         {/* Card 1: Chấm bài từ ảnh */}
-        <div className="bg-white rounded-xl border border-neutral-200/90 p-6 shadow-xs flex flex-col justify-between">
+        <div className="bg-card rounded-xl border border-border p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2.5 mb-1.5">
-              <div className="w-7 h-7 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-700">
+              <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-foreground">
                 <Camera className="w-4 h-4" />
               </div>
-              <h2 className="text-base font-bold text-neutral-900">Chấm bài từ ảnh</h2>
+              <h2 className="text-base font-bold text-foreground">Chấm bài từ ảnh</h2>
             </div>
-            <p className="text-xs text-neutral-500 mb-5">
+            <p className="text-xs text-muted-foreground mb-5">
               Chọn hoặc kéo thả ảnh phiếu, sau đó bắt đầu chấm
             </p>
 
             <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={() => onOpenScanModal(session, "camera")}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-800 text-xs font-semibold transition cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-xs font-semibold transition cursor-pointer shadow-xs"
               >
                 <Camera className="w-3.5 h-3.5 text-neutral-600" />
                 <span>Chụp phiếu</span>
@@ -602,7 +602,7 @@ export function SessionDetailView({
 
               <button
                 onClick={() => onOpenScanModal(session, "upload")}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-800 text-xs font-semibold transition cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-xs font-semibold transition cursor-pointer shadow-xs"
               >
                 <Upload className="w-3.5 h-3.5 text-neutral-600" />
                 <span>Chọn ảnh</span>
@@ -610,22 +610,22 @@ export function SessionDetailView({
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-neutral-100 flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+          <div className="mt-6 pt-4 border-t border-border flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             <span>Miễn phí 100% (Chấm tự động không giới hạn bằng OpenCV OMR)</span>
           </div>
         </div>
 
         {/* Card 2: Học sinh tự nộp (Match Exact Screenshot) */}
-        <div className="bg-white rounded-xl border border-neutral-200/90 p-6 shadow-xs flex flex-col justify-between">
+        <div className="bg-card rounded-xl border border-border p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2.5 mb-1.5">
               <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
                 <Users className="w-4 h-4" />
               </div>
-              <h2 className="text-base font-bold text-neutral-900">Để học sinh tự nộp</h2>
+              <h2 className="text-base font-bold text-foreground">Để học sinh tự nộp</h2>
             </div>
-            <p className="text-xs text-neutral-500 mb-5 leading-relaxed">
+            <p className="text-xs text-muted-foreground mb-5 leading-relaxed">
               Gửi link hoặc mã QR. Học sinh tự tải ảnh, nhận điểm ngay sau khi nộp tại đây. Không cần
               tài khoản học sinh. Có thể gắn lớp để theo dõi và xuất kết quả.
             </p>
@@ -633,7 +633,7 @@ export function SessionDetailView({
             <div>
               <button
                 onClick={() => setShowCreateLinkModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-800 text-xs font-semibold transition cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-xs font-semibold transition cursor-pointer shadow-xs"
               >
                 <LinkIcon className="w-3.5 h-3.5 text-neutral-600" />
                 <span>Tạo link / mã QR nộp bài</span>
@@ -641,7 +641,7 @@ export function SessionDetailView({
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-neutral-100 flex items-center gap-1.5 text-xs text-neutral-400">
+          <div className="mt-6 pt-4 border-t border-border flex items-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
             <span>Tự động chấm bằng OpenCV OMR & lưu vào bảng điểm (0 credits)</span>
           </div>
@@ -650,11 +650,11 @@ export function SessionDetailView({
 
       {/* Top câu hỏi cả lớp sai nhiều nhất (Gói PRO & MAX) */}
       {topMissedQuestions.length > 0 && (
-        <div className="bg-white rounded-2xl border border-red-200/80 p-5 shadow-xs mb-8">
+        <div className="bg-card rounded-2xl border border-red-200/80 dark:border-red-900/60 p-5 shadow-xs mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-              <h3 className="font-bold text-sm text-neutral-900">
+              <h3 className="font-bold text-sm text-foreground">
                 Top {topMissedQuestions.length} câu hỏi cả lớp sai nhiều nhất (Cần chữa bài trên lớp)
               </h3>
             </div>
@@ -677,7 +677,7 @@ export function SessionDetailView({
             </div>
           </div>
 
-          <p className="text-xs text-neutral-500 mb-4">
+          <p className="text-xs text-muted-foreground mb-4">
             Thống kê tự động từ {session.gradedStudents.length} bài thi đã quét giúp giáo viên giải thích trọng tâm các điểm học sinh hay nhầm lẫn:
           </p>
 
@@ -685,15 +685,15 @@ export function SessionDetailView({
             {topMissedQuestions.map((q) => (
               <div
                 key={q.questionNum}
-                className="p-3.5 rounded-xl border border-neutral-200 bg-neutral-50/70 hover:border-red-300 transition"
+                className="p-3.5 rounded-xl border border-border bg-muted/40 hover:border-red-300 dark:hover:border-red-700 transition"
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-bold text-sm text-neutral-900">Câu {q.questionNum}</span>
+                  <span className="font-bold text-sm text-foreground">Câu {q.questionNum}</span>
                   <span className="text-xs font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
                     {q.wrongPct}% sai
                   </span>
                 </div>
-                <div className="text-[11px] text-neutral-600 space-y-1">
+                <div className="text-[11px] text-muted-foreground space-y-1">
                   <div>
                     Đáp án đúng: <strong className="text-emerald-600 font-bold">{q.correctAns}</strong>
                   </div>
@@ -713,19 +713,19 @@ export function SessionDetailView({
       )}
 
       {/* 4. Kết quả chấm bài Header & Table */}
-      <div className="bg-white rounded-xl border border-neutral-200/90 shadow-xs overflow-hidden">
-        <div className="p-5 border-b border-neutral-100">
+      <div className="bg-card rounded-xl border border-border shadow-xs overflow-hidden">
+        <div className="p-5 border-b border-border">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
             <div>
-              <h3 className="text-base font-bold text-neutral-900">Kết quả chấm bài</h3>
-              <p className="text-xs text-neutral-500 mt-0.5">
+              <h3 className="text-base font-bold text-foreground">Kết quả chấm bài</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Bài học sinh tự nộp cũng xuất hiện tại đây. Kết quả tự cập nhật khi có bài mới.
               </p>
             </div>
 
             <button
               onClick={handleExportExcel}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[36px] rounded-xl border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-200 text-xs font-semibold transition shadow-xs self-start md:self-auto cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[36px] rounded-xl border border-border hover:bg-muted text-foreground text-xs font-semibold transition shadow-xs self-start md:self-auto cursor-pointer"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
               <span>Xuất Excel</span>
@@ -742,7 +742,7 @@ export function SessionDetailView({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm tên học sinh, SBD hoặc mã đề..."
-                className="w-full text-xs pl-9 pr-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-neutral-900 bg-white"
+                className="w-full text-xs pl-9 pr-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-background text-foreground"
               />
             </div>
 
@@ -750,7 +750,7 @@ export function SessionDetailView({
             <select
               value={selectedClassFilter}
               onChange={(e) => setSelectedClassFilter(e.target.value)}
-              className="text-xs border border-neutral-200 rounded-lg px-3 py-2 bg-white text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-900"
+              className="text-xs border border-border rounded-lg px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="all">Tất cả lớp</option>
               {distinctClasses.map((cls) => (
@@ -763,7 +763,7 @@ export function SessionDetailView({
             {/* Refresh Button */}
             <button
               onClick={handleManualRefresh}
-              className={`p-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition cursor-pointer shadow-xs ${
+              className={`p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground transition cursor-pointer shadow-xs ${
                 isRefreshing ? "animate-spin text-neutral-900" : ""
               }`}
               title="Làm mới kết quả bài nộp"
@@ -787,7 +787,7 @@ export function SessionDetailView({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-neutral-50/70 border-b border-neutral-100 text-neutral-500 font-semibold uppercase tracking-wider text-[11px]">
+                <tr className="bg-muted/50 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider text-[11px]">
                   <th className="py-3 px-4 w-12 text-center">STT</th>
                   <th className="py-3 px-4">Số báo danh</th>
                   <th className="py-3 px-4">Họ và tên</th>
@@ -800,17 +800,17 @@ export function SessionDetailView({
                   <th className="py-3 px-4 text-right">Chi tiết</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 text-neutral-700">
+              <tbody className="divide-y divide-border text-foreground">
                 {filteredStudents.map((std, idx) => (
-                  <tr key={std.id} className="hover:bg-neutral-50/60 transition">
-                    <td className="py-3 px-4 text-center text-neutral-400 font-mono">{idx + 1}</td>
-                    <td className="py-3 px-4 font-mono font-bold text-neutral-800">
+                  <tr key={std.id} className="hover:bg-muted/50 transition">
+                    <td className="py-3 px-4 text-center text-muted-foreground font-mono">{idx + 1}</td>
+                    <td className="py-3 px-4 font-mono font-bold text-foreground">
                       {std.studentCode}
                     </td>
-                    <td className="py-3 px-4 font-semibold text-neutral-900">{std.studentName}</td>
-                    <td className="py-3 px-4 text-neutral-600">
+                    <td className="py-3 px-4 font-semibold text-foreground">{std.studentName}</td>
+                    <td className="py-3 px-4 text-muted-foreground">
                       {std.className ? (
-                        <span className="px-2 py-0.5 rounded bg-neutral-100 font-medium">
+                        <span className="px-2 py-0.5 rounded bg-muted text-foreground font-medium">
                           {std.className}
                         </span>
                       ) : (
@@ -831,18 +831,18 @@ export function SessionDetailView({
                         {std.score}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-neutral-600">
+                    <td className="py-3 px-4 text-muted-foreground">
                       <span className="text-emerald-600 font-medium">{std.correctCount}</span> /{" "}
                       <span className="text-red-500 font-medium">{std.incorrectCount}</span>
                     </td>
-                    <td className="py-3 px-4 text-neutral-400 text-[11px]">{std.gradedAt}</td>
+                    <td className="py-3 px-4 text-muted-foreground text-[11px]">{std.gradedAt}</td>
                     <td className="py-3 px-4">
                       {std.source === "student_self" ? (
                         <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
                           Học sinh nộp
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">
                           Giáo viên quét
                         </span>
                       )}
@@ -891,7 +891,7 @@ export function SessionDetailView({
       {/* ========================================================= */}
       {showCreateLinkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 md:p-7 shadow-2xl border border-neutral-200 relative">
+          <div className="bg-card text-card-foreground rounded-2xl max-w-lg w-full p-6 md:p-7 shadow-2xl border border-border relative">
             <button
               onClick={() => setShowCreateLinkModal(false)}
               className="absolute right-4 top-4 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition cursor-pointer"
@@ -998,7 +998,7 @@ export function SessionDetailView({
       {/* ========================================================= */}
       {showCreatedLinkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-neutral-200 text-center relative">
+          <div className="bg-card text-card-foreground rounded-2xl max-w-md w-full p-6 shadow-2xl border border-border text-center relative">
             <button
               onClick={() => setShowCreatedLinkModal(null)}
               className="absolute right-4 top-4 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition cursor-pointer"
@@ -1011,7 +1011,7 @@ export function SessionDetailView({
             </div>
 
             <h3 className="text-lg font-bold text-neutral-900 mb-1">Đã tạo link nộp bài!</h3>
-            <p className="text-xs text-neutral-500 mb-4">
+            <p className="text-xs text-muted-foreground mb-4">
               Thời hạn {showCreatedLinkModal.durationMinutes} phút
               {showCreatedLinkModal.className && ` • Lớp: ${showCreatedLinkModal.className}`}
             </p>
@@ -1083,7 +1083,7 @@ export function SessionDetailView({
       {/* ========================================================= */}
       {showAllLinksModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-neutral-200 relative max-h-[85vh] flex flex-col">
+          <div className="bg-card text-card-foreground rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-border relative max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
               <div className="flex items-center gap-2">
                 <LinkIcon className="w-4 h-4 text-blue-600" />
@@ -1201,7 +1201,7 @@ export function SessionDetailView({
       {/* ========================================================= */}
       {selectedStudentDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-neutral-200 relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-card text-card-foreground rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-border relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setSelectedStudentDetail(null)}
               className="absolute right-4 top-4 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition cursor-pointer"
@@ -1335,7 +1335,7 @@ export function SessionDetailView({
       {/* Modal Zalo Teacher Note (Gói MAX) */}
       {zaloNoteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-neutral-200 relative text-left">
+          <div className="bg-card text-card-foreground rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-border relative text-left">
             <button
               onClick={() => setZaloNoteModal(null)}
               className="absolute right-4 top-4 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition cursor-pointer"

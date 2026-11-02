@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { type LabSubject } from "@/data/labs";
-import { FlaskConical, ExternalLink, ChevronRight, Sparkles } from "lucide-react";
+import { FlaskConical, ChevronRight, Sparkles } from "lucide-react";
 import { LabsCatalog } from "./labs-catalog";
 
 export const metadata: Metadata = {
@@ -29,7 +29,7 @@ export default function LabsPage() {
             </h1>
           </div>
           <p className="mt-3 max-w-3xl text-slate-600 dark:text-slate-300 leading-relaxed">
-            Toàn bộ 54 bài thí nghiệm tương tác 3D cho Vật lý, Hóa học, Sinh học và Địa lý được mở <strong className="font-semibold text-emerald-600 dark:text-emerald-400">hoàn toàn miễn phí 100%</strong> cho mọi Thầy Cô và Học sinh theo giấy phép mở quốc tế CC BY-NC 4.0.
+            Toàn bộ 54 bài thí nghiệm tương tác 3D cho Vật lý, Hóa học, Sinh học và Địa lý được mở <strong className="font-semibold text-emerald-600 dark:text-emerald-400">hoàn toàn miễn phí 100%</strong> cho mọi Thầy Cô và Học sinh.
             Nâng cấp <strong className="font-semibold text-slate-900 dark:text-white">Gói Giáo Viên PRO</strong> để sử dụng các công cụ giá trị gia tăng độc quyền: Trợ lý AI phân tích hiện tượng, Kính vẽ Bục giảng tương tác và Bộ công cụ tự động sinh đề kiểm tra bám sát mô phỏng.
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-sm">
@@ -53,7 +53,7 @@ export default function LabsPage() {
           <div className="flex items-start gap-3">
             <Sparkles className="mt-0.5 h-4 w-4 flex-none text-amber-600 dark:text-amber-400" />
             <p>
-              <strong className="font-semibold text-amber-950 dark:text-amber-100">Phòng Thí Nghiệm Mở (Open Access):</strong> 100% miễn phí 54 thí nghiệm 3D theo chuẩn CC BY-NC 4.0. Nâng cấp Gói PRO để sở hữu Trợ lý AI sư phạm, Kính vẽ bục giảng tương tác và Tự động sinh đề kiểm tra từ mô phỏng.
+              <strong className="font-semibold text-amber-950 dark:text-amber-100">Phòng Thí Nghiệm Mở:</strong> 100% miễn phí 54 thí nghiệm 3D. Nâng cấp Gói PRO để sở hữu Trợ lý AI sư phạm, Kính vẽ bục giảng tương tác và Tự động sinh đề kiểm tra từ mô phỏng.
             </p>
           </div>
           <Link
@@ -67,12 +67,9 @@ export default function LabsPage() {
         {/* Danh sách theo môn (Interactive Catalog with PRO modal) */}
         <LabsCatalog subjects={SUBJECTS} />
 
-        {/* Ghi nguồn theo giấy phép */}
-        <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-5 text-sm text-slate-500 dark:text-slate-400">
-          <p className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-200">
-            <ExternalLink className="h-4 w-4" /> Ghi nguồn & Giấy phép bản quyền mở (CC BY-NC 4.0)
-          </p>
-          <p className="mt-2 leading-relaxed">
+        {/* Lời cảm ơn & kế thừa */}
+        <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-4 text-xs text-slate-500 dark:text-slate-400 text-center">
+          <p>
             Các mô phỏng thí nghiệm tương tác được kế thừa và lấy cảm hứng từ{" "}
             <a
               href="https://phet.colorado.edu"
@@ -90,10 +87,8 @@ export default function LabsPage() {
               className="text-primary dark:text-blue-400 font-medium hover:underline"
             >
               Tongjiang Lab
-            </a>{" "}
-            theo giấy phép Creative Commons Ghi nhận công của tác giả – Phi thương mại 4.0 Quốc tế (CC BY-NC 4.0).
-            Toàn bộ 54 mô phỏng được cung cấp 100% miễn phí cho giáo viên và học sinh.
-            EduTest AI chỉ thu phí các tính năng công nghệ giá trị gia tăng độc quyền (Kính vẽ bục giảng, Trợ lý AI Sư phạm, Bộ sinh đề thi). Thư viện Three.js phát hành theo giấy phép MIT.
+            </a>
+            .
           </p>
         </section>
 

@@ -17,12 +17,27 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
     }
 
-    const { data: profile } = await (supabase.from("users") as any)
+    const adminClient = createAdminClient() || supabase;
+
+    const { data: profile } = await (adminClient.from("users") as any)
       .select("referral_code, referred_by")
       .eq("id", user.id)
       .single();
 
-    // Đếm tổng số người đã mời và số người đã kích hoạt đề thi
+    // Sinh mã cố định và lưu cứng vào DB nếu chưa có
+    let userReferralCode = profile?.referral_code;
+    if (!userReferralCode) {
+      userReferralCode = "EDU" + user.id.replace(/-/g, "").slice(0, 5).toUpperCase();
+      try {
+        await (adminClient.from("users") as any)
+          .update({ referral_code: userReferralCode })
+          .eq("id", user.id);
+      } catch (e) {
+        console.warn("Error auto-saving referral code:", e);
+      }
+    }
+
+    // Đếm tổng số người đã mời và số người đã nhận thưởng
     const { count: totalReferrals } = await (supabase.from("referrals") as any)
       .select("id", { count: "exact" })
       .eq("inviter_id", user.id);
@@ -38,7 +53,7 @@ export async function GET(req: NextRequest) {
       .eq("status", "pending");
 
     return NextResponse.json({
-      referral_code: profile?.referral_code || "EDU" + user.id.slice(0, 5).toUpperCase(),
+      referral_code: userReferralCode,
       total_referrals: totalReferrals || 0,
       qualified_referrals: qualifiedReferrals || 0,
       pending_referrals: pendingReferrals || 0,
@@ -50,7 +65,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST: Nhập mã giới thiệu của đồng nghiệp - Lưu trạng thái PENDING cho đến khi tạo đề thi đầu tiên (PR 2.3)
+// POST: Nhập mã giới thiệu của đồng nghiệp - Nhận ngay +2.000 credits cho cả hai
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -74,13 +89,42 @@ export async function POST(req: NextRequest) {
     const adminClient = createAdminClient() || supabase;
 
     // 1. Kiểm tra mã người mời & chống gian lận tạo vòng tròn (CRT-06 & CRT-07)
-    const { data: inviter } = await (adminClient.from("users") as any)
-      .select("id, name, referred_by")
+    let inviter: any = null;
+
+    // Cách 1: Tìm theo cột referral_code trực tiếp
+    const { data: directMatch } = await (adminClient.from("users") as any)
+      .select("id, name, referred_by, referral_code")
       .eq("referral_code", cleanCode)
       .maybeSingle();
 
+    if (directMatch) {
+      inviter = directMatch;
+    } else if (cleanCode.startsWith("EDU")) {
+      // Cách 2: Tìm theo tiền tố User ID nếu mã được sinh từ ID (như EDU0C01A)
+      const hexPrefix = cleanCode.slice(3).toLowerCase();
+      if (hexPrefix.length >= 4) {
+        const { data: userCandidates } = await (adminClient.from("users") as any)
+          .select("id, name, referred_by, referral_code")
+          .limit(100);
+
+        if (userCandidates && userCandidates.length > 0) {
+          const matched = userCandidates.find((u: any) =>
+            u.id.replace(/-/g, "").toLowerCase().startsWith(hexPrefix) ||
+            (u.referral_code && u.referral_code.toUpperCase() === cleanCode)
+          );
+          if (matched) {
+            inviter = matched;
+            // Tự động lưu referral_code vào DB cho tài khoản người mời
+            await (adminClient.from("users") as any)
+              .update({ referral_code: cleanCode })
+              .eq("id", matched.id);
+          }
+        }
+      }
+    }
+
     if (!inviter) {
-      return NextResponse.json({ error: "Mã giới thiệu không tồn tại." }, { status: 404 });
+      return NextResponse.json({ error: "Mã giới thiệu không tồn tại trên hệ thống." }, { status: 404 });
     }
 
     if (inviter.id === user.id || inviter.referred_by === user.id) {
@@ -111,22 +155,56 @@ export async function POST(req: NextRequest) {
       .update({ referred_by: inviter.id })
       .eq("id", user.id);
 
-    // 4. Lưu vào bảng referrals ở trạng thái PENDING (chờ tạo đề thi đầu tiên)
+    // 4. Kích hoạt thưởng ngay +2.000 credits cho cả người mời và người được mời
     const rewardCredits = REFERRAL_BONUS_CREDITS;
+    try {
+      // Ví người mời
+      const { data: inviterWallet } = await (adminClient.from("wallets") as any)
+        .select("id, balance")
+        .eq("user_id", inviter.id)
+        .maybeSingle();
+      if (inviterWallet) {
+        await (adminClient.from("wallets") as any)
+          .update({ balance: (inviterWallet.balance || 0) + rewardCredits })
+          .eq("user_id", inviter.id);
+      } else {
+        await (adminClient.from("wallets") as any).insert({
+          user_id: inviter.id,
+          balance: 5000 + rewardCredits,
+        });
+      }
+
+      // Ví người được mời (user hiện tại)
+      const { data: userWallet } = await (adminClient.from("wallets") as any)
+        .select("id, balance")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (userWallet) {
+        await (adminClient.from("wallets") as any)
+          .update({ balance: (userWallet.balance || 0) + rewardCredits })
+          .eq("user_id", user.id);
+      } else {
+        await (adminClient.from("wallets") as any).insert({
+          user_id: user.id,
+          balance: 5000 + rewardCredits,
+        });
+      }
+    } catch (wErr) {
+      console.warn("Wallet reward update warning:", wErr);
+    }
+
+    // 5. Lưu vào bảng referrals ở trạng thái REWARDED
     await (adminClient.from("referrals") as any).insert({
       inviter_id: inviter.id,
       invitee_id: user.id,
       reward_credits: rewardCredits,
-      status: "pending",
+      status: "rewarded",
     });
-
-    // KHÔNG cộng thưởng ngay tại đây!
-    // Thưởng +2.000 credits sẽ được tự động giải phóng khi người được mời tạo đề thi đầu tiên (PR 2.3)
 
     return NextResponse.json({
       success: true,
-      status: "pending",
-      message: `Áp dụng mã giới thiệu thành công! Thầy/cô và ${inviter.name || "đồng nghiệp"} sẽ nhận ngay +${REFERRAL_BONUS_CREDITS.toLocaleString("vi-VN")} credits vào ví ngay khi hoàn thành tạo đề thi đầu tiên.`,
+      status: "rewarded",
+      message: `Áp dụng mã giới thiệu thành công! Thầy/cô và ${inviter.name || "đồng nghiệp"} đã nhận ngay +${rewardCredits.toLocaleString("vi-VN")} credits vào tài khoản.`,
       reward_credits: rewardCredits,
       inviter_name: inviter.name || "Đồng nghiệp",
     });

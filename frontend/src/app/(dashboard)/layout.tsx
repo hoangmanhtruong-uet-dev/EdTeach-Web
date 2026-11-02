@@ -182,7 +182,11 @@ function DashboardLayoutInner({
     (pathname.startsWith("/exams/") && pathname !== "/exams");
 
   if (isEditorRoute) {
-    return <div className="h-screen w-screen overflow-hidden bg-white">{children}</div>;
+    return (
+      <div className="h-screen w-screen overflow-hidden bg-white text-slate-900 [color-scheme:light]">
+        {children}
+      </div>
+    );
   }
 
   return (
