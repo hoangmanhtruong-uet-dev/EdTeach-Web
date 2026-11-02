@@ -123,7 +123,7 @@ export default function DashboardPage() {
       color: "text-amber-600 bg-amber-100 dark:bg-amber-950/40 border border-amber-200/50 dark:border-amber-800/40",
       isQuota: !isPro && !isMax,
       progressPercent: isPro || isMax ? 100 : Math.round((dailyRemaining / dailyQuota) * 100),
-      link: isPro || isMax ? "/exams/create" : "/wallet?plan=pro",
+      link: isPro || isMax ? "/exams/create" : "/settings?tab=plan",
       linkText: isPro || isMax ? "Tạo đề ngay" : "Mở khóa PRO",
     },
     {
@@ -132,7 +132,7 @@ export default function DashboardPage() {
       subtext: "Ví điểm tài khoản",
       icon: Wallet,
       color: "text-purple-600 bg-purple-100 dark:bg-purple-950/40 border border-purple-200/50 dark:border-purple-800/40",
-      link: "/wallet",
+      link: "/settings?tab=credits",
       linkText: "Nạp qua PayOS",
     },
   ];
@@ -555,7 +555,7 @@ export default function DashboardPage() {
                 </span>
               ) : (
                 <Link
-                  href="/wallet?plan=pro"
+                  href="/settings?tab=plan"
                   aria-label="Nâng cấp gói tài khoản lên Giáo Viên PRO"
                   className="text-[11px] font-bold text-amber-700 dark:text-amber-400 hover:text-amber-800 bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/30 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-amber-500"
                 >
@@ -584,7 +584,7 @@ export default function DashboardPage() {
 
               <div className="mt-4 flex flex-col gap-2">
                 <Link
-                  href="/wallet"
+                  href="/settings?tab=credits"
                   aria-label="Nạp credits tự động qua cổng PayOS VietQR"
                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 shadow-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
                 >
@@ -593,7 +593,7 @@ export default function DashboardPage() {
                 </Link>
 
                 <Link
-                  href="/guide"
+                  href="/settings?tab=guide"
                   className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-xs font-medium text-muted-foreground hover:bg-muted/60 transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />

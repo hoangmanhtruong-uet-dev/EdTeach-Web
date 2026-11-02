@@ -26,6 +26,42 @@ const nextConfig: NextConfig = {
         destination: "/labs",
         permanent: true,
       },
+      // Consolidated settings tabs redirects (HTTP 308)
+      {
+        source: "/pricing",
+        destination: "/settings?tab=plan",
+        permanent: true,
+      },
+      {
+        source: "/wallet",
+        destination: "/settings?tab=credits",
+        permanent: true,
+      },
+      {
+        source: "/topup",
+        destination: "/settings?tab=credits",
+        permanent: true,
+      },
+      {
+        source: "/credits",
+        destination: "/settings?tab=credits",
+        permanent: true,
+      },
+      {
+        source: "/affiliate",
+        destination: "/settings?tab=partner",
+        permanent: true,
+      },
+      {
+        source: "/partners",
+        destination: "/settings?tab=partner",
+        permanent: true,
+      },
+      {
+        source: "/guide",
+        destination: "/settings?tab=guide",
+        permanent: true,
+      },
     ];
   },
 };

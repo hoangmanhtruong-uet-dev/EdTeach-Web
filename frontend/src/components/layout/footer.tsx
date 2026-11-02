@@ -27,7 +27,7 @@ export function Footer() {
               <li><Link href="#features" className="hover:text-foreground">Tính năng</Link></li>
               <li><Link href="#pricing" className="hover:text-foreground">Bảng giá</Link></li>
               <li><Link href="/updates" className="text-primary font-medium hover:underline">Lộ trình & Bản mới v2.0</Link></li>
-              <li><Link href="/guide" className="hover:text-foreground">Hướng dẫn</Link></li>
+              <li><Link href="/settings?tab=guide" className="hover:text-foreground">Hướng dẫn</Link></li>
             </ul>
           </div>
 

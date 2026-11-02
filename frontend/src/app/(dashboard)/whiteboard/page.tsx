@@ -374,7 +374,7 @@ export default function WhiteboardDashboardPage() {
 
         {!isPro && (
           <Link
-            href="/wallet"
+            href="/settings?tab=plan"
             className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl bg-linear-to-r from-amber-500 to-orange-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-amber-500/20 transition-all hover:brightness-105 active:scale-95 shrink-0"
           >
             <Sparkles className="h-4 w-4" />
@@ -387,7 +387,7 @@ export default function WhiteboardDashboardPage() {
       {errorMessage && (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive flex items-center justify-between">
           <p className="font-semibold">{errorMessage}</p>
-          <Link href="/wallet" className="text-xs font-bold underline hover:opacity-80 shrink-0">
+          <Link href="/settings?tab=plan" className="text-xs font-bold underline hover:opacity-80 shrink-0">
             Nâng cấp gói Pro ngay →
           </Link>
         </div>

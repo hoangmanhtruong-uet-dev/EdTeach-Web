@@ -53,9 +53,11 @@ export async function POST(req: NextRequest) {
     const verifiedTier = resolvedPackage.tier || (verifiedIsPro ? "pro" : "free");
 
     const returnUrl = verifiedIsPro
-      ? `${baseUrl}/pricing?status=PAID&orderCode=${orderCode}&tier=${verifiedTier}&credits=${verifiedCredits}`
-      : `${baseUrl}/wallet?status=PAID&orderCode=${orderCode}&credits=${verifiedCredits}`;
-    const cancelUrl = `${baseUrl}/pricing?status=CANCELLED&orderCode=${orderCode}`;
+      ? `${baseUrl}/settings?tab=plan&status=PAID&orderCode=${orderCode}&tier=${verifiedTier}&credits=${verifiedCredits}`
+      : `${baseUrl}/settings?tab=credits&status=PAID&orderCode=${orderCode}&credits=${verifiedCredits}`;
+    const cancelUrl = verifiedIsPro
+      ? `${baseUrl}/settings?tab=plan&status=CANCELLED&orderCode=${orderCode}`
+      : `${baseUrl}/settings?tab=credits&status=CANCELLED&orderCode=${orderCode}`;
 
     // 1. Tạo đơn hàng qua cổng PayOS
     const descriptionText = verifiedTier === "max" 

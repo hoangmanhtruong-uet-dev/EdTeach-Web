@@ -128,7 +128,7 @@ function LabFeatureUpgradeModal({ feature, lab, onClose }: LabFeatureUpgradeModa
 
         <div className="flex flex-col sm:flex-row items-center gap-2.5">
           <Link
-            href="/wallet?plan=pro"
+            href="/settings?tab=plan"
             className="w-full sm:flex-1 py-3 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
           >
             <Sparkles className="w-4 h-4" />

@@ -186,7 +186,7 @@ export default function LoginPage() {
             <span className="flex items-center gap-1 text-emerald-400">
               <CheckCircle2 className="w-3.5 h-3.5" /> Chuẩn bảo mật SSL
             </span>
-            <Link href="/guide" className="hover:text-white transition">
+            <Link href="/settings?tab=guide" className="hover:text-white transition">
               Hướng dẫn
             </Link>
           </div>

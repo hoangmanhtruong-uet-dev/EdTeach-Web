@@ -432,7 +432,7 @@ export default function MarketplacePage() {
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Badge Số dư ví */}
           <Link
-            href="/wallet"
+            href="/settings?tab=credits"
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 transition text-xs font-semibold backdrop-blur-md"
             title="Nhấp để nạp thêm credits"
           >
@@ -1179,7 +1179,7 @@ export default function MarketplacePage() {
                 <div className="flex-1">
                   <p>{buyError}</p>
                   <Link
-                    href="/wallet"
+                    href="/settings?tab=credits"
                     className="inline-flex items-center gap-1 font-bold underline mt-1.5 text-rose-800"
                   >
                     <span>Nạp thêm Credits qua VietQR ngay</span>

@@ -1097,7 +1097,7 @@ export default function WhiteboardEditor({
                   </div>
                   {!isPro && (
                     <Link
-                      href="/wallet"
+                      href="/settings?tab=plan"
                       className="text-[11px] font-semibold text-primary hover:underline"
                     >
                       Nâng cấp Pro

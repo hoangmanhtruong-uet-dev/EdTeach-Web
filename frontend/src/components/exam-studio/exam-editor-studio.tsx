@@ -4488,7 +4488,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                     <span>Đề thi của tôi</span>
                   </Link>
                   <Link
-                    href="/pricing"
+                    href="/settings?tab=plan"
                     onClick={() => setShowUserMenu(false)}
                     className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-slate-700 hover:bg-slate-100 transition font-semibold text-blue-600"
                   >

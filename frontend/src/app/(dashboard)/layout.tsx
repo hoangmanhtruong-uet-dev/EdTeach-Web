@@ -40,10 +40,6 @@ const sidebarLinks = [
   { href: "/labs", label: "Phòng TN 3D", icon: FlaskConical },
   { href: "/whiteboard", label: "Bảng trắng", icon: Presentation },
   { href: "/marketplace", label: "Chợ đề thi", icon: Store },
-  { href: "/pricing", label: "Gói cước PRO", icon: Crown },
-  { href: "/affiliate", label: "Đối tác & Hoa hồng", icon: Gift },
-  { href: "/wallet", label: "Nạp điểm", icon: Wallet },
-  { href: "/guide", label: "Hướng dẫn", icon: HelpCircle },
   { href: "/settings", label: "Cài đặt", icon: User },
 ];
 
@@ -368,7 +364,7 @@ function DashboardLayoutInner({
             </span>
           ) : (
             <Link
-              href="/wallet?plan=pro"
+              href="/settings?tab=plan"
               aria-label="Nâng cấp gói Giáo Viên PRO"
               className="flex items-center gap-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60 dark:hover:bg-amber-900/40 border border-amber-300 px-3 py-1.5 text-xs font-bold transition-colors shadow-2xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
             >
@@ -379,7 +375,7 @@ function DashboardLayoutInner({
 
           {/* Credits badge */}
           <Link
-            href="/wallet"
+            href="/settings?tab=credits"
             aria-label="Quản lý ví và số dư credits"
             className="flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
           >

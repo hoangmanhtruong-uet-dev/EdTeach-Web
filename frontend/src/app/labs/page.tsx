@@ -57,7 +57,7 @@ export default function LabsPage() {
             </p>
           </div>
           <Link
-            href="/wallet?plan=pro"
+            href="/settings?tab=plan"
             className="shrink-0 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold text-xs hover:from-amber-600 hover:to-amber-700 transition shadow-xs"
           >
             Nâng cấp PRO
