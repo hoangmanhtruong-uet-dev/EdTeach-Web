@@ -127,7 +127,7 @@ function TeachingStudioContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const examId = params.examId as string;
-  const { user, profile } = useAuth();
+  const { user, profile, isLoading: authLoading } = useAuth();
 
   const isPro = isProUser(profile) || isProUser(user);
   const isMax = isMaxUser(profile) || isMaxUser(user);
@@ -722,99 +722,7 @@ function TeachingStudioContent() {
     );
   }, [hotfixData, currentIdx, currentQ]);
 
-  if (loading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-900 text-white">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-9 w-9 animate-spin text-amber-400" />
-          <p className="text-sm font-semibold tracking-wide">Đang khởi tạo Bục Giảng Số 4.0…</p>
-        </div>
-      </div>
-    );
-  }
-
-  // EXL-05: PRO Tier Gate for Bục Giảng Số
-  if (!loading && !isPro) {
-    return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-950 p-6 text-center text-white">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 mb-4">
-          <Crown className="h-8 w-8" />
-        </div>
-        <h2 className="text-2xl font-bold text-white">Bục Giảng Số 4.0 Dành Riêng Cho Gói PRO & MAX</h2>
-        <p className="mt-3 text-sm text-slate-400 max-w-lg leading-relaxed">
-          Trải nghiệm trình chiếu chữa bài thông minh, phóng to công thức LaTeX, vẽ phác thảo thời gian thực với bảng nháp Excalidraw, thí nghiệm mô phỏng 3D và giao đề kép chuyên nghiệp.
-        </p>
-        <div className="mt-6 flex items-center gap-3">
-          <button
-            onClick={() => setUpgradeModalOpen(true)}
-            className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-amber-500/25 hover:from-amber-600 hover:to-amber-700 transition cursor-pointer"
-          >
-            Nâng cấp Gói PRO ngay
-          </button>
-          <button
-            onClick={() => router.push("/exams")}
-            className="rounded-xl border border-slate-700 px-5 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800 transition cursor-pointer"
-          >
-            Quay lại danh sách đề thi
-          </button>
-        </div>
-
-        {/* Upgrade Modal */}
-        <UpgradeTierModal
-          isOpen={upgradeModalOpen}
-          onClose={() => setUpgradeModalOpen(false)}
-          requiredTier="pro"
-          featureTitle="Trình chiếu Bục Giảng Số 4.0"
-          featureDesc="Nâng cấp lên gói PRO để mở khóa toàn bộ tính năng Bục Giảng Số, bảng nháp thông minh, xuất file đề kép song song và kho phòng thí nghiệm 3D."
-          onSelectPlan={(plan) => {
-            setUpgradeModalOpen(false);
-            setCheckoutPlan(plan);
-          }}
-        />
-
-        {checkoutPlan && (
-          <PaymentCheckoutModal
-            isOpen={!!checkoutPlan}
-            onClose={() => setCheckoutPlan(null)}
-            selectedPlan={checkoutPlan}
-            onSuccess={() => {
-              setCheckoutPlan(null);
-              window.location.reload();
-            }}
-          />
-        )}
-      </div>
-    );
-  }
-
-  if (error || !exam) {
-    return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-950 p-6 text-center text-white">
-        <h2 className="text-xl font-bold text-red-400">Không thể mở Bục Giảng Số</h2>
-        <p className="mt-2 text-sm text-slate-400 max-w-md">{error || "Đề thi không tồn tại."}</p>
-        <button
-          onClick={() => router.push("/exams")}
-          className="mt-5 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md cursor-pointer hover:bg-primary/90"
-        >
-          Quay lại danh sách đề thi
-        </button>
-      </div>
-    );
-  }
-
-  // Active question text and options to render
-  const displayContent = isViewingCloned && currentCloned ? currentCloned.content : currentQ?.content || "";
-  const displayOptions = isViewingCloned && currentCloned ? currentCloned.options : parsedOptions;
-  const displayAnswer = isViewingCloned && currentCloned ? currentCloned.correct_answer : currentQ?.correct_answer;
-  const displayExplanation = isViewingCloned && currentCloned ? currentCloned.explanation : currentQ?.explanation;
-
-  const contentFontSizeClass =
-    fontSize === "xl" ? "text-2xl leading-relaxed" : fontSize === "lg" ? "text-xl leading-relaxed" : "text-base leading-normal";
-  const optionFontSizeClass =
-    fontSize === "xl" ? "text-xl" : fontSize === "lg" ? "text-lg" : "text-sm";
-
-
-  // Live Poll Interval Hook (Sprint 6)
+  // Live Poll Interval Hook (Sprint 6) - Placed before any early returns to strictly adhere to React Rules of Hooks
   useEffect(() => {
     if (!showLivePollModal || !livePollSession?.roomCode) return;
     const interval = setInterval(async () => {
@@ -887,8 +795,101 @@ function TeachingStudioContent() {
   const currentRevealedStep = currentQ ? revealedStepCount[currentQ.id] || 0 : 0;
   const currentMultiMethods = currentQ ? multiMethodMap[currentQ.id] : undefined;
 
+  // Active question text and options to render
+  const displayContent = isViewingCloned && currentCloned ? currentCloned.content : currentQ?.content || "";
+  const displayOptions = isViewingCloned && currentCloned ? currentCloned.options : parsedOptions;
+  const displayAnswer = isViewingCloned && currentCloned ? currentCloned.correct_answer : currentQ?.correct_answer;
+  const displayExplanation = isViewingCloned && currentCloned ? currentCloned.explanation : currentQ?.explanation;
+
+  const contentFontSizeClass =
+    fontSize === "xl" ? "text-2xl leading-relaxed" : fontSize === "lg" ? "text-xl leading-relaxed" : "text-base leading-normal";
+  const optionFontSizeClass =
+    fontSize === "xl" ? "text-xl" : fontSize === "lg" ? "text-lg" : "text-sm";
+
   // Active lab selected
   const activeLab = LABS.find((l) => l.slug === selectedLabSlug) || LABS[0];
+
+  const isOverallLoading = loading || authLoading;
+
+  if (isOverallLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-900 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-9 w-9 animate-spin text-amber-400" />
+          <p className="text-sm font-semibold tracking-wide">Đang khởi tạo Bục Giảng Số 4.0…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // EXL-05: PRO Tier Gate for Bục Giảng Số
+  if (!isPro) {
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-950 p-6 text-center text-white">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 mb-4">
+          <Crown className="h-8 w-8" />
+        </div>
+        <h2 className="text-2xl font-bold text-white">Bục Giảng Số 4.0 Dành Riêng Cho Gói PRO & MAX</h2>
+        <p className="mt-3 text-sm text-slate-400 max-w-lg leading-relaxed">
+          Trải nghiệm trình chiếu chữa bài thông minh, phóng to công thức LaTeX, vẽ phác thảo thời gian thực với bảng nháp Excalidraw, thí nghiệm mô phỏng 3D và giao đề kép chuyên nghiệp.
+        </p>
+        <div className="mt-6 flex items-center gap-3">
+          <button
+            onClick={() => setUpgradeModalOpen(true)}
+            className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-amber-500/25 hover:from-amber-600 hover:to-amber-700 transition cursor-pointer"
+          >
+            Nâng cấp Gói PRO ngay
+          </button>
+          <button
+            onClick={() => router.push("/exams")}
+            className="rounded-xl border border-slate-700 px-5 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800 transition cursor-pointer"
+          >
+            Quay lại danh sách đề thi
+          </button>
+        </div>
+
+        {/* Upgrade Modal */}
+        <UpgradeTierModal
+          isOpen={upgradeModalOpen}
+          onClose={() => setUpgradeModalOpen(false)}
+          requiredTier="pro"
+          featureTitle="Trình chiếu Bục Giảng Số 4.0"
+          featureDesc="Nâng cấp lên gói PRO để mở khóa toàn bộ tính năng Bục Giảng Số, bảng nháp thông minh, xuất file đề kép song song và kho phòng thí nghiệm 3D."
+          onSelectPlan={(plan) => {
+            setUpgradeModalOpen(false);
+            setCheckoutPlan(plan);
+          }}
+        />
+
+        {checkoutPlan && (
+          <PaymentCheckoutModal
+            isOpen={!!checkoutPlan}
+            onClose={() => setCheckoutPlan(null)}
+            selectedPlan={checkoutPlan}
+            onSuccess={() => {
+              setCheckoutPlan(null);
+              window.location.reload();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (error || !exam) {
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-950 p-6 text-center text-white">
+        <h2 className="text-xl font-bold text-red-400">Không thể mở Bục Giảng Số</h2>
+        <p className="mt-2 text-sm text-slate-400 max-w-md">{error || "Đề thi không tồn tại."}</p>
+        <button
+          onClick={() => router.push("/exams")}
+          className="mt-5 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md cursor-pointer hover:bg-primary/90"
+        >
+          Quay lại danh sách đề thi
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-950 text-slate-100 select-none">
