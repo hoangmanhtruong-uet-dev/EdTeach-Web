@@ -136,13 +136,13 @@ export function BottomSlideBar({
             ? { left: `${position.x}px`, top: `${position.y}px`, transform: "none", bottom: "auto" }
             : undefined
         }
-        className={`fixed z-40 flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl border border-border bg-card/95 backdrop-blur-md text-card-foreground shadow-xl select-none text-xs touch-none ${
-          !position ? "bottom-[4.25rem] left-1/2 -translate-x-1/2" : ""
+        className={`fixed z-40 flex items-center flex-nowrap gap-1.5 px-2.5 py-1.5 rounded-2xl border border-border bg-card/95 backdrop-blur-md text-card-foreground shadow-xl select-none text-xs touch-none max-w-[calc(100vw-24px)] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
+          !position ? "bottom-[4.5rem] left-1/2 -translate-x-1/2" : ""
         }`}
       >
         {/* Nút tay cầm kéo thả Grip */}
         <div
-          className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground/60 hover:text-foreground flex items-center justify-center touch-none rounded-full hover:bg-muted transition mr-0.5"
+          className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground/60 hover:text-foreground flex items-center justify-center touch-none rounded-full hover:bg-muted transition mr-0.5 shrink-0"
           title="Giữ chuột và kéo để di chuyển thanh slide đến bất kỳ vị trí nào"
         >
           <GripVertical className="w-3.5 h-3.5" />
@@ -151,7 +151,7 @@ export function BottomSlideBar({
         <button
           onClick={handlePrev}
           disabled={currentPageIndex <= 0}
-          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer shrink-0"
           title="Trang trước (Phím mũi tên trái)"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -160,11 +160,11 @@ export function BottomSlideBar({
         {/* Current Slide Display / Drawer Toggle */}
         <button
           onClick={() => setShowDrawer(!showDrawer)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-muted font-bold text-foreground transition cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-muted font-bold text-foreground transition cursor-pointer shrink-0 whitespace-nowrap"
           title="Mở danh sách các trang slide"
         >
           <Layers className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-          <span>
+          <span className="whitespace-nowrap">
             Trang {currentPageIndex + 1} / {totalPages}
           </span>
         </button>
@@ -173,28 +173,28 @@ export function BottomSlideBar({
         <button
           onClick={handleNext}
           disabled={currentPageIndex >= totalPages - 1}
-          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer shrink-0"
           title="Trang tiếp (Phím mũi tên phải)"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
 
-        <div className="h-4 w-px bg-border mx-1" />
+        <div className="h-4 w-px bg-border mx-1 shrink-0" />
 
         {/* Add Page Button */}
         <button
           onClick={onAddPage}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition shadow-xs cursor-pointer active:scale-95"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition shadow-xs cursor-pointer active:scale-95 shrink-0 whitespace-nowrap"
           title="Thêm trang mới"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Thêm trang</span>
+          <span className="hidden sm:inline whitespace-nowrap">Thêm trang</span>
         </button>
 
         {/* Duplicate Current Slide */}
         <button
           onClick={() => onDuplicatePage(currentPageIndex)}
-          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition cursor-pointer"
+          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition cursor-pointer shrink-0"
           title="Nhân bản trang này"
         >
           <Copy className="w-3.5 h-3.5" />
@@ -204,7 +204,7 @@ export function BottomSlideBar({
         <button
           onClick={() => onDeletePage(currentPageIndex)}
           disabled={totalPages <= 1}
-          className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+          className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer shrink-0"
           title="Xóa trang này"
         >
           <Trash2 className="w-3.5 h-3.5" />
@@ -213,15 +213,15 @@ export function BottomSlideBar({
         {/* Export All Slides to PDF */}
         {onExportAllPagesPdf && (
           <>
-            <div className="h-4 w-px bg-border mx-1" />
+            <div className="h-4 w-px bg-border mx-1 shrink-0" />
             <button
               onClick={onExportAllPagesPdf}
               disabled={isExportingPdf}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition cursor-pointer"
+              className="flex items-center gap-1 px-2 py-1.5 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition cursor-pointer shrink-0 whitespace-nowrap"
               title="Xuất toàn bộ các trang bài giảng thành 1 tệp PDF"
             >
               <FileDown className="w-3.5 h-3.5 text-amber-500" />
-              <span className="hidden md:inline">Xuất PDF tất cả</span>
+              <span className="hidden md:inline whitespace-nowrap">Xuất PDF tất cả</span>
             </button>
           </>
         )}

@@ -193,13 +193,13 @@ export function FloatingClassroomTools({
             ? { left: `${position.x}px`, top: `${position.y}px`, transform: "none", bottom: "auto", right: "auto" }
             : undefined
         }
-        className={`fixed z-40 flex items-center gap-1 rounded-full border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-2.5 py-1.5 shadow-xl backdrop-blur-md select-none touch-none ${
+        className={`fixed z-40 flex items-center flex-nowrap gap-1 rounded-full border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-2.5 py-1.5 shadow-xl backdrop-blur-md select-none touch-none max-w-[calc(100vw-16px)] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
           !position ? "bottom-3 left-1/2 -translate-x-1/2" : ""
         }`}
       >
         {/* Nút tay cầm kéo thả */}
         <div
-          className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center touch-none rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center touch-none rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0"
           title="Giữ chuột và kéo để di chuyển thanh công cụ bục giảng đến bất kỳ vị trí nào"
         >
           <GripVertical className="h-3.5 w-3.5" />
@@ -207,7 +207,7 @@ export function FloatingClassroomTools({
         {/* Nút Timer Mini */}
         <button
           onClick={() => setShowTimerModal(!showTimerModal)}
-          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition ${
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition shrink-0 whitespace-nowrap ${
             isTimerRunning
               ? timeLeft <= 30
                 ? "bg-red-500 text-white animate-pulse"
@@ -222,12 +222,12 @@ export function FloatingClassroomTools({
           </span>
         </button>
 
-        <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+        <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 shrink-0" />
 
         {/* Nút Bút Laser */}
         <button
           onClick={onToggleLaser}
-          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer ${
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer shrink-0 whitespace-nowrap ${
             isLaserActive
               ? "bg-red-600 text-white shadow-md shadow-red-500/30"
               : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -241,10 +241,10 @@ export function FloatingClassroomTools({
         {/* Nút Gõ Công thức f(x) */}
         {onOpenMathModal && (
           <>
-            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 shrink-0" />
             <button
               onClick={onOpenMathModal}
-              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-serif italic font-black text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition cursor-pointer"
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-serif italic font-black text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition cursor-pointer shrink-0 whitespace-nowrap"
               title="Gõ công thức Toán / Khoa học KaTeX (LaTeX)"
             >
               <span>f(x)</span>
@@ -256,10 +256,10 @@ export function FloatingClassroomTools({
         {/* Nút Máy tính Casio fx-580 */}
         {onOpenCasioModal && (
           <>
-            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 shrink-0" />
             <button
               onClick={onOpenCasioModal}
-              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition cursor-pointer"
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition cursor-pointer shrink-0 whitespace-nowrap"
               title="Mở máy tính Casio fx-580VN X ảo nổi"
             >
               <Calculator className="h-3.5 w-3.5" />
@@ -271,10 +271,10 @@ export function FloatingClassroomTools({
         {/* Nút Mô hình 3D */}
         {onOpenPipLabModal && (
           <>
-            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 shrink-0" />
             <button
               onClick={onOpenPipLabModal}
-              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/50 transition cursor-pointer"
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/50 transition cursor-pointer shrink-0 whitespace-nowrap"
               title="Mở Trung tâm Mô hình 3D Giáo dục (Toán, Hóa, Sinh, Địa) & Tải file .glb"
             >
               <Box className="h-3.5 w-3.5" />
@@ -283,12 +283,12 @@ export function FloatingClassroomTools({
           </>
         )}
 
-        <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+        <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 shrink-0" />
 
         {/* Nút Zen Fullscreen */}
         <button
           onClick={onToggleZenMode}
-          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition ${
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition shrink-0 whitespace-nowrap ${
             isZenMode
               ? "bg-blue-600 text-white shadow-md"
               : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"

@@ -1,0 +1,107 @@
+/* ==========================================================================
+   EDUTEST AI - EXCALIDRAW CUSTOM STYLES
+   Tối ưu hóa UI cho Giáo viên: Thu nhỏ Menu chuột phải, Ẩn mục thừa, Sửa z-index
+   ========================================================================== */
+
+/* 1. Đảm bảo Context Menu & Popover luôn nổi trên các thanh công cụ app (z-index > 40) */
+.excalidraw .popover:has(.context-menu),
+.excalidraw .popover {
+  z-index: 60 !important;
+}
+
+/* 2. Menu chuột phải (Context Menu) - Nhỏ gọn, vừa vặn màn hình */
+.excalidraw .context-menu {
+  min-width: 8.5rem !important;
+  max-height: calc(100vh - 24px) !important;
+  padding: 2px 0 !important;
+  margin: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18) !important;
+  z-index: 60 !important;
+  scrollbar-width: thin;
+}
+
+/* 3. Từng mục trong Context Menu - Chiều cao ~26px, nhãn 12px, shortcut 10px */
+.excalidraw .context-menu-item {
+  height: 26px !important;
+  min-height: 26px !important;
+  min-width: 8.5rem !important;
+  padding: 2px 10px 2px 12px !important;
+  line-height: 1.2 !important;
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  align-items: center !important;
+  font-size: 12px !important;
+  border-radius: 4px !important;
+  margin: 1px 2px !important;
+  width: calc(100% - 4px) !important;
+}
+
+.excalidraw .context-menu-item .context-menu-item__label {
+  font-size: 12px !important;
+  margin-inline-end: 12px !important;
+  white-space: nowrap !important;
+}
+
+.excalidraw .context-menu-item .context-menu-item__shortcut {
+  font-size: 10px !important;
+  opacity: 0.7 !important;
+  font-family: inherit !important;
+  white-space: nowrap !important;
+}
+
+/* 4. Dòng phân cách trong Context Menu - Margin 2px */
+.excalidraw .context-menu-item-separator {
+  margin: 2px 0 !important;
+  border: none !important;
+  border-top: 1px solid var(--button-gray-3, rgba(148, 163, 184, 0.25)) !important;
+}
+
+/* 5. Ẩn các mục ít dùng ở Menu chọn đối tượng (Element Context Menu) */
+.excalidraw .context-menu li[data-testid="wrapSelectionInFrame"],
+.excalidraw .context-menu li[data-testid="selectAllElementsInFrame"],
+.excalidraw .context-menu li[data-testid="removeAllElementsFromFrame"],
+.excalidraw .context-menu li[data-testid="copyAsSvg"],
+.excalidraw .context-menu li[data-testid="copyText"],
+.excalidraw .context-menu li[data-testid="addToLibrary"],
+.excalidraw .context-menu li[data-testid="copyElementLink"] {
+  display: none !important;
+}
+
+/* 6. Ẩn các mục ít dùng ở Menu vùng trống (Canvas Context Menu) */
+.excalidraw .context-menu li[data-testid="viewMode"],
+.excalidraw .context-menu li[data-testid="stats"] {
+  display: none !important;
+}
+
+/* 7. Dọn các dòng phân cách bị thừa/kề nhau khi các mục xung quanh bị ẩn */
+.excalidraw .context-menu li[data-testid="addToLibrary"] + hr.context-menu-item-separator,
+.excalidraw .context-menu li[data-testid="wrapSelectionInFrame"] + hr.context-menu-item-separator,
+.excalidraw .context-menu hr.context-menu-item-separator + hr.context-menu-item-separator,
+.excalidraw .context-menu hr.context-menu-item-separator:has(+ hr.context-menu-item-separator),
+.excalidraw .context-menu > hr.context-menu-item-separator:first-child,
+.excalidraw .context-menu > hr.context-menu-item-separator:last-child {
+  display: none !important;
+}
+
+/* 8. Tinh chỉnh Menu Hamburger (Dropdown Menu) */
+.excalidraw .dropdown-menu {
+  z-index: 60 !important;
+}
+
+.excalidraw .dropdown-menu-container {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18) !important;
+}
+
+.excalidraw .dropdown-menu-item {
+  font-size: 13px !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+}
+
+.excalidraw .dropdown-menu-item .dropdown-menu-item__text {
+  font-size: 13px !important;
+}

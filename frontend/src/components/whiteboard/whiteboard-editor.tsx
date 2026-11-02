@@ -647,6 +647,19 @@ export default function WhiteboardEditor({
     performSave(latestDataRef.current.elements, latestDataRef.current.appState, undefined, undefined, nextPages);
   };
 
+  const handleClearCurrentPage = useCallback(() => {
+    if (excalidrawAPI) {
+      excalidrawAPI.updateScene({ elements: [] });
+    }
+    const nextPages = pages.map((p, i) => (i === currentPageIndex ? { ...p, elements: [] } : p));
+    setPages(nextPages);
+    latestDataRef.current = {
+      ...latestDataRef.current,
+      elements: [],
+    };
+    performSave([], latestDataRef.current.appState, undefined, latestDataRef.current.files, nextPages);
+  }, [excalidrawAPI, pages, currentPageIndex, performSave]);
+
   // ================= STEM TOOLS INSERTION HANDLERS =================
   const handleInsertFormula = (
     svgDataUrl: string,
@@ -1419,16 +1432,20 @@ export default function WhiteboardEditor({
           onChange={handleCanvasChange}
           onApiReady={(api) => setExcalidrawAPI(api as unknown as ExcalidrawEditorAPI)}
           onDoubleClickElement={handleDoubleClickElement}
+          onExportPdf={handleExportAllPagesPdf}
+          onOpenMathModal={() => setShowMathModal(true)}
+          onClearCurrentPage={handleClearCurrentPage}
         />
 
-        {/* Nút thoát Zen Mode khi Topbar đang ẩn */}
+        {/* Nút thoát Zen Mode góc trên bên phải - không đè lên thanh công cụ vẽ ở giữa */}
         {isZenMode && (
           <button
             onClick={() => setIsZenMode(false)}
-            className="fixed top-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white px-3.5 py-1 text-xs font-bold shadow-lg backdrop-blur-md transition"
+            className="fixed top-3 right-4 z-40 flex items-center gap-1.5 rounded-full bg-slate-900/85 hover:bg-slate-900 text-white px-3.5 py-1.5 text-xs font-bold shadow-lg backdrop-blur-md transition cursor-pointer border border-white/10 hover:scale-105 active:scale-95"
+            title="Thoát chế độ toàn màn hình (Esc)"
           >
             <Minimize2 className="h-3.5 w-3.5" />
-            <span>Thoát Zen Mode (Esc)</span>
+            <span className="whitespace-nowrap">Thoát Zen Mode (Esc)</span>
           </button>
         )}
 

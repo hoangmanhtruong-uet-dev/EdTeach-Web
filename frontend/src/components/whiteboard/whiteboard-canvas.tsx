@@ -50,8 +50,10 @@ if (typeof window !== "undefined") {
   }
 }
 
-import { Excalidraw } from "@excalidraw/excalidraw";
+import { Excalidraw, MainMenu } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
+import "./whiteboard-custom.css";
+import { FileDown, ArrowLeft, Trash2 } from "lucide-react";
 import {
   sanitizeExcalidrawElements,
   sanitizeExcalidrawFiles,
@@ -84,6 +86,9 @@ interface WhiteboardCanvasProps {
   ) => void;
   onApiReady?: (api: ExcalidrawImperativeAPI) => void;
   onDoubleClickElement?: (element: Record<string, unknown>) => void;
+  onExportPdf?: () => void;
+  onOpenMathModal?: () => void;
+  onClearCurrentPage?: () => void;
 }
 
 export default function WhiteboardCanvas({
@@ -97,6 +102,9 @@ export default function WhiteboardCanvas({
   onChange,
   onApiReady,
   onDoubleClickElement,
+  onExportPdf,
+  onOpenMathModal,
+  onClearCurrentPage,
 }: WhiteboardCanvasProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -321,23 +329,76 @@ export default function WhiteboardCanvas({
         )}
       </div>
 
-      {/* LỚP BẢNG VẼ EXCALIDRAW (NỀN TRONG SUỐT ĐỂ HIỆN RÕ PATTERN) */}
-      <div className="w-full h-full relative z-10 [&_.excalidraw]:bg-transparent!">
+      {/* LỚP BẢNG VẼ EXCALIDRAW (NỀN TRONG SUỐT ĐỂ HIỆN RÕ PATTERN, z-auto để popover context menu không bị giới hạn stacking context) */}
+      <div className="w-full h-full relative [&_.excalidraw]:bg-transparent!">
         <Excalidraw
           excalidrawAPI={handleExcalidrawRef}
           initialData={initialData}
           onChange={handleExcalidrawChange}
+          langCode="vi-VN"
           UIOptions={{
             canvasActions: {
-              export: {
-                saveFileToDisk: true,
-              },
+              export: false,
               saveToActiveFile: false,
-              loadScene: true,
-              toggleTheme: true,
+              loadScene: false,
+              saveAsImage: false,
+              toggleTheme: false,
+              changeViewBackgroundColor: false,
             },
           }}
-        />
+        >
+          {/* Menu Hamburger được chọn lọc và tối ưu cho giáo viên dạy học */}
+          <MainMenu>
+            <MainMenu.DefaultItems.SearchMenu />
+            <MainMenu.DefaultItems.Help />
+            <MainMenu.Separator />
+            {onExportPdf && (
+              <MainMenu.Item
+                icon={<FileDown className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                onSelect={onExportPdf}
+              >
+                Xuất file PDF bài giảng
+              </MainMenu.Item>
+            )}
+            {onOpenMathModal && (
+              <MainMenu.Item
+                icon={<span className="font-serif italic font-black text-blue-600 dark:text-blue-400 text-xs">f(x)</span>}
+                onSelect={onOpenMathModal}
+              >
+                Chèn công thức f(x)
+              </MainMenu.Item>
+            )}
+            <MainMenu.Item
+              icon={<ArrowLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />}
+              onSelect={() => {
+                if (typeof window !== "undefined") {
+                  window.location.href = "/whiteboard";
+                }
+              }}
+            >
+              Về danh sách bảng vẽ
+            </MainMenu.Item>
+            {onClearCurrentPage && (
+              <>
+                <MainMenu.Separator />
+                <MainMenu.Item
+                  icon={<Trash2 className="w-4 h-4 text-red-500" />}
+                  className="text-red-600! dark:text-red-400! hover:bg-red-50! dark:hover:bg-red-950/40!"
+                  onSelect={() => {
+                    const confirmed = window.confirm(
+                      "Bạn có chắc chắn muốn xóa toàn bộ nét vẽ và nội dung trên trang này không?\n\nLưu ý: Hành động này không thể hoàn tác sau khi lưu."
+                    );
+                    if (confirmed) {
+                      onClearCurrentPage();
+                    }
+                  }}
+                >
+                  Xóa toàn bộ trang hiện tại
+                </MainMenu.Item>
+              </>
+            )}
+          </MainMenu>
+        </Excalidraw>
       </div>
     </div>
   );
