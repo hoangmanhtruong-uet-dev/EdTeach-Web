@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
+import { useConfirm } from "@/context/confirm-dialog-context";
 import { createClient } from "@/lib/supabase/client";
 import {
   getUserPreferences,
@@ -117,6 +118,7 @@ export function GeneralTab({
 }: GeneralTabProps) {
   const { user, profile, refreshProfile } = useAuth();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
 
   // Determine current active subtab (supporting "verification" alias to "ekyc")
   const currentSubTab =
@@ -349,9 +351,14 @@ export function GeneralTab({
 
   const handleDeleteAvatar = async () => {
     if (!user || !profile?.avatar_url) return;
-    if (!window.confirm("Thầy Cô có chắc chắn muốn xóa ảnh đại diện và quay về chữ cái đầu tên không?")) {
-      return;
-    }
+    const isOk = await confirm({
+      title: "Xóa ảnh đại diện",
+      message: "Thầy Cô có chắc chắn muốn xóa ảnh đại diện và quay về chữ cái đầu tên không?",
+      confirmText: "Xóa ảnh",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
+    if (!isOk) return;
 
     setUploadingAvatar(true);
     try {

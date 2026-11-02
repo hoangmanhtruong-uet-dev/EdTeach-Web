@@ -1,4 +1,5 @@
 "use client";
+import { useToast } from "@/context/toast-context";
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
@@ -115,6 +116,7 @@ export default function WhiteboardEditor({
 }: WhiteboardEditorProps) {
   const [board] = useState<Whiteboard>(initialBoard);
   const [title, setTitle] = useState(initialBoard.title);
+  const { showToast } = useToast();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "error">("saved");
   const [isFavorite, setIsFavorite] = useState(initialBoard.is_favorite);
@@ -423,7 +425,7 @@ export default function WhiteboardEditor({
   const handleInsertStemItem = (item: ExcalidrawLibraryItem) => {
     if (!excalidrawAPI) return;
     if (!isPro) {
-      alert("Tính năng chèn nhanh hình mẫu STEM thuộc gói Pro. Vui lòng nâng cấp để sử dụng!");
+      showToast("Tính năng chèn nhanh hình mẫu STEM thuộc gói Pro. Vui lòng nâng cấp để sử dụng!", "warning");
       return;
     }
 
@@ -880,7 +882,7 @@ export default function WhiteboardEditor({
     if (!excalidrawAPI || !question) return;
     const shapeId = detectStemShapeIdForQuestion(question.content);
     if (!shapeId) {
-      alert("Chưa phát hiện được hình vẽ phù hợp cho câu hỏi này. Thầy Cô có thể chọn trực tiếp từ danh mục Mẫu vẽ STEM!");
+      showToast("Chưa phát hiện được hình vẽ phù hợp cho câu hỏi này. Thầy Cô có thể chọn trực tiếp từ danh mục Mẫu vẽ STEM!", "info");
       return;
     }
 
@@ -929,7 +931,7 @@ export default function WhiteboardEditor({
       }
 
       if (pageImages.length === 0) {
-        alert("Chưa có trang nào có nội dung để xuất PDF.");
+        showToast("Chưa có trang nào có nội dung để xuất PDF.", "warning");
         return;
       }
 
@@ -961,7 +963,7 @@ export default function WhiteboardEditor({
       }
     } catch (err) {
       console.error("Lỗi xuất PDF toàn bộ bài giảng:", err);
-      alert("Đã xảy ra lỗi khi tạo tệp PDF bài giảng.");
+      showToast("Đã xảy ra lỗi khi tạo tệp PDF bài giảng.", "error");
     } finally {
       setIsExportingPdf(false);
     }
@@ -1027,7 +1029,7 @@ export default function WhiteboardEditor({
 
       const data = await res.json();
       if (!res.ok || !data.cloned_question) {
-        alert(data.error || "Không thể sinh câu hỏi tương tự bằng AI. Vui lòng thử lại!");
+        showToast(data.error || "Không thể sinh câu hỏi tương tự bằng AI. Vui lòng thử lại!", "error");
         return;
       }
 
@@ -1058,7 +1060,7 @@ export default function WhiteboardEditor({
       }
     } catch (err: any) {
       console.error("Lỗi Live Clone:", err);
-      alert("Lỗi kết nối AI: " + err.message);
+      showToast("Lỗi kết nối AI: " + err.message, "error");
     }
   };
 
@@ -1080,7 +1082,7 @@ export default function WhiteboardEditor({
 
       const data = await res.json();
       if (!res.ok || !data.steps) {
-        alert(data.error || "Không thể tách câu hỏi bằng AI. Vui lòng thử lại!");
+        showToast(data.error || "Không thể tách câu hỏi bằng AI. Vui lòng thử lại!", "error");
         return;
       }
 
@@ -1120,7 +1122,7 @@ export default function WhiteboardEditor({
       }
     } catch (err: any) {
       console.error("Lỗi Scaffolding:", err);
-      alert("Lỗi kết nối AI: " + err.message);
+      showToast("Lỗi kết nối AI: " + err.message, "error");
     }
   };
 

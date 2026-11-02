@@ -35,6 +35,7 @@ import { TeachCommandPalette } from "@/components/teach/teach-command-palette";
 import { TeachProjectorOverlays } from "@/components/teach/teach-projector-overlays";
 import { useFontMultiplier } from "@/lib/teach/use-auto-fit-text";
 import { triggerConfetti } from "@/lib/teach/confetti";
+import { useConfirm } from "@/context/confirm-dialog-context";
 
 type ExcalidrawAPI = {
   getSceneElements: () => unknown[];
@@ -90,6 +91,7 @@ function findAutoMatchingLab(content: string, subject?: string): LabLesson | nul
 const emptySubscribe = () => () => {};
 
 function TeachingStudioContent() {
+  const { confirm } = useConfirm();
   const isClient = useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -514,21 +516,28 @@ function TeachingStudioContent() {
   }, [currentIdx, goToQuestion, toggleFullscreen]);
 
   // Clear current drawing
-  const handleClearCurrentDrawing = () => {
+  const handleClearCurrentDrawing = async () => {
     if (!excalidrawApiRef.current || !exam?.questions) return;
     const currentQ = exam.questions[currentIdx];
     if (!currentQ) return;
 
-    if (confirm("Thầy/Cô có chắc chắn muốn xóa sạch nháp của câu này?")) {
-      excalidrawApiRef.current.updateScene({ elements: [] });
-      drawingsMapRef.current[currentQ.id] = [];
-      setQuestionsWithDrawings((prev) => {
-        const next = { ...prev };
-        delete next[currentQ.id];
-        return next;
-      });
-      showToast("Đã xóa sạch nháp câu này.", "info");
-    }
+    const ok = await confirm({
+      title: "Xác nhận xóa nháp",
+      message: "Thầy/Cô có chắc chắn muốn xóa sạch nháp của câu này? Thao tác này sẽ làm trống bảng vẽ hiện tại.",
+      confirmText: "Xóa nháp",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    excalidrawApiRef.current.updateScene({ elements: [] });
+    drawingsMapRef.current[currentQ.id] = [];
+    setQuestionsWithDrawings((prev) => {
+      const next = { ...prev };
+      delete next[currentQ.id];
+      return next;
+    });
+    showToast("Đã xóa sạch nháp câu này.", "info");
   };
 
   // Pin Question to Canvas ("Đưa đề lên bảng")

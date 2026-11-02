@@ -1,4 +1,6 @@
 "use client";
+import { useToast } from "@/context/toast-context";
+import { useConfirm } from "@/context/confirm-dialog-context";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -91,6 +93,8 @@ export function SessionDetailView({
   onDeleteSession,
 }: SessionDetailViewProps) {
   const router = useRouter();
+  const { confirm } = useConfirm();
+  const { showToast } = useToast();
   const { profile } = useAuth();
   const isPro = isProUser(profile);
 
@@ -207,7 +211,7 @@ export function SessionDetailView({
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        alert(data.error || "Không thể tạo link nộp bài.");
+        showToast(data.error || "Không thể tạo link nộp bài.", "error");
         return;
       }
 
@@ -224,7 +228,7 @@ export function SessionDetailView({
       // Refresh list
       fetchSessionData();
     } catch (err: any) {
-      alert("Lỗi tạo link: " + err.message);
+      showToast("Lỗi tạo link: " + err.message, "error");
     } finally {
       setIsCreatingLink(false);
     }
@@ -232,9 +236,14 @@ export function SessionDetailView({
 
   // Handle close link early
   const handleCloseLink = async (token: string) => {
-    if (!confirm("Bạn có chắc chắn muốn đóng nhận bài cho liên kết này? Học sinh sẽ không thể nộp bài được nữa.")) {
-      return;
-    }
+    const isOk = await confirm({
+      title: "Đóng nhận bài thi",
+      message: "Bạn có chắc chắn muốn đóng nhận bài cho liên kết này? Học sinh sẽ không thể nộp bài được nữa.",
+      confirmText: "Đóng nhận bài",
+      cancelText: "Hủy",
+      variant: "warning",
+    });
+    if (!isOk) return;
 
     try {
       const res = await fetch(`/api/grading/student-links/${token}/close`, {
@@ -258,7 +267,7 @@ export function SessionDetailView({
   // Export Excel / CSV
   const handleExportExcel = () => {
     if (session.gradedStudents.length === 0) {
-      alert("Chưa có học sinh nào được chấm trong kỳ thi này.");
+      showToast("Chưa có học sinh nào được chấm trong kỳ thi này.", "warning");
       return;
     }
 

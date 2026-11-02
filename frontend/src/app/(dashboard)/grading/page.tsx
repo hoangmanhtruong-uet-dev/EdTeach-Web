@@ -48,6 +48,7 @@ import { DownloadOMRModal } from "@/components/grading/download-omr-modal";
 import { PrintSheetModal } from "@/components/grading/print-sheet-modal";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
+import { useConfirm } from "@/context/confirm-dialog-context";
 import { getUserPreferences } from "@/lib/preferences";
 import { PLATFORM_NAME, SUPPORT_EMAIL } from "@/lib/constants";
 
@@ -83,6 +84,7 @@ interface ExamSession {
 function GradingPageInner() {
   const { profile } = useAuth();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
 
   // Danh sách các kỳ thi đã tạo (lưu trong localStorage để bền vững)
   const [sessions, setSessions] = useState<ExamSession[]>([]);
@@ -534,7 +536,14 @@ function GradingPageInner() {
 
   // Xóa kỳ thi (Đồng bộ kép)
   const handleDeleteSession = async (id: string, name: string) => {
-    if (confirm(`Bạn có chắc muốn xóa kỳ thi "${name}"?`)) {
+    const isConfirmed = await confirm({
+      title: "Xác nhận xóa kỳ thi",
+      message: `Bạn có chắc muốn xóa kỳ thi "${name}"? Toàn bộ kết quả và dữ liệu đã chấm của kỳ thi này sẽ bị xóa vĩnh viễn.`,
+      confirmText: "Xóa kỳ thi",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
+    if (isConfirmed) {
       const updated = sessions.filter((s) => s.id !== id);
       setSessions(updated);
       await deleteGradingSession(id);

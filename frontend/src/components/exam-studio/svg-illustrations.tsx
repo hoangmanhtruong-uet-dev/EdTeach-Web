@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useToast } from "@/context/toast-context";
 import { Download, Edit3, Trash2 } from "lucide-react";
 
 interface SvgWrapperProps {
@@ -10,6 +11,7 @@ interface SvgWrapperProps {
 }
 
 export function SvgIllustrationWrapper({ children, title, onDelete }: SvgWrapperProps) {
+  const { showToast } = useToast();
   const [isSelected, setIsSelected] = useState(false);
 
   const handleDownload = () => {
@@ -51,7 +53,7 @@ export function SvgIllustrationWrapper({ children, title, onDelete }: SvgWrapper
         <button
           onClick={(e) => {
             e.stopPropagation();
-            alert("Chế độ chỉnh sửa hình ảnh SVG.");
+            showToast("Chế độ chỉnh sửa hình ảnh SVG đang được cập nhật.", "info");
           }}
           className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
         >

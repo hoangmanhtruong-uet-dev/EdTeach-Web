@@ -1,4 +1,6 @@
 "use client";
+import { useToast } from "@/context/toast-context";
+import { useConfirm } from "@/context/confirm-dialog-context";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import {
@@ -48,6 +50,8 @@ export function TransparentWhiteboardOverlay({
   labTitle = "Thí nghiệm 3D",
 }: TransparentWhiteboardOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const { confirm } = useConfirm();
+  const { showToast } = useToast();
   const [mode, setMode] = useState<"interact" | "draw">("draw");
   const [activeColor, setActiveColor] = useState<string>("#FFEA00");
   const [tool, setTool] = useState<"pen" | "highlighter" | "eraser">("pen");
@@ -197,9 +201,16 @@ export function TransparentWhiteboardOverlay({
   };
 
   // Clear all drawings
-  const handleClear = () => {
+  const handleClear = async () => {
     if (strokesRef.current.length === 0) return;
-    if (confirm("Thầy/Cô muốn xóa toàn bộ nét vẽ trên kính?")) {
+    const ok = await confirm({
+      title: "Xóa toàn bộ nét vẽ",
+      message: "Thầy/Cô có muốn xóa toàn bộ nét vẽ trên kính ghi chú?",
+      confirmText: "Xóa nét vẽ",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
+    if (ok) {
       strokesRef.current = [];
       redrawCanvas();
     }
@@ -217,7 +228,7 @@ export function TransparentWhiteboardOverlay({
       link.href = dataUrl;
       link.click();
     } catch {
-      alert("Đã lưu hình ảnh ghi chú bài giảng.");
+      showToast("Đã lưu hình ảnh ghi chú bài giảng.", "success");
     }
   };
 

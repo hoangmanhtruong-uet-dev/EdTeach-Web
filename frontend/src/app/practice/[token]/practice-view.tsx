@@ -5,6 +5,7 @@ import {
   RemediationSheetData,
   ClonedQuestion,
 } from "@/lib/remediation/remediation-store";
+import { useConfirm } from "@/context/confirm-dialog-context";
 import {
   CheckCircle2,
   XCircle,
@@ -35,6 +36,7 @@ interface PracticeViewProps {
 }
 
 export function PracticeView({ initialSheet }: PracticeViewProps) {
+  const { confirm } = useConfirm();
   const [sheet, setSheet] = useState<RemediationSheetData>(initialSheet);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -93,9 +95,13 @@ export function PracticeView({ initialSheet }: PracticeViewProps) {
     if (isCompleted || submitting) return;
 
     if (answeredCount < totalQuestions) {
-      const confirmSubmit = window.confirm(
-        `Bạn mới làm ${answeredCount}/${totalQuestions} câu hỏi. Bạn có chắc chắn muốn nộp bài ngay bây giờ?`
-      );
+      const confirmSubmit = await confirm({
+        title: "Xác nhận nộp bài thi",
+        message: `Bạn mới làm ${answeredCount}/${totalQuestions} câu hỏi. Bạn có chắc chắn muốn nộp bài ngay bây giờ?`,
+        confirmText: "Nộp bài ngay",
+        cancelText: "Làm tiếp",
+        variant: "warning",
+      });
       if (!confirmSubmit) return;
     }
 

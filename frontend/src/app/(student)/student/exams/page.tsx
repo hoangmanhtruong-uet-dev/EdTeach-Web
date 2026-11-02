@@ -18,8 +18,10 @@ import {
   Zap,
 } from "lucide-react";
 import { StudentExamItem } from "@/lib/student/student-store";
+import { useToast } from "@/context/toast-context";
 
 export default function StudentExamsPage() {
+  const { showToast } = useToast();
   const [exams, setExams] = useState<StudentExamItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterTab, setFilterTab] = useState<"all" | "pending" | "completed">("all");
@@ -156,7 +158,7 @@ export default function StudentExamsPage() {
         setVoteSubmitted(true);
       }
     } catch (err: any) {
-      alert("Lỗi gửi bình chọn: " + err.message);
+      showToast("Lỗi gửi bình chọn: " + err.message, "error");
     } finally {
       setVoting(false);
     }

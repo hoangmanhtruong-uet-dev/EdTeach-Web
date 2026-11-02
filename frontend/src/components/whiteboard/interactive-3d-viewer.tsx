@@ -1,4 +1,5 @@
 "use client";
+import { useToast } from "@/context/toast-context";
 
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
@@ -32,6 +33,7 @@ export function Interactive3DViewer({
   onSnapshotToCanvas,
 }: Interactive3DViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -182,7 +184,7 @@ export function Interactive3DViewer({
         (error) => {
           console.error("Lỗi nạp tệp GLTF:", error);
           setIsLoadingModel(false);
-          alert("Không thể đọc tệp 3D này. Vui lòng kiểm tra định dạng .glb hoặc .gltf!");
+          showToast("Không thể đọc tệp 3D này. Vui lòng kiểm tra định dạng .glb hoặc .gltf!", "error");
         }
       );
       return;

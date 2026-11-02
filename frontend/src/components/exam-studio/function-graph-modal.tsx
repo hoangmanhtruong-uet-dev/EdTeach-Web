@@ -1,4 +1,5 @@
 "use client";
+import { useConfirm } from "@/context/confirm-dialog-context";
 
 import React, { useState, useEffect } from "react";
 import { X, Sparkles, Plus, Trash2, Check, RotateCcw } from "lucide-react";
@@ -96,6 +97,7 @@ export function FunctionGraphModal({
   onClose,
   onSave,
 }: FunctionGraphModalProps) {
+  const { promptModal } = useConfirm();
   const [data, setData] = useState<FunctionGraphData>(
     initialData || {
       formula: "x^3 + 3x^2 - 4", // Exact match with Screenshot 3
@@ -139,17 +141,31 @@ export function FunctionGraphModal({
     });
   };
 
-  const handleAddPoint = () => {
-    const x = prompt("Nhập toạ độ x của điểm:", "0");
-    const y = prompt("Nhập toạ độ y của điểm:", "0");
-    const label = prompt("Nhãn hiển thị (vd: A(1;2) hoặc 1):", `${x};${y}`);
-    if (x !== null && y !== null) {
-      const nextPts = [
-        ...(data.markedPoints || []),
-        { x: parseFloat(x) || 0, y: parseFloat(y) || 0, label: label || "" },
-      ];
-      setData({ ...data, markedPoints: nextPts });
-    }
+  const handleAddPoint = async () => {
+    const x = await promptModal({
+      title: "Thêm toạ độ điểm",
+      message: "Nhập toạ độ x của điểm:",
+      defaultValue: "0",
+      inputType: "number",
+    });
+    if (x === null) return;
+    const y = await promptModal({
+      title: "Thêm toạ độ điểm",
+      message: "Nhập toạ độ y của điểm:",
+      defaultValue: "0",
+      inputType: "number",
+    });
+    if (y === null) return;
+    const label = await promptModal({
+      title: "Nhãn điểm hiển thị",
+      message: "Nhập nhãn hiển thị cho điểm (VD: A(1;2)):",
+      defaultValue: `${x};${y}`,
+    });
+    const nextPts = [
+      ...(data.markedPoints || []),
+      { x: parseFloat(x) || 0, y: parseFloat(y) || 0, label: label || "" },
+    ];
+    setData({ ...data, markedPoints: nextPts });
   };
 
   return (

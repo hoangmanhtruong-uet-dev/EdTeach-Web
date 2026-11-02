@@ -90,6 +90,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useAuth } from "@/context/auth-context";
+import { useConfirm } from "@/context/confirm-dialog-context";
 import { LatexRenderer } from "@/components/ui/latex-renderer";
 import { exportExamToDocx, exportDualTeachingDocx } from "@/lib/export/docx-exporter";
 import { getUserPreferences } from "@/lib/preferences";
@@ -248,6 +249,7 @@ interface ExamStudioProps {
 }
 
 export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
+  const { promptModal } = useConfirm();
   const router = useRouter();
   const { user, profile, wallet, refreshWallet, signOut } = useAuth();
 
@@ -3035,10 +3037,21 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                           </div>
                           <div className="mt-1 border-t border-slate-100 pt-1">
                             <button
-                              onClick={() => {
-                                const rows = prompt("Nhập số hàng:", "3");
-                                const cols = prompt("Nhập số cột:", "4");
-                                if (rows && cols) {
+                              onClick={async () => {
+                                const rows = await promptModal({
+                                  title: "Chèn bảng - Số hàng",
+                                  message: "Nhập số hàng cho bảng:",
+                                  defaultValue: "3",
+                                  inputType: "number",
+                                });
+                                if (!rows) return;
+                                const cols = await promptModal({
+                                  title: "Chèn bảng - Số cột",
+                                  message: "Nhập số cột cho bảng:",
+                                  defaultValue: "4",
+                                  inputType: "number",
+                                });
+                                if (cols) {
                                   handleInsertTable(parseInt(rows) || 3, parseInt(cols) || 4);
                                 }
                               }}
@@ -3408,8 +3421,14 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                     {/* 10. Liên kết */}
                     <button
                       onMouseEnter={handleSubmenuLeave}
-                      onClick={() => {
-                        const url = prompt("Nhập liên kết URL:");
+                      onClick={async () => {
+                        const url = await promptModal({
+                          title: "Chèn liên kết",
+                          message: "Nhập địa chỉ URL của liên kết:",
+                          placeholder: "https://...",
+                          inputType: "url",
+                          required: true,
+                        });
                         if (url) {
                           const linkBlock: DocItem = {
                             id: "link-" + Date.now(),

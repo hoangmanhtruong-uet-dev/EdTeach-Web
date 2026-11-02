@@ -1,4 +1,6 @@
 "use client";
+import { useToast } from "@/context/toast-context";
+import { useConfirm } from "@/context/confirm-dialog-context";
 
 import React, { useState, useEffect, useMemo } from "react";
 import {
@@ -81,6 +83,8 @@ export function CreateExamModal({
   defaultGrade = "12",
   defaultSheetType = "2025",
 }: CreateExamModalProps) {
+  const { confirm } = useConfirm();
+  const { showToast } = useToast();
   // Cấu hình cơ bản
   const [examName, setExamName] = useState("");
   const [subject, setSubject] = useState(defaultSubject);
@@ -309,8 +313,15 @@ export function CreateExamModal({
   };
 
   // Quick Actions: Xóa tất cả đáp án của mã đề hiện tại
-  const handleClearAllAnswers = () => {
-    if (confirm(`Bạn có chắc muốn xóa tất cả đáp án của mã đề ${activeExamCode}?`)) {
+  const handleClearAllAnswers = async () => {
+    const ok = await confirm({
+      title: "Xác nhận xóa đáp án",
+      message: `Bạn có chắc muốn xóa tất cả đáp án của mã đề ${activeExamCode}?`,
+      confirmText: "Xóa đáp án",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
+    if (ok) {
       setAnswersByCode((prev) => ({
         ...prev,
         [activeExamCode]: {},
@@ -359,7 +370,7 @@ export function CreateExamModal({
   // Hoàn tất tạo kỳ thi
   const handleConfirmCreate = () => {
     if (!examName.trim()) {
-      alert("Vui lòng nhập tên kỳ thi!");
+      showToast("Vui lòng nhập tên kỳ thi!", "warning");
       return;
     }
 

@@ -21,6 +21,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import { useToast } from "@/context/toast-context";
+import { useConfirm } from "@/context/confirm-dialog-context";
 
 interface VerificationItem {
   id: string;
@@ -39,6 +41,8 @@ interface VerificationItem {
 
 export default function AdminVerificationsPage() {
   const { profile } = useAuth();
+  const { showToast } = useToast();
+  const { promptModal } = useConfirm();
   const [verifications, setVerifications] = useState<VerificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending_review" | "approved" | "rejected">("pending_review");
@@ -67,9 +71,16 @@ export default function AdminVerificationsPage() {
   const handleReview = async (recordId: string, action: "approved" | "rejected") => {
     let reason = "";
     if (action === "rejected") {
-      const promptReason = window.prompt("Nhập lý do từ chối hồ sơ (VD: Ảnh mờ, thông tin không khớp):");
+      const promptReason = await promptModal({
+        title: "Từ chối hồ sơ giáo viên",
+        message: "Vui lòng nhập lý do từ chối hồ sơ (VD: Ảnh mờ, thông tin không khớp):",
+        placeholder: "Nhập lý do từ chối...",
+        confirmText: "Từ chối hồ sơ",
+        cancelText: "Hủy bỏ",
+        variant: "danger",
+      });
       if (promptReason === null) return;
-      reason = promptReason || "Hình ảnh không rõ nét hoặc thông tin không trùng khớp.";
+      reason = promptReason.trim() || "Hình ảnh không rõ nét hoặc thông tin không trùng khớp.";
     }
 
     setActionLoadingId(recordId);
@@ -90,10 +101,10 @@ export default function AdminVerificationsPage() {
         await fetchVerifications();
       } else {
         const err = await res.json();
-        alert(err.error || "Thao tác thất bại.");
+        showToast(err.error || "Thao tác thất bại.", "error");
       }
     } catch (e: any) {
-      alert("Lỗi khi gửi yêu cầu duyệt: " + e.message);
+      showToast("Lỗi khi gửi yêu cầu duyệt: " + e.message, "error");
     } finally {
       setActionLoadingId(null);
     }

@@ -1,4 +1,5 @@
 "use client";
+import { useToast } from "@/context/toast-context";
 
 import React, { useState, useEffect, useMemo } from "react";
 import {
@@ -44,6 +45,7 @@ export function ShuffleExamModal({
   isPro = false,
   isMax = false,
 }: ShuffleExamModalProps) {
+  const { showToast } = useToast();
   const [variantCount, setVariantCount] = useState<number>(4);
   const [startCode, setStartCode] = useState<number>(101);
   const [shuffleSeed, setShuffleSeed] = useState<number>(0);
@@ -251,7 +253,7 @@ export function ShuffleExamModal({
       );
     } catch (err) {
       console.error("Export shuffled docx failed:", err);
-      alert("Đã xảy ra lỗi khi tạo file Word. Vui lòng thử lại.");
+      showToast("Đã xảy ra lỗi khi tạo file Word. Vui lòng thử lại.", "error");
     } finally {
       setIsExporting(false);
     }

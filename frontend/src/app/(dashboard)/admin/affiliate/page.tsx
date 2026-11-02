@@ -17,8 +17,10 @@ import {
   User,
 } from "lucide-react";
 import { AffiliatePayoutItem } from "@/lib/affiliate/affiliate-store";
+import { useToast } from "@/context/toast-context";
 
 export default function AdminAffiliatePage() {
+  const { showToast } = useToast();
   const [payouts, setPayouts] = useState<AffiliatePayoutItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed" | "rejected">("all");
@@ -65,7 +67,7 @@ export default function AdminAffiliatePage() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        alert(data.error || "Thao tác thất bại.");
+        showToast(data.error || "Thao tác thất bại.", "error");
         return;
       }
       setMessage(data.message);
@@ -76,7 +78,7 @@ export default function AdminAffiliatePage() {
       fetchPayouts();
       setTimeout(() => setMessage(null), 4000);
     } catch (err: any) {
-      alert(err.message || "Lỗi xử lý.");
+      showToast(err.message || "Lỗi xử lý.", "error");
     } finally {
       setActionLoading(null);
     }

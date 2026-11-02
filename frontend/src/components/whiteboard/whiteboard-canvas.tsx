@@ -1,4 +1,5 @@
 "use client";
+import { useConfirm } from "@/context/confirm-dialog-context";
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { BoardTheme } from "@/lib/whiteboard/board-themes";
@@ -115,6 +116,7 @@ export default function WhiteboardCanvas({
   onClearCurrentPage,
 }: WhiteboardCanvasProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
+  const { confirm } = useConfirm();
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const onApiReadyCalledRef = useRef(false);
 
@@ -465,10 +467,14 @@ export default function WhiteboardCanvas({
                 <MainMenu.Item
                   icon={<Trash2 className="w-4 h-4 text-red-500" />}
                   className="text-red-600! dark:text-red-400! hover:bg-red-50! dark:hover:bg-red-950/40!"
-                  onSelect={() => {
-                    const confirmed = window.confirm(
-                      "Bạn có chắc chắn muốn xóa toàn bộ nét vẽ và nội dung trên trang này không?\n\nLưu ý: Hành động này không thể hoàn tác sau khi lưu."
-                    );
+                  onSelect={async () => {
+                    const confirmed = await confirm({
+                      title: "Xóa toàn bộ trang hiện tại",
+                      message: "Bạn có chắc chắn muốn xóa toàn bộ nét vẽ và nội dung trên trang này không?\n\nLưu ý: Hành động này không thể hoàn tác sau khi lưu.",
+                      confirmText: "Xóa trang vẽ",
+                      cancelText: "Hủy",
+                      variant: "danger",
+                    });
                     if (confirmed) {
                       onClearCurrentPage();
                     }

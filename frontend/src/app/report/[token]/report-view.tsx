@@ -7,6 +7,7 @@ import {
   QuestionDetailItem,
   CompetencyLevel,
 } from "@/lib/reports/student-report-store";
+import { useToast } from "@/context/toast-context";
 import {
   CheckCircle2,
   XCircle,
@@ -39,6 +40,7 @@ interface ReportViewProps {
 }
 
 export function ReportView({ report }: ReportViewProps) {
+  const { showToast } = useToast();
   const [filter, setFilter] = useState<"all" | "correct" | "incorrect">("all");
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
@@ -122,7 +124,7 @@ export function ReportView({ report }: ReportViewProps) {
         }));
 
       if (wrongList.length === 0) {
-        alert("Tuyệt vời! Em đã làm đúng 100% bài thi, không có câu nào cần luyện bù.");
+        showToast("Tuyệt vời! Em đã làm đúng 100% bài thi, không có câu nào cần luyện bù.", "success");
         setOpeningRemediation(false);
         return;
       }
@@ -153,7 +155,7 @@ export function ReportView({ report }: ReportViewProps) {
         window.open(data.practiceUrl, "_blank");
       }
     } catch (e: any) {
-      alert("Đã xảy ra lỗi khi mở bài luyện bù: " + e.message);
+      showToast("Đã xảy ra lỗi khi mở bài luyện bù: " + e.message, "error");
     } finally {
       setOpeningRemediation(false);
     }

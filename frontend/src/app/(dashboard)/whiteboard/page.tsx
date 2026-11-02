@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
+import { useConfirm } from "@/context/confirm-dialog-context";
 import {
   getUserWhiteboards,
   createWhiteboard,
@@ -44,6 +45,7 @@ export default function WhiteboardDashboardPage() {
   const router = useRouter();
   const { user, profile } = useAuth();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [whiteboards, setWhiteboards] = useState<Whiteboard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -122,7 +124,14 @@ export default function WhiteboardDashboardPage() {
   const handleDeleteBoard = async (id: string, title: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`Bạn có chắc chắn muốn xoá bảng vẽ "${title}"?`)) return;
+    const isConfirmed = await confirm({
+      title: "Xác nhận xoá bảng vẽ",
+      message: `Bạn có chắc chắn muốn xoá bảng vẽ "${title}"? Thao tác này không thể hoàn tác.`,
+      confirmText: "Xoá bảng vẽ",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
+    if (!isConfirmed) return;
 
     const ok = await deleteWhiteboard(id);
     if (ok) {
