@@ -1,6 +1,8 @@
 """Application configuration using Pydantic Settings."""
 
+import os
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 from typing import Optional
 
 
@@ -41,6 +43,19 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+
+    @model_validator(mode="after")
+    def resolve_gemini_aliases(self):
+        if not self.GOOGLE_AI_API_KEY:
+            self.GOOGLE_AI_API_KEY = (
+                os.getenv("GEMINI_API_KEY")
+                or os.getenv("GEMINI_API_PRO_KEY")
+                or os.getenv("GEMINI_API_MAX_KEY")
+                or os.getenv("GEMINI_API_KEY_PRO")
+                or os.getenv("GEMINI_API_KEY_MAX")
+                or os.getenv("GEMINI_API_FREE_KEY")
+            )
+        return self
 
     class Config:
         env_file = ".env"

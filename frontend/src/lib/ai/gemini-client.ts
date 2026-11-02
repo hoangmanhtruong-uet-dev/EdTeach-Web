@@ -4,9 +4,9 @@ export type GeminiTier = "free" | "pro" | "max";
 
 /**
  * Smart API Key Router phân tầng theo 3 gói (FREE - PRO - MAX):
- * - tier = 'max': Sử dụng GEMINI_API_KEY_MAX (Thinking, Live Clone, Scaffold, Multi-method, Remediation)
- * - tier = 'pro': Sử dụng GEMINI_API_KEY_PRO (Tạo đề GDPT, URL import, Vision OMR Fallback)
- * - tier = 'free': Sử dụng GEMINI_API_KEY_FREE (Tạo đề Flash cơ bản, tối đa 3 lượt/ngày)
+ * - tier = 'max': Sử dụng GEMINI_API_KEY_MAX (hoặc GEMINI_API_MAX_KEY) (Thinking, Live Clone, Scaffold, Multi-method, Remediation)
+ * - tier = 'pro': Sử dụng GEMINI_API_KEY_PRO (hoặc GEMINI_API_PRO_KEY) (Tạo đề GDPT, URL import, Vision OMR Fallback)
+ * - tier = 'free': Sử dụng GEMINI_API_KEY_FREE (hoặc GEMINI_API_FREE_KEY) (Tạo đề Flash cơ bản, tối đa 3 lượt/ngày)
  * - Fallback tự động về GEMINI_API_KEY_PAID / GEMINI_API_KEY chung nếu biến môi trường riêng chưa cấu hình.
  */
 export function resolveGeminiApiKey(tierOrPaid: GeminiTier | boolean = "free"): string {
@@ -20,7 +20,9 @@ export function resolveGeminiApiKey(tierOrPaid: GeminiTier | boolean = "free"): 
   if (tier === "max") {
     return (
       process.env.GEMINI_API_KEY_MAX ||
+      process.env.GEMINI_API_MAX_KEY ||
       process.env.GEMINI_API_KEY_PRO ||
+      process.env.GEMINI_API_PRO_KEY ||
       process.env.GEMINI_API_KEY_PAID ||
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_AI_API_KEY ||
@@ -31,6 +33,7 @@ export function resolveGeminiApiKey(tierOrPaid: GeminiTier | boolean = "free"): 
   if (tier === "pro") {
     return (
       process.env.GEMINI_API_KEY_PRO ||
+      process.env.GEMINI_API_PRO_KEY ||
       process.env.GEMINI_API_KEY_PAID ||
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_AI_API_KEY ||
@@ -41,9 +44,13 @@ export function resolveGeminiApiKey(tierOrPaid: GeminiTier | boolean = "free"): 
   // Free tier
   return (
     process.env.GEMINI_API_KEY_FREE ||
+    process.env.GEMINI_API_FREE_KEY ||
+    process.env.GEMINI_API_FREE_KEY_2 ||
+    process.env.GEMINI_API_FREE_KEY_3 ||
     process.env.GEMINI_API_KEY ||
     process.env.GOOGLE_AI_API_KEY ||
     process.env.GEMINI_API_KEY_PRO ||
+    process.env.GEMINI_API_PRO_KEY ||
     process.env.GEMINI_API_KEY_PAID ||
     ""
   );
