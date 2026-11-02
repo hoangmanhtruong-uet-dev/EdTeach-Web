@@ -228,11 +228,13 @@ export default function WhiteboardCanvas({
         style={{
           backgroundColor:
             currentPattern === "student_grid"
-              ? "#f8fafc"
+              ? theme?.isDark ? "#0b1220" : "#f8fafc"
               : currentPattern === "lined_notebook"
               ? "#fcfbfa"
               : currentPattern === "chalkboard"
               ? theme?.viewBackgroundColor || "#0b3b2c"
+              : currentPattern === "coord_oxy"
+              ? theme?.viewBackgroundColor || "#0b1220"
               : theme?.viewBackgroundColor || "#ffffff",
         }}
       >
@@ -251,9 +253,9 @@ export default function WhiteboardCanvas({
                 <path
                   d={`M ${minorGridSize} 0 L 0 0 0 ${minorGridSize}`}
                   fill="none"
-                  stroke="#93c5fd"
+                  stroke={theme?.isDark ? "#1e293b" : "#93c5fd"}
                   strokeWidth="0.75"
-                  strokeOpacity="0.45"
+                  strokeOpacity={theme?.isDark ? "0.6" : "0.45"}
                 />
               </pattern>
               <pattern
@@ -268,9 +270,9 @@ export default function WhiteboardCanvas({
                 <path
                   d={`M ${majorGridSize} 0 L 0 0 0 ${majorGridSize}`}
                   fill="none"
-                  stroke="#3b82f6"
+                  stroke={theme?.isDark ? "#334155" : "#3b82f6"}
                   strokeWidth="1.2"
-                  strokeOpacity="0.6"
+                  strokeOpacity={theme?.isDark ? "0.7" : "0.6"}
                 />
               </pattern>
             </defs>
@@ -287,6 +289,77 @@ export default function WhiteboardCanvas({
                 strokeOpacity="0.8"
               />
             )}
+          </svg>
+        )}
+
+        {/* Phông 3: Hệ trục tọa độ Oxy (Toán học chuẩn) */}
+        {currentPattern === "coord_oxy" && (
+          <svg className="w-full h-full opacity-90" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern
+                id="oxy-grid"
+                width={minorGridSize * 2}
+                height={minorGridSize * 2}
+                patternUnits="userSpaceOnUse"
+                x={gridOffsetX}
+                y={gridOffsetY}
+              >
+                <path
+                  d={`M ${minorGridSize * 2} 0 L 0 0 0 ${minorGridSize * 2}`}
+                  fill="none"
+                  stroke={theme?.isDark ? "#1e293b" : "#cbd5e1"}
+                  strokeWidth="0.75"
+                  strokeOpacity="0.6"
+                />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#oxy-grid)" />
+            {/* Trục hoành Ox */}
+            <line
+              x1="0"
+              y1={sy + 300 * zoom}
+              x2="100%"
+              y2={sy + 300 * zoom}
+              stroke={theme?.isDark ? "#38bdf8" : "#2563eb"}
+              strokeWidth="2"
+            />
+            {/* Trục tung Oy */}
+            <line
+              x1={sx + 300 * zoom}
+              y1="0"
+              x2={sx + 300 * zoom}
+              y2="100%"
+              stroke={theme?.isDark ? "#38bdf8" : "#2563eb"}
+              strokeWidth="2"
+            />
+            {/* Gốc tọa độ O và nhãn x, y */}
+            <text
+              x={sx + 305 * zoom}
+              y={sy + 320 * zoom}
+              fill={theme?.isDark ? "#94a3b8" : "#475569"}
+              fontSize={Math.max(12, 14 * zoom)}
+              fontWeight="bold"
+            >
+              O
+            </text>
+            <text
+              x="96%"
+              y={sy + 295 * zoom}
+              fill={theme?.isDark ? "#38bdf8" : "#2563eb"}
+              fontSize={Math.max(12, 14 * zoom)}
+              fontWeight="bold"
+            >
+              x
+            </text>
+            <text
+              x={sx + 315 * zoom}
+              y="28"
+              fill={theme?.isDark ? "#38bdf8" : "#2563eb"}
+              fontSize={Math.max(12, 14 * zoom)}
+              fontWeight="bold"
+            >
+              y
+            </text>
           </svg>
         )}
 

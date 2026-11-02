@@ -1,5 +1,5 @@
 export interface BoardTheme {
-  id: 'classic_green' | 'matte_black' | 'student_grid' | 'lined_notebook' | 'modern_white';
+  id: 'classic_green' | 'matte_black' | 'student_grid' | 'lined_notebook' | 'modern_white' | 'teach_dark' | 'coord_oxy';
   name: string;
   description: string;
   iconName: string;
@@ -8,7 +8,7 @@ export interface BoardTheme {
   penPalette: string[];
   isDark: boolean;
   gridSize?: number;
-  pattern: 'none' | 'student_grid' | 'lined_notebook' | 'chalkboard';
+  pattern: 'none' | 'student_grid' | 'lined_notebook' | 'chalkboard' | 'coord_oxy';
 }
 
 export const BOARD_THEMES: BoardTheme[] = [

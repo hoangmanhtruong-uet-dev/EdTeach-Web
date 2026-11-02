@@ -105,3 +105,39 @@
 .excalidraw .dropdown-menu-item .dropdown-menu-item__text {
   font-size: 13px !important;
 }
+
+/* ==========================================================================
+   9. TỐI ƯU CÁC NÚT PHỤ BỤC GIẢNG (SÁCH, KHÓA, BÀN TAY, HOÀN TÁC): KÍCH THƯỚC >= 40px
+   VÀ TĂNG ĐỘ TƯƠNG PHẢN CHO MÁY CHIẾU PHÒNG HỌC
+   ========================================================================== */
+.excalidraw .ToolIcon_type_button,
+.excalidraw .ToolIcon_type_radio,
+.excalidraw button[data-testid="toolbar-hand"],
+.excalidraw button[data-testid="toolbar-lock"],
+.excalidraw button[data-testid="library-menu-button"],
+.excalidraw .sidebar-trigger,
+.excalidraw .undo-redo-buttons button,
+.excalidraw .zen-mode-transition {
+  min-width: 40px !important;
+  min-height: 40px !important;
+  border-radius: 10px !important;
+  font-size: 14px !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+/* Độ tương phản cao cho chế độ bảng tối */
+.excalidraw.theme--dark .ToolIcon_type_button,
+.excalidraw.theme--dark .ToolIcon_type_radio,
+.excalidraw.theme--dark .undo-redo-buttons button {
+  background-color: #1e293b !important;
+  border: 1px solid #475569 !important;
+  color: #f8fafc !important;
+}
+
+.excalidraw.theme--dark .ToolIcon_type_button:hover,
+.excalidraw.theme--dark .ToolIcon_type_radio:hover,
+.excalidraw.theme--dark .undo-redo-buttons button:hover {
+  background-color: #334155 !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+}
