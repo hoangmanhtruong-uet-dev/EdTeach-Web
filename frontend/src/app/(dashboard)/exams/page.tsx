@@ -582,14 +582,14 @@ export default function ExamsPage() {
             )}
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="min-w-[960px] divide-y divide-border">
             <div className="grid grid-cols-12 gap-4 p-4 text-xs font-semibold text-muted-foreground sm:grid">
-              <div className="col-span-5 sm:col-span-4">Tên đề thi</div>
+              <div className="col-span-5 sm:col-span-3">Tên đề thi</div>
               <div className="col-span-3 sm:col-span-2">Môn / Lớp</div>
-              <div className="col-span-4 sm:col-span-2">Trạng thái</div>
-              <div className="hidden sm:col-span-1 sm:block">Số câu</div>
+              <div className="col-span-4 sm:col-span-1">Trạng thái</div>
+              <div className="hidden sm:col-span-1 sm:block text-center">Số câu</div>
               <div className="hidden sm:col-span-2 sm:block">Ngày tạo</div>
-              <div className="hidden sm:col-span-1 sm:block text-right">Thao tác</div>
+              <div className="hidden sm:col-span-3 sm:block text-right pr-2">Thao tác</div>
             </div>
 
             {exams.map((exam) => (
@@ -597,7 +597,7 @@ export default function ExamsPage() {
                 key={exam.id}
                 className="grid grid-cols-12 items-center gap-4 p-4 hover:bg-muted/50 transition-colors"
               >
-                <div className="col-span-5 sm:col-span-4">
+                <div className="col-span-5 sm:col-span-3">
                   <Link
                     href={`/exams/${exam.id}`}
                     className="font-semibold text-foreground hover:text-primary transition-colors line-clamp-1 text-sm"
@@ -614,10 +614,10 @@ export default function ExamsPage() {
                   <span className="text-muted-foreground"> • Lớp {exam.grade}</span>
                 </div>
 
-                <div className="col-span-4 sm:col-span-2">
+                <div className="col-span-4 sm:col-span-1">
                   <span
                     className={cn(
-                      "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap",
                       exam.status === "completed"
                         ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                         : exam.status === "generating"
@@ -637,33 +637,33 @@ export default function ExamsPage() {
                   </span>
                 </div>
 
-                <div className="hidden text-sm tabular-nums sm:col-span-1 sm:block">{exam.question_count} câu</div>
-                <div className="hidden text-sm tabular-nums text-muted-foreground sm:col-span-2 sm:block">
+                <div className="hidden text-sm tabular-nums sm:col-span-1 sm:block text-center">{exam.question_count} câu</div>
+                <div className="hidden text-sm tabular-nums text-muted-foreground sm:col-span-2 sm:block whitespace-nowrap">
                   {new Date(exam.created_at).toLocaleDateString("vi-VN")}
                 </div>
 
-                <div className="flex items-center justify-end gap-1 sm:col-span-1 flex-wrap sm:flex-nowrap">
+                <div className="flex items-center justify-end gap-1.5 col-span-12 sm:col-span-3 flex-wrap sm:flex-nowrap">
                   {/* Bục Giảng Số Button (EXL-05 PRO Gate) */}
                   {isPro ? (
                     <Link
                       href={`/teach/${exam.id}`}
                       aria-label={`Trình chiếu Bục Giảng Số đề ${exam.name}`}
-                      className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 min-h-[36px] text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 transition-colors shadow-2xs whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+                      className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 min-h-[32px] text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 transition-colors shadow-2xs whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
                       title="Bục Giảng Số: Trình chiếu chữa đề kết hợp Bảng nháp Excalidraw (Gói PRO)"
                     >
                       <Presentation className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      <span className="hidden md:inline">Bục giảng</span>
+                      <span>Bục giảng</span>
                     </Link>
                   ) : (
                     <button
                       type="button"
                       onClick={() => handleTeachClick(exam)}
                       aria-label={`Nâng cấp PRO để trình chiếu Bục Giảng Số cho đề ${exam.name}`}
-                      className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 min-h-[36px] text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors shadow-2xs whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
+                      className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 min-h-[32px] text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors shadow-2xs whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
                       title="Bục Giảng Số (Đặc quyền Gói PRO - Nhấn để nâng cấp)"
                     >
                       <Crown className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden="true" />
-                      <span className="hidden md:inline">Bục giảng</span>
+                      <span>Bục giảng</span>
                     </button>
                   )}
 
@@ -671,7 +671,7 @@ export default function ExamsPage() {
                   <Link
                     href={`/exams/${exam.id}`}
                     aria-label={`Xem và chỉnh sửa đề ${exam.name}`}
-                    className="h-9 w-9 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="h-8 w-8 min-h-[32px] min-w-[32px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
                     title="Xem & Chỉnh sửa"
                   >
                     <Eye className="h-4 w-4" aria-hidden="true" />
@@ -683,7 +683,7 @@ export default function ExamsPage() {
                     onClick={() => handleExportDualTeaching(exam.id)}
                     disabled={exportingId === exam.id}
                     aria-label={`Tải bộ đề kép Word của đề ${exam.name}`}
-                    className="h-9 w-9 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:opacity-50 transition cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 shrink-0"
+                    className="h-8 w-8 min-h-[32px] min-w-[32px] flex items-center justify-center rounded-xl text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:opacity-50 transition cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 shrink-0"
                     title="Tải Bộ Đề Kép: 1 Bản Học Sinh (có dòng chấm chép bài) & 1 Bản Giáo Viên (kèm lời giải chi tiết)"
                   >
                     {exportingId === exam.id ? (
@@ -698,7 +698,7 @@ export default function ExamsPage() {
                     type="button"
                     onClick={() => handleMagicLinkClick(exam)}
                     aria-label={`Giao đề online qua Magic Link cho đề ${exam.name}`}
-                    className="h-9 w-9 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 shrink-0"
+                    className="h-8 w-8 min-h-[32px] min-w-[32px] flex items-center justify-center rounded-xl text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 shrink-0"
                     title="Giao đề Online qua Magic Link (Đặc quyền MAX)"
                   >
                     <Share2 className="h-4 w-4" aria-hidden="true" />
@@ -710,7 +710,7 @@ export default function ExamsPage() {
                     onClick={() => setDeleteConfirmExam(exam)}
                     disabled={deletingId === exam.id}
                     aria-label={`Xóa đề ${exam.name}`}
-                    className="h-9 w-9 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50 transition cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-destructive shrink-0"
+                    className="h-8 w-8 min-h-[32px] min-w-[32px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50 transition cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-destructive shrink-0"
                     title="Xóa đề thi"
                   >
                     {deletingId === exam.id ? (
@@ -727,7 +727,7 @@ export default function ExamsPage() {
 
         {/* Pagination Bar (EXL-01) */}
         {totalCount > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border bg-card/50 text-xs text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border bg-card/50 text-xs text-muted-foreground min-w-[960px]">
             <div aria-live="polite" className="tabular-nums font-medium">
               Hiển thị <strong>{startItem}</strong> - <strong>{endItem}</strong> trong tổng số{" "}
               <strong>{totalCount}</strong> đề thi
