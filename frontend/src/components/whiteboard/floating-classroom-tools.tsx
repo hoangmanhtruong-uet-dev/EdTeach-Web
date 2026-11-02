@@ -14,6 +14,7 @@ import {
   VolumeX,
   Calculator,
   FlaskConical,
+  Box,
 } from "lucide-react";
 
 interface FloatingClassroomToolsProps {
@@ -199,17 +200,17 @@ export function FloatingClassroomTools({
           </>
         )}
 
-        {/* Nút Thí nghiệm STEM 3D */}
+        {/* Nút Mô hình 3D */}
         {onOpenPipLabModal && (
           <>
             <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
             <button
               onClick={onOpenPipLabModal}
-              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition cursor-pointer"
-              title="Mở mô phỏng thí nghiệm 3D (PhET Labs)"
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/50 transition cursor-pointer"
+              title="Mở Trung tâm Mô hình 3D Giáo dục (Toán, Hóa, Sinh, Địa) & Tải file .glb"
             >
-              <FlaskConical className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Mô phỏng 3D</span>
+              <Box className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Mô hình 3D</span>
             </button>
           </>
         )}

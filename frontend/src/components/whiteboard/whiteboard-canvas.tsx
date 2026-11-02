@@ -7,42 +7,46 @@ if (typeof window !== "undefined") {
   (window as any).EXCALIDRAW_ASSET_PATH = "/";
 
   // Lớp phòng vệ chống crash Excalidraw: Tự động chữa lành phần tử nếu thiếu groupIds/points
-  const origFilter = Array.prototype.filter;
-  Array.prototype.filter = function (fn: any, thisArg: any) {
-    return origFilter.call(
-      this,
-      function (item: any, index: number, array: any[]) {
-        if (item && typeof item === "object" && item.type) {
-          if (!Array.isArray(item.groupIds)) {
-            item.groupIds = [];
+  if (!(window as any).__excalidrawFilterPatched) {
+    (window as any).__excalidrawFilterPatched = true;
+    const origFilter = Array.prototype.filter;
+    Array.prototype.filter = function (fn: any, thisArg: any) {
+      if (typeof fn !== "function") return origFilter.call(this, fn, thisArg);
+      return origFilter.call(
+        this,
+        function (item: any, index: number, array: any[]) {
+          if (item && typeof item === "object" && item.type) {
+            if (!Array.isArray(item.groupIds)) {
+              item.groupIds = [];
+            }
           }
-        }
-        try {
-          return fn.call(thisArg, item, index, array);
-        } catch (err: any) {
-          if (err && typeof err.message === "string" && err.message.includes("reading 'length'")) {
-            if (item && typeof item === "object") {
-              if (!Array.isArray(item.groupIds)) item.groupIds = [];
-              if (item.boundElements === undefined) item.boundElements = null;
-              if (
-                !Array.isArray(item.points) &&
-                (item.type === "line" || item.type === "arrow" || item.type === "freedraw")
-              ) {
-                item.points = [[0, 0], [item.width || 100, item.height || 100]];
+          try {
+            return fn.call(thisArg, item, index, array);
+          } catch (err: any) {
+            if (err && typeof err.message === "string" && err.message.includes("reading 'length'")) {
+              if (item && typeof item === "object") {
+                if (!Array.isArray(item.groupIds)) item.groupIds = [];
+                if (item.boundElements === undefined) item.boundElements = null;
+                if (
+                  !Array.isArray(item.points) &&
+                  (item.type === "line" || item.type === "arrow" || item.type === "freedraw")
+                ) {
+                  item.points = [[0, 0], [item.width || 100, item.height || 100]];
+                }
+              }
+              try {
+                return fn.call(thisArg, item, index, array);
+              } catch {
+                return false;
               }
             }
-            try {
-              return fn.call(thisArg, item, index, array);
-            } catch {
-              return false;
-            }
+            throw err;
           }
-          throw err;
-        }
-      },
-      thisArg
-    );
-  };
+        },
+        thisArg
+      );
+    };
+  }
 }
 
 import { Excalidraw } from "@excalidraw/excalidraw";

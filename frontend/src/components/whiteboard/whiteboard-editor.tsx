@@ -26,6 +26,7 @@ import {
   FlaskConical,
   ExternalLink,
   Search,
+  Box,
 } from "lucide-react";
 import { Whiteboard } from "@/types/whiteboard";
 import { updateWhiteboard } from "@/lib/api/whiteboard";
@@ -37,7 +38,7 @@ import { ExamDrawer } from "@/components/whiteboard/exam-drawer";
 import { FloatingClassroomTools } from "@/components/whiteboard/floating-classroom-tools";
 import { MathFormulaModal } from "@/components/whiteboard/math-formula-modal";
 import { CasioCalculatorModal } from "@/components/whiteboard/casio-calculator-modal";
-import { PipLabModal } from "@/components/whiteboard/pip-lab-modal";
+import { Pip3DModelModal } from "@/components/whiteboard/pip-3d-model-modal";
 import { BottomSlideBar } from "@/components/whiteboard/bottom-slide-bar";
 import { detectStemShapeIdForQuestion } from "@/lib/whiteboard/question-to-excalidraw";
 import { WhiteboardPage } from "@/types/whiteboard";
@@ -167,7 +168,7 @@ export default function WhiteboardEditor({
   // STEM Floating Modals
   const [showMathModal, setShowMathModal] = useState(false);
   const [showCasioModal, setShowCasioModal] = useState(false);
-  const [showPipLabModal, setShowPipLabModal] = useState(false);
+  const [show3DModelModal, setShow3DModelModal] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const handleToggleLaser = useCallback(() => {
@@ -682,9 +683,10 @@ export default function WhiteboardEditor({
     performSave(nextCasioElements, latestDataRef.current.appState);
   };
 
-  // Chụp dán mô phỏng STEM lên Bảng: Tạo Thẻ thực hành chuẩn sư phạm, nhóm groupId, tự chọn
-  const handleSnapshotFromLab = (lab: any) => {
-    if (!excalidrawAPI || !lab) return;
+  // Chụp góc nhìn mô hình 3D (nền trong suốt HD) dán trực tiếp lên Bảng vẽ để Thầy Cô viết đè lên hình
+  const handleSnapshotFrom3DModel = (snapshot: { dataUrl: string; modelName: string; subject: string }) => {
+    if (!excalidrawAPI || !snapshot?.dataUrl) return;
+
     const currentElements = excalidrawAPI.getSceneElements() as any[];
     const appState = (excalidrawAPI as any).getAppState?.() || {};
     const scrollX = typeof appState.scrollX === "number" ? appState.scrollX : 0;
@@ -696,104 +698,80 @@ export default function WhiteboardEditor({
     const centerX = -scrollX + (vpWidth / 2) / zoomVal;
     const centerY = -scrollY + (vpHeight / 2) / zoomVal;
 
-    const cardWidth = 520;
-    const cardHeight = 220;
-    const startX = Math.round(centerX - cardWidth / 2);
-    const startY = Math.round(centerY - cardHeight / 2);
+    const imgWidth = 420;
+    const imgHeight = 315;
+    const startX = Math.round(centerX - imgWidth / 2);
+    const startY = Math.round(centerY - imgHeight / 2);
 
-    const labGroupId = `lab_grp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const isDark = currentTheme.isDark;
+    const fileId = `file_3d_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const modelGroupId = `grp_3d_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-    // Màu sắc theo bộ môn
-    const subjectColors: Record<string, { stroke: string; bg: string; text: string }> = {
-      phys: { stroke: "#4f46e5", bg: isDark ? "#1e1b4b66" : "#eef2ff", text: "#6366f1" },
-      chem: { stroke: "#059669", bg: isDark ? "#064e3b66" : "#ecfdf5", text: "#10b981" },
-      bio: { stroke: "#e11d48", bg: isDark ? "#4c051966" : "#fff1f2", text: "#f43f5e" },
-      geo: { stroke: "#d97706", bg: isDark ? "#451a0366" : "#fffbeb", text: "#f59e0b" },
+    // Tạo đối tượng file ảnh trong Excalidraw
+    const currentFiles = (excalidrawAPI as any).getFiles ? (excalidrawAPI as any).getFiles() : latestDataRef.current.files || {};
+    const fileEntry = {
+      id: fileId,
+      dataURL: snapshot.dataUrl,
+      mimeType: "image/png",
+      created: Date.now(),
+      lastRetrieved: Date.now(),
     };
-    const colors = subjectColors[lab.subject] || subjectColors.phys;
+    const nextFiles = {
+      ...currentFiles,
+      [fileId]: fileEntry,
+    };
 
-    // 1. Khung thẻ chính
-    const cardBox: any = {
-      id: `lab_box_${Date.now()}`,
-      type: "rectangle",
+    // Đẩy file vào Excalidraw API nếu có
+    (excalidrawAPI as any).addFiles?.([fileEntry]);
+
+    // 1. Phần tử ảnh 3D trong suốt
+    const imageElement: any = {
+      id: `img_3d_${Date.now()}`,
+      type: "image",
+      fileId,
       x: startX,
       y: startY,
-      width: cardWidth,
-      height: cardHeight,
-      strokeColor: colors.stroke,
-      backgroundColor: colors.bg,
-      fillStyle: "solid",
-      strokeWidth: 2,
-      roundness: { type: 3 },
-      groupIds: [labGroupId],
+      width: imgWidth,
+      height: imgHeight,
+      scale: [1, 1],
+      status: "saved",
+      groupIds: [modelGroupId],
+      roundness: null,
       isDeleted: false,
     };
 
-    // 2. Tiêu đề Thí nghiệm & GDPT 2018
-    const cardTitle: any = {
-      id: `lab_title_${Date.now()}`,
+    // 2. Nhãn chú thích nhỏ ngay dưới hình
+    const labelElement: any = {
+      id: `lbl_3d_${Date.now()}`,
       type: "text",
-      x: startX + 20,
-      y: startY + 16,
-      text: `🧪 THÍ NGHIỆM STEM 3D: ${lab.titleVi.toUpperCase()}\n${lab.gdpt || "Chương trình GDPT 2018"}`,
-      fontSize: 16,
+      x: startX + 10,
+      y: startY + imgHeight + 8,
+      text: `🧊 [3D] ${snapshot.modelName}`,
+      fontSize: 14,
       fontFamily: 2,
       textAlign: "left",
       verticalAlign: "top",
-      strokeColor: colors.text,
-      groupIds: [labGroupId],
+      strokeColor: currentTheme.isDark ? "#38bdf8" : "#0284c7",
+      groupIds: [modelGroupId],
       isDeleted: false,
     };
 
-    // 3. Đường phân cách nét đứt
-    const sepLine: any = {
-      id: `lab_sep_${Date.now()}`,
-      type: "line",
-      x: startX + 20,
-      y: startY + 70,
-      width: cardWidth - 40,
-      height: 0,
-      points: [[0, 0], [cardWidth - 40, 0]],
-      strokeColor: colors.stroke,
-      strokeWidth: 1.2,
-      strokeStyle: "dashed",
-      groupIds: [labGroupId],
-      isDeleted: false,
+    const newElements = [imageElement, labelElement];
+    const newElementIds: Record<string, boolean> = {
+      [imageElement.id]: true,
+      [labelElement.id]: true,
     };
 
-    // 4. Bảng ghi nhận kết quả & số liệu đo đạc
-    const obsBox: any = {
-      id: `lab_obs_${Date.now()}`,
-      type: "text",
-      x: startX + 20,
-      y: startY + 84,
-      text: `📋 BẢNG THU THẬP SỐ LIỆU & HIỆN TƯỢNG:\n• Lần đo 1: ....................................... | Hiện tượng: ....................\n• Lần đo 2: ....................................... | Hiện tượng: ....................\n• Nhận xét & Kết luận: ..............................................................`,
-      fontSize: 13,
-      fontFamily: 1,
-      textAlign: "left",
-      verticalAlign: "top",
-      strokeColor: isDark ? "#cbd5e1" : "#334155",
-      groupIds: [labGroupId],
-      isDeleted: false,
-    };
-
-    const newLabElements = [cardBox, cardTitle, sepLine, obsBox];
-    const newElementIds: Record<string, boolean> = {};
-    newLabElements.forEach((el) => {
-      newElementIds[el.id] = true;
-    });
-
-    const nextLabElements = sanitizeExcalidrawElements([...currentElements, ...newLabElements]);
+    const nextElements = sanitizeExcalidrawElements([...currentElements, ...newElements]);
     excalidrawAPI.updateScene({
-      elements: nextLabElements,
+      elements: nextElements,
       appState: {
         selectedElementIds: newElementIds,
-        selectedGroupIds: { [labGroupId]: true },
+        selectedGroupIds: { [modelGroupId]: true },
       },
     });
-    latestDataRef.current.elements = nextLabElements;
-    performSave(nextLabElements, latestDataRef.current.appState);
+    latestDataRef.current.elements = nextElements;
+    latestDataRef.current.files = nextFiles;
+    performSave(nextElements, latestDataRef.current.appState, undefined, nextFiles);
   };
 
   const handleTriggerAiGeometryDraw = (question: any) => {
@@ -1205,14 +1183,14 @@ export default function WhiteboardEditor({
             <span>Casio fx-580</span>
           </button>
 
-          {/* NÚT PHÒNG THÍ NGHIỆM 3D (PiP Modal) */}
+          {/* NÚT TRỰC QUAN MÔ HÌNH 3D (PiP 3D Modal) */}
           <button
-            onClick={() => setShowPipLabModal(true)}
-            className="hidden lg:flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 transition cursor-pointer"
-            title="Mở 54+ Phòng Thí Nghiệm 3D (Vật lý, Hóa học, Sinh học, Địa lý) cửa sổ nổi"
+            onClick={() => setShow3DModelModal(true)}
+            className="hidden lg:flex items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50/70 px-3 py-1.5 text-xs font-bold text-sky-700 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300 transition cursor-pointer"
+            title="Mở Trung tâm Mô hình 3D tương tác (Toán hình không gian, Hóa phân tử, Sinh, Địa cầu, Tải .glb)"
           >
-            <FlaskConical className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Mô phỏng 3D</span>
+            <Box className="h-3.5 w-3.5 text-sky-600" />
+            <span>Mô hình 3D</span>
           </button>
 
           {/* STEM Library Menu Dropdown */}
@@ -1366,7 +1344,7 @@ export default function WhiteboardEditor({
           onToggleLaser={handleToggleLaser}
           onOpenMathModal={() => setShowMathModal(true)}
           onOpenCasioModal={() => setShowCasioModal(true)}
-          onOpenPipLabModal={() => setShowPipLabModal(true)}
+          onOpenPipLabModal={() => setShow3DModelModal(true)}
         />
 
         {/* 4. THANH ĐIỀU HƯỚNG SLIDE NHIỀU TRANG CHÂN TRANG */}
@@ -1409,11 +1387,11 @@ export default function WhiteboardEditor({
           onPasteToCanvas={handlePasteFromCasio}
         />
 
-        {/* 8. CỬA SỔ THÍ NGHIỆM MÔ PHỎNG NỔI (PIP LABS) */}
-        <PipLabModal
-          isOpen={showPipLabModal}
-          onClose={() => setShowPipLabModal(false)}
-          onSnapshotToCanvas={handleSnapshotFromLab}
+        {/* 8. CỬA SỔ TRỰC QUAN MÔ HÌNH 3D GIÁO DỤC (PIP 3D MODEL) */}
+        <Pip3DModelModal
+          isOpen={show3DModelModal}
+          onClose={() => setShow3DModelModal(false)}
+          onSnapshotToCanvas={handleSnapshotFrom3DModel}
         />
       </main>
     </div>
