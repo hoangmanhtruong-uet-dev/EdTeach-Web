@@ -4,6 +4,7 @@ import { useRef, useCallback, useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Home,
   Maximize2,
   Sparkles,
   ShieldCheck,
@@ -404,11 +405,21 @@ export function LabViewer({ lab }: { lab: LabLesson }) {
       {/* Top Bar */}
       <div className="flex h-12 flex-none items-center gap-2 sm:gap-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 sm:px-4 shadow-xs z-20">
         <Link
+          href="/"
+          title="Quay về trang chủ EduTest AI"
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+        >
+          <Home className="h-4 w-4" />
+          <span className="hidden sm:inline">Trang chủ</span>
+        </Link>
+        <span className="text-slate-300 dark:text-slate-700">/</span>
+        <Link
           href="/labs"
+          title="Quay về danh sách Phòng thí nghiệm 3D"
           className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span className="hidden sm:inline">Quay lại</span>
+          <span className="hidden sm:inline">Kho 3D</span>
         </Link>
         <span className="text-slate-300 dark:text-slate-700">|</span>
 

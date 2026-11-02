@@ -7,6 +7,8 @@ import {
   Search,
   Sparkles,
   ArrowRight,
+  ArrowLeft,
+  Home,
   ExternalLink,
   Layers,
   BookOpen,
@@ -41,7 +43,25 @@ export default function StudentLabsPage() {
   });
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-300">
+    <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-300">
+      {/* Nút quay về trang chủ */}
+      <div className="flex items-center justify-between">
+        <Link
+          href="/student"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 dark:hover:border-blue-700/80 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-all shadow-2xs group"
+        >
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1 text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+          <Home className="h-4 w-4 text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+          <span>Quay về trang chủ</span>
+        </Link>
+        <Link
+          href="/"
+          className="text-xs font-semibold text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors"
+        >
+          Trang chủ Edutest AI ➔
+        </Link>
+      </div>
+
       {/* 1. HERO BANNER */}
       <div className="bg-linear-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-2xl pointer-events-none" />

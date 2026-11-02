@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { type LabSubject } from "@/data/labs";
-import { FlaskConical, ChevronRight, Sparkles } from "lucide-react";
+import { FlaskConical, ChevronRight, Sparkles, ArrowLeft, Home } from "lucide-react";
 import { LabsCatalog } from "./labs-catalog";
 
 export const metadata: Metadata = {
@@ -19,7 +19,19 @@ export default function LabsPage() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+        {/* Nút quay về trang chủ */}
+        <div className="mb-6">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 dark:hover:border-blue-700/80 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-all shadow-2xs group"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1 text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+            <Home className="h-4 w-4 text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+            <span>Quay về trang chủ</span>
+          </Link>
+        </div>
+
         {/* Hero */}
         <section className="mb-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-50 to-primary/5 dark:from-slate-900/90 dark:to-primary/10 p-6 sm:p-10 shadow-2xs">
           <div className="flex items-center gap-3">
