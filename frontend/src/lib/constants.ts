@@ -60,6 +60,13 @@ export const ADMIN_EMAIL_DOMAIN = "@admin.edteach.vn";
 export const MARKETPLACE_CREDIT_RATE_VND = 100; // 1 Credit = 100 VNĐ
 export const EXAM_GENERATION_CREDIT_COST = 500;
 
+// Marketplace Commission Rates (Free: 80%, PRO: 90%, MAX VIP: 95%)
+export const MARKETPLACE_COMMISSION_TIERS = {
+  free: { label: "Free", platformFee: 0.20, authorShare: 0.80, authorPercent: "80%" },
+  pro: { label: "PRO", platformFee: 0.10, authorShare: 0.90, authorPercent: "90%" },
+  max: { label: "MAX", platformFee: 0.05, authorShare: 0.95, authorPercent: "95%" },
+} as const;
+
 // Student Portal & AI Tutor Constants (PR 3.1 / RC-08 / STU-08)
 export const DAILY_STUDENT_AI_QUOTA = 3; // 3 lượt/ngày/học sinh (GMT+7)
 export const STUDENT_AI_DAILY_LIMIT = 3;
