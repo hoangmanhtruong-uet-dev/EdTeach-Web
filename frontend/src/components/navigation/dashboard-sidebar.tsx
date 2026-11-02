@@ -144,8 +144,8 @@ export function DashboardSidebar() {
               <span className="text-lg font-bold leading-tight truncate">
                 Edu<span className="text-primary">Test</span> AI
               </span>
-              <span className="text-[10px] font-semibold text-muted-foreground truncate">
-                v1.0.0 (GDPT 2025)
+              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 truncate">
+                v2.0.0 Beta (GDPT 2025)
               </span>
             </div>
           </Link>
@@ -288,19 +288,21 @@ export function DashboardSidebar() {
                     <span className="text-base font-bold leading-tight truncate">
                       Edu<span className="text-primary">Test</span> AI
                     </span>
-                    <span className="text-[10px] font-semibold text-muted-foreground truncate">
-                      v1.0.0 (GDPT 2025)
+                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 truncate">
+                      v2.0.0 Beta (GDPT 2025)
                     </span>
                   </div>
                 </Link>
-                <Link
-                  href="/updates"
-                  title="Khám phá lộ trình bản chính thức v2.0.0"
-                  className="hidden xl:inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors shrink-0"
+                <a
+                  href="https://zalo.me/g/e6xf6xhazoa18qiodfxr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Nhóm Zalo hỗ trợ thử nghiệm EdTeach v2.0.0"
+                  className="hidden xl:inline-flex items-center gap-1 rounded-md bg-emerald-500/15 border border-emerald-500/40 px-1.5 py-0.5 text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25 transition-colors shrink-0 shadow-2xs"
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" aria-hidden="true" />
-                  v2.0
-                </Link>
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+                  BETA v2.0
+                </a>
               </div>
 
               {/* Collapse Button */}

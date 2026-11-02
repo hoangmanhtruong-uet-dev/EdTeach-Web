@@ -14,6 +14,7 @@ import {
   FileQuestion,
   ScanLine,
   CreditCard,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 
@@ -124,6 +125,29 @@ export function FeedbackModal({ defaultOpen = false }: FeedbackModalProps) {
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {/* Zalo Beta Community Banner */}
+            <a
+              href="https://zalo.me/g/e6xf6xhazoa18qiodfxr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-emerald-500/10 border border-blue-500/30 hover:border-blue-500/60 transition-all group"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs">
+                  Zalo
+                </div>
+                <div className="text-left">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    Nhóm Zalo Hỗ Trợ Giáo Viên v2.0.0
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Trao đổi trực tiếp với Admin & giải đáp kỹ thuật tức thì
+                  </div>
+                </div>
+              </div>
+              <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
+            </a>
 
             {submitted ? (
               <div className="py-8 text-center space-y-3">

@@ -134,6 +134,18 @@ function DashboardShellContent({
 
           <div className="flex-1" />
 
+          {/* Zalo Beta Community Button */}
+          <a
+            href="https://zalo.me/g/e6xf6xhazoa18qiodfxr"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Tham gia nhóm Zalo hỗ trợ thử nghiệm EdTeach v2.0.0"
+            className="hidden md:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60 dark:hover:bg-emerald-900/40 border border-emerald-300/60 px-3 py-1.5 text-xs font-semibold transition-colors mr-1 shadow-2xs"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+            <span>Nhóm Zalo Beta v2.0</span>
+          </a>
+
           {/* Command Palette Quick Launcher */}
           <button
             type="button"
