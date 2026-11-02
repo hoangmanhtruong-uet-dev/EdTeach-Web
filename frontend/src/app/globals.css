@@ -90,3 +90,15 @@ body {
   background: var(--muted-foreground);
   border-radius: 3px;
 }
+
+/* Eliminate any accidental horizontal scrollbar in sidebars & fixed navigation */
+#dashboard-sidebar,
+#dashboard-sidebar * {
+  scrollbar-width: thin;
+}
+#dashboard-sidebar::-webkit-scrollbar:horizontal,
+#dashboard-sidebar *::-webkit-scrollbar:horizontal {
+  display: none !important;
+  height: 0 !important;
+  width: 0 !important;
+}

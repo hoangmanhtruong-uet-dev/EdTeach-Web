@@ -5,6 +5,8 @@ export interface TeachingPreferences {
   defaultSubject: string;
   defaultGrade: string;
   defaultDuration: number;
+  subjects?: string[];
+  gradeLevel?: string;
 }
 
 export interface ExportPreferences {
@@ -24,6 +26,19 @@ export interface NotificationPreferences {
   emailStudentSubmitted: boolean;
   emailLowCredits: boolean;
   marketingUpdates: boolean;
+  channels?: {
+    examCompleted?: { email: boolean; zalo: boolean; inApp: boolean };
+    lowCredits?: { email: boolean; zalo: boolean; inApp: boolean };
+    expiryWarning?: { email: boolean; zalo: boolean; inApp: boolean };
+    commission?: { email: boolean; zalo: boolean; inApp: boolean };
+    productUpdates?: { email: boolean; zalo: boolean; inApp: boolean };
+  };
+}
+
+export interface AppearancePreferences {
+  theme: "light" | "dark" | "system";
+  fontSize: "normal" | "large";
+  reducedMotion: boolean;
 }
 
 export interface UserPreferences {
@@ -31,6 +46,7 @@ export interface UserPreferences {
   export: ExportPreferences;
   gradingAndAi: GradingAndAiPreferences;
   notifications: NotificationPreferences;
+  appearance?: AppearancePreferences;
 }
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
@@ -57,6 +73,18 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
     emailStudentSubmitted: true,
     emailLowCredits: true,
     marketingUpdates: false,
+    channels: {
+      examCompleted: { email: true, zalo: true, inApp: true },
+      lowCredits: { email: true, zalo: false, inApp: true },
+      expiryWarning: { email: true, zalo: true, inApp: true },
+      commission: { email: true, zalo: false, inApp: true },
+      productUpdates: { email: false, zalo: false, inApp: false },
+    },
+  },
+  appearance: {
+    theme: "system",
+    fontSize: "normal",
+    reducedMotion: false,
   },
 };
 
@@ -94,6 +122,14 @@ export function getUserPreferences(profile?: any): UserPreferences {
     notifications: {
       ...DEFAULT_PREFERENCES.notifications,
       ...(rawPrefs.notifications || {}),
+      channels: {
+        ...DEFAULT_PREFERENCES.notifications.channels,
+        ...(rawPrefs.notifications?.channels || {}),
+      },
+    },
+    appearance: {
+      ...DEFAULT_PREFERENCES.appearance,
+      ...(rawPrefs.appearance || {}),
     },
   };
 }

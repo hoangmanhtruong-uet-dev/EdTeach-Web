@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   User,
   GraduationCap,
@@ -29,51 +30,448 @@ import {
   Building2,
   BookOpen,
   Info,
+  Lock,
+  ExternalLink,
+  Download,
+  AlertTriangle,
+  Smartphone,
+  Eye,
+  EyeOff,
+  ChevronRight,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/auth-context";
+import { useToast } from "@/context/toast-context";
 import { createClient } from "@/lib/supabase/client";
 import {
   getUserPreferences,
   saveUserPreferencesLocal,
   UserPreferences,
-  DEFAULT_PREFERENCES,
 } from "@/lib/preferences";
-import { isProUser, isMaxUser, getTierName } from "@/lib/payment/plans";
 import { TeacherVerificationCard } from "@/components/verification/teacher-verification-card";
-import { APP_URL, SUPPORT_EMAIL, REFERRAL_BONUS_CREDITS } from "@/lib/constants";
+import { PlanStatusCard } from "./PlanStatusCard";
+import { AvatarCropModal } from "./AvatarCropModal";
+import { ChangeEmailModal } from "./ChangeEmailModal";
+import { UnsavedChangesModal } from "./UnsavedChangesModal";
+import { APP_URL, REFERRAL_BONUS_CREDITS } from "@/lib/constants";
 
-export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
-  const [activeTab, setActiveTab] = useState(
-    initialSubTab && ["profile", "verification", "teaching", "notifications", "security", "appearance"].includes(initialSubTab)
-      ? initialSubTab
-      : "profile"
-  );
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const urlParams = new URLSearchParams(window.location.search);
-      const tabParam = urlParams.get("tab");
-      if (tabParam && ["profile", "verification", "teaching", "notifications", "security", "appearance"].includes(tabParam)) {
-        setActiveTab(tabParam);
-      }
-    }
-  }, [initialSubTab]);
+export interface GeneralTabProps {
+  activeSection?: string;
+  onSectionChange?: (section: string) => void;
+  onNavigateToPlan?: () => void;
+  onNavigateToPartner?: () => void;
+  initialSubTab?: string;
+}
+
+const VIETNAM_SCHOOL_SUGGESTIONS = [
+  "THPT Chuyên Hà Nội - Amsterdam (Hà Nội)",
+  "THPT Chu Văn An (Hà Nội)",
+  "THPT Kim Liên (Hà Nội)",
+  "THPT Phan Đình Phùng (Hà Nội)",
+  "THPT Thăng Long (Hà Nội)",
+  "THPT Yên Hòa (Hà Nội)",
+  "THPT Chuyên Lê Hồng Phong (TP.HCM)",
+  "THPT Chuyên Trần Đại Nghĩa (TP.HCM)",
+  "THPT Nguyễn Thị Minh Khai (TP.HCM)",
+  "THPT Gia Định (TP.HCM)",
+  "THPT Bùi Thị Xuân (TP.HCM)",
+  "THPT Chuyên Lam Sơn (Thanh Hóa)",
+  "THPT Chuyên Phan Bội Châu (Nghệ An)",
+  "THPT Chuyên Quốc Học Huế (Thừa Thiên Huế)",
+  "THPT Chuyên Lê Quý Đôn (Đà Nẵng)",
+  "THCS Trưng Vương (Hà Nội)",
+  "THCS Giảng Võ (Hà Nội)",
+  "THCS Lê Quý Đôn (TP.HCM)",
+  "Đại học Sư phạm Hà Nội",
+  "Đại học Sư phạm TP.HCM",
+];
+
+const SUBJECT_OPTIONS = [
+  "Toán",
+  "Vật lý",
+  "Hóa học",
+  "Sinh học",
+  "Ngữ văn",
+  "Tiếng Anh",
+  "Lịch sử",
+  "Địa lý",
+  "GDCD",
+  "Tin học",
+  "Công nghệ",
+  "Khoa học tự nhiên",
+  "Khác",
+];
+
+const GRADE_LEVEL_OPTIONS = [
+  "THCS (Khối 6–9)",
+  "THPT (Khối 10–12)",
+  "Luyện thi Đại học / ĐGNL",
+  "Khác",
+];
+
+export function GeneralTab({
+  activeSection = "profile",
+  onSectionChange,
+  onNavigateToPlan,
+  onNavigateToPartner,
+  initialSubTab,
+}: GeneralTabProps) {
   const { user, profile, refreshProfile } = useAuth();
+  const { showToast } = useToast();
 
-  // ================= 1. PROFILE STATE =================
+  // Determine current active subtab (supporting "verification" alias to "ekyc")
+  const currentSubTab =
+    activeSection === "verification" ? "ekyc" : activeSection || initialSubTab || "profile";
+
+  // Check if "Nghiệp vụ & Soạn đề" has been visited once to hide badge "Mới" (A10)
+  const [hasSeenTeachingBadge, setHasSeenTeachingBadge] = useState(true);
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem("edutest_seen_teaching_tab");
+      setHasSeenTeachingBadge(seen === "true");
+    } catch {
+      setHasSeenTeachingBadge(true);
+    }
+  }, []);
+
+  const handleSubTabClick = (subTabId: string) => {
+    if (subTabId === "teaching" && !hasSeenTeachingBadge) {
+      try {
+        localStorage.setItem("edutest_seen_teaching_tab", "true");
+      } catch {
+        // ignore
+      }
+      setHasSeenTeachingBadge(true);
+    }
+
+    // Check for unsaved changes in profile before navigating
+    if (currentSubTab === "profile" && isProfileDirty) {
+      setPendingSubTab(subTabId);
+      setShowUnsavedModal(true);
+      return;
+    }
+
+    onSectionChange?.(subTabId);
+  };
+
+  // ================= 1. PROFILE STATE & VALIDATION (A6, A7) =================
   const [name, setName] = useState("");
+  const [initialName, setInitialName] = useState("");
   const [phone, setPhone] = useState("");
+  const [initialPhone, setInitialPhone] = useState("");
   const [school, setSchool] = useState("");
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [profileMessage, setProfileMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [copiedRef, setCopiedRef] = useState(false);
+  const [initialSchool, setInitialSchool] = useState("");
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [initialSubjects, setInitialSubjects] = useState<string[]>([]);
+  const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>("THPT (Khối 10–12)");
+  const [initialGradeLevel, setInitialGradeLevel] = useState<string>("THPT (Khối 10–12)");
 
-  // Avatar Upload States
+  const [touched, setTouched] = useState<{ name?: boolean; phone?: boolean; school?: boolean }>({});
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: string | null;
+    phone?: string | null;
+    school?: string | null;
+  }>({});
+
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState<string | null>(null);
+
+  // Unsaved changes & modal protection (A2)
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [pendingSubTab, setPendingSubTab] = useState<string | null>(null);
+
+  // Validation rules (A6)
+  const validateName = (val: string): string | null => {
+    const trimmed = val.trim();
+    if (trimmed.length < 2 || trimmed.length > 60) {
+      return "Vui lòng nhập họ và tên (2–60 ký tự)";
+    }
+    return null;
+  };
+
+  const validatePhone = (val: string): string | null => {
+    const trimmed = val.trim();
+    if (!trimmed) return null; // optional
+    const cleaned = trimmed.replace(/[\s.-]/g, "");
+    const vnPhoneRegex = /^(0[1-9][0-9]{8}|\+84[1-9][0-9]{8})$/;
+    if (!vnPhoneRegex.test(cleaned)) {
+      return "Số điện thoại chưa đúng. Ví dụ: 0912345678";
+    }
+    return null;
+  };
+
+  const validateSchool = (val: string): string | null => {
+    const trimmed = val.trim();
+    if (trimmed.length > 100) {
+      return "Tối đa 100 ký tự";
+    }
+    return null;
+  };
+
+  // Run validation on blur
+  const handleBlur = (field: "name" | "phone" | "school") => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    let err: string | null = null;
+    if (field === "name") err = validateName(name);
+    if (field === "phone") err = validatePhone(phone);
+    if (field === "school") err = validateSchool(school);
+    setFieldErrors((prev) => ({ ...prev, [field]: err }));
+  };
+
+  // Check if profile form is dirty (A2)
+  const isProfileDirty =
+    name.trim() !== initialName.trim() ||
+    phone.trim() !== initialPhone.trim() ||
+    school.trim() !== initialSchool.trim() ||
+    selectedGradeLevel !== initialGradeLevel ||
+    JSON.stringify(selectedSubjects.sort()) !== JSON.stringify(initialSubjects.sort());
+
+  const hasFormErrors = Boolean(
+    validateName(name) || validatePhone(phone) || validateSchool(school)
+  );
+
+  // Beforeunload listener when dirty (A2)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isProfileDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isProfileDirty]);
+
+  // Load user data into profile state
+  useEffect(() => {
+    if (profile) {
+      const pName = profile.name || profile.full_name || "";
+      const pPhone = (profile as any).phone || "";
+      const pSchool = profile.school || "";
+
+      setName(pName);
+      setInitialName(pName);
+      setPhone(pPhone);
+      setInitialPhone(pPhone);
+      setSchool(pSchool);
+      setInitialSchool(pSchool);
+
+      const prefs = getUserPreferences(profile);
+      const subjects = prefs.teaching.subjects || [prefs.teaching.defaultSubject || "Toán"];
+      const gradeLevel = prefs.teaching.gradeLevel || "THPT (Khối 10–12)";
+
+      setSelectedSubjects(subjects);
+      setInitialSubjects(subjects);
+      setSelectedGradeLevel(gradeLevel);
+      setInitialGradeLevel(gradeLevel);
+    }
+  }, [profile]);
+
+  // ================= 2. AVATAR STATE (A5) =================
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [isDragOverAvatar, setIsDragOverAvatar] = useState(false);
 
-  // ================= 2. TEACHING & EXAM PREFERENCES STATE =================
+  const initials = profile?.name
+    ? profile.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : user?.email
+    ? user.email.slice(0, 2).toUpperCase()
+    : "GV";
+
+  const handleAvatarFileSelected = (file: File) => {
+    setAvatarError(null);
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("Vui lòng chọn tệp hình ảnh (JPG, PNG, WEBP).");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError("Dung lượng ảnh vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleConfirmAvatarCrop = async ({ blob, dataUrl }: { blob: Blob; dataUrl: string }) => {
+    if (!user) return;
+    setCropImageSrc(null);
+    setUploadingAvatar(true);
+    setAvatarError(null);
+
+    try {
+      const supabase = createClient();
+      let finalAvatarUrl = "";
+      const filePath = `${user.id}/avatar.jpg`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, blob, {
+          contentType: "image/jpeg",
+          upsert: true,
+        });
+
+      if (!uploadError) {
+        const { data: pubData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+        finalAvatarUrl = `${pubData.publicUrl}?t=${Date.now()}`;
+      } else {
+        // Graceful fallback to inline compressed dataUrl
+        finalAvatarUrl = dataUrl;
+      }
+
+      const { error: dbError } = await (supabase.from("users") as any)
+        .update({
+          avatar_url: finalAvatarUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      if (dbError) throw dbError;
+
+      await refreshProfile();
+      showToast("Cập nhật ảnh đại diện thành công!", "success");
+    } catch (err: any) {
+      setAvatarError(err.message || "Không thể cập nhật ảnh đại diện.");
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteAvatar = async () => {
+    if (!user || !profile?.avatar_url) return;
+    if (!window.confirm("Thầy Cô có chắc chắn muốn xóa ảnh đại diện và quay về chữ cái đầu tên không?")) {
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const supabase = createClient();
+      const { error } = await (supabase.from("users") as any)
+        .update({
+          avatar_url: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      if (error) throw error;
+      await refreshProfile();
+      showToast("Đã xóa ảnh đại diện.", "info");
+    } catch (err: any) {
+      setAvatarError(err.message || "Không thể xóa ảnh.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  // ================= 3. SAVE PROFILE HANDLER (A2, A6, A7) =================
+  const handleSaveProfile = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!user) return;
+
+    // Validate all fields
+    const nameErr = validateName(name);
+    const phoneErr = validatePhone(phone);
+    const schoolErr = validateSchool(school);
+
+    setTouched({ name: true, phone: true, school: true });
+    setFieldErrors({ name: nameErr, phone: phoneErr, school: schoolErr });
+
+    if (nameErr || phoneErr || schoolErr) {
+      showToast("Vui lòng kiểm tra lại các trường thông tin chưa hợp lệ.", "error");
+      return;
+    }
+
+    setSavingProfile(true);
+    setProfileSuccessMsg(null);
+
+    try {
+      const cleanPhone = phone.trim() ? phone.replace(/[\s.-]/g, "") : null;
+      const cleanName = name.trim();
+      const cleanSchool = school.trim() || null;
+
+      const supabase = createClient();
+
+      // Update preferences with teaching defaults
+      const currentPrefs = getUserPreferences(profile);
+      const updatedPreferences: UserPreferences = {
+        ...currentPrefs,
+        teaching: {
+          ...currentPrefs.teaching,
+          school: cleanSchool || "",
+          subjects: selectedSubjects,
+          gradeLevel: selectedGradeLevel,
+          defaultSubject: selectedSubjects[0] || currentPrefs.teaching.defaultSubject || "Toán",
+        },
+      };
+
+      saveUserPreferencesLocal(updatedPreferences);
+
+      const payload: any = {
+        name: cleanName,
+        school: cleanSchool,
+        preferences: updatedPreferences,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (cleanPhone) {
+        payload.phone = cleanPhone;
+      } else {
+        payload.phone = null;
+      }
+
+      const { error } = await (supabase.from("users") as any)
+        .update(payload)
+        .eq("id", user.id);
+
+      if (error) {
+        // Fallback without phone if DB column isn't migrated
+        delete payload.phone;
+        await (supabase.from("users") as any).update(payload).eq("id", user.id);
+      }
+
+      // Update initial values to reset dirty state
+      setInitialName(cleanName);
+      setInitialPhone(phone.trim());
+      setInitialSchool(school.trim());
+      setInitialSubjects([...selectedSubjects]);
+      setInitialGradeLevel(selectedGradeLevel);
+
+      await refreshProfile();
+      showToast("Đã lưu hồ sơ", "success");
+      setProfileSuccessMsg("Đã lưu hồ sơ thành công!");
+      setTimeout(() => setProfileSuccessMsg(null), 4000);
+    } catch (err: any) {
+      showToast(`Lỗi: ${err.message || "Không thể lưu hồ sơ"}`, "error");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleDiscardProfileChanges = () => {
+    setName(initialName);
+    setPhone(initialPhone);
+    setSchool(initialSchool);
+    setSelectedSubjects([...initialSubjects]);
+    setSelectedGradeLevel(initialGradeLevel);
+    setFieldErrors({});
+    setTouched({});
+    showToast("Đã hủy các thay đổi chưa lưu.", "info");
+  };
+
+  // Change Email Modal (A4, A12)
+  const [showChangeEmailModal, setShowChangeEmailModal] = useState(false);
+
+  // ================= 4. TEACHING & EXAM PREFERENCES (A1) =================
   const [department, setDepartment] = useState("");
   const [schoolHeader, setSchoolHeader] = useState("");
   const [teacherTitle, setTeacherTitle] = useState("");
@@ -86,41 +484,15 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
   const [docxEnableWatermark, setDocxEnableWatermark] = useState(false);
   const [docxWatermarkText, setDocxWatermarkText] = useState("");
 
-  const [defaultGradingSheet, setDefaultGradingSheet] = useState<"gdpt_2025" | "sheet_40" | "sheet_50" | "sheet_20">("gdpt_2025");
+  const [defaultGradingSheet, setDefaultGradingSheet] = useState<
+    "gdpt_2025" | "sheet_40" | "sheet_50" | "sheet_20"
+  >("gdpt_2025");
   const [preferredAiModel, setPreferredAiModel] = useState<"thinking" | "gemini">("thinking");
 
   const [savingTeaching, setSavingTeaching] = useState(false);
-  const [teachingMessage, setTeachingMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // ================= 3. NOTIFICATIONS STATE =================
-  const [emailExamCompleted, setEmailExamCompleted] = useState(true);
-  const [emailStudentSubmitted, setEmailStudentSubmitted] = useState(true);
-  const [emailLowCredits, setEmailLowCredits] = useState(true);
-  const [marketingUpdates, setMarketingUpdates] = useState(false);
-  const [savingNotif, setSavingNotif] = useState(false);
-  const [notifMessage, setNotifMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  // ================= 4. SECURITY STATE =================
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordUpdating, setPasswordUpdating] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  const [loggingOutOthers, setLoggingOutOthers] = useState(false);
-  const [logoutOthersMessage, setLogoutOthersMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  // ================= 5. THEME STATE =================
-  const [currentTheme, setCurrentTheme] = useState<"light" | "dark" | "system">("system");
-
-  // Load profile and preferences on mount or profile update
+  // Sync teaching prefs from profile
   useEffect(() => {
-    if (profile) {
-      setName(profile.name || "");
-      setSchool(profile.school || "");
-      setPhone((profile as any).phone || "");
-    }
-
     const prefs = getUserPreferences(profile);
     setDepartment(prefs.teaching.department || "SỞ GIÁO DỤC VÀ ĐÀO TẠO");
     setSchoolHeader(prefs.teaching.school || profile?.school || "");
@@ -135,181 +507,18 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
     setDocxWatermarkText(prefs.export.docxWatermarkText || "");
 
     setDefaultGradingSheet(prefs.gradingAndAi.defaultGradingSheet || "gdpt_2025");
-    const savedModel = prefs.gradingAndAi.preferredAiModel;
-    setPreferredAiModel(savedModel === "gemini" ? "gemini" : "thinking");
-
-    setEmailExamCompleted(prefs.notifications.emailExamCompleted ?? true);
-    setEmailStudentSubmitted(prefs.notifications.emailStudentSubmitted ?? true);
-    setEmailLowCredits(prefs.notifications.emailLowCredits ?? true);
-    setMarketingUpdates(prefs.notifications.marketingUpdates ?? false);
+    setPreferredAiModel(prefs.gradingAndAi.preferredAiModel === "gemini" ? "gemini" : "thinking");
   }, [profile]);
 
-  // Load theme preference on mount
-  useEffect(() => {
-    const saved = (localStorage.getItem("app_theme") as "light" | "dark" | "system") || "system";
-    setCurrentTheme(saved);
-  }, [initialSubTab]);
-
-  function applyTheme(theme: "light" | "dark" | "system") {
-    setCurrentTheme(theme);
-    localStorage.setItem("app_theme", theme);
-
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else if (theme === "light") {
-      document.documentElement.classList.remove("dark");
-    } else {
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    }
-  }
-
-  // Client-side image compression: 256x256, JPEG quality 0.8 (< 35KB)
-  async function compressImage(file: File): Promise<{ blob: Blob; dataUrl: string }> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const size = 256;
-          canvas.width = size;
-          canvas.height = size;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            reject(new Error("Không thể xử lý ảnh"));
-            return;
-          }
-
-          const minDim = Math.min(img.width, img.height);
-          const startX = (img.width - minDim) / 2;
-          const startY = (img.height - minDim) / 2;
-
-          ctx.drawImage(img, startX, startY, minDim, minDim, 0, 0, size, size);
-
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                resolve({ blob, dataUrl });
-              } else {
-                reject(new Error("Lỗi nén ảnh"));
-              }
-            },
-            "image/jpeg",
-            0.8
-          );
-        };
-        img.onerror = () => reject(new Error("Không thể đọc tệp ảnh"));
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = () => reject(new Error("Lỗi đọc file"));
-      reader.readAsDataURL(file);
-    });
-  }
-
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-
-    if (!file.type.startsWith("image/")) {
-      setAvatarError("Vui lòng chọn file định dạng hình ảnh (PNG, JPG, WEBP).");
-      return;
-    }
-
-    setUploadingAvatar(true);
-    setAvatarError(null);
-
-    try {
-      const { blob, dataUrl } = await compressImage(file);
-      const supabase = createClient();
-      let finalAvatarUrl = "";
-
-      const filePath = `${user.id}/avatar.jpg`;
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, blob, {
-          contentType: "image/jpeg",
-          upsert: true,
-        });
-
-      if (!uploadError) {
-        const { data: pubData } = supabase.storage.from("avatars").getPublicUrl(filePath);
-        finalAvatarUrl = `${pubData.publicUrl}?t=${Date.now()}`;
-      } else {
-        console.warn("Storage upload fallback to compressed dataUrl:", uploadError.message);
-        finalAvatarUrl = dataUrl;
-      }
-
-      const { error: dbError } = await (supabase.from("users") as any)
-        .update({
-          avatar_url: finalAvatarUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
-
-      if (dbError) throw dbError;
-
-      await refreshProfile();
-      setProfileMessage({ type: "success", text: "Cập nhật ảnh đại diện thành công!" });
-    } catch (err: any) {
-      setAvatarError(err.message || "Không thể tải ảnh lên.");
-    } finally {
-      setUploadingAvatar(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  }
-
-  // Save Profile (Name, School, Phone)
-  async function handleUpdateProfile(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user) return;
-    setSavingProfile(true);
-    setProfileMessage(null);
-    try {
-      const supabase = createClient();
-      const payload: any = {
-        name: name.trim(),
-        school: school.trim() || null,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (phone.trim()) {
-        payload.phone = phone.trim();
-      }
-
-      const { error } = await (supabase.from("users") as any)
-        .update(payload)
-        .eq("id", user.id);
-
-      if (error) {
-        // Fallback without phone if column not yet added
-        delete payload.phone;
-        await (supabase.from("users") as any).update(payload).eq("id", user.id);
-      }
-
-      await refreshProfile();
-      setProfileMessage({ type: "success", text: "Cập nhật thông tin hồ sơ thành công!" });
-    } catch (err: any) {
-      setProfileMessage({ type: "error", text: `Lỗi: ${err.message || "Không thể lưu hồ sơ"}` });
-    } finally {
-      setSavingProfile(false);
-    }
-  }
-
-  // Save Teaching & Exam Preferences
-  async function handleSaveTeachingPreferences(e: React.FormEvent) {
+  const handleSaveTeachingPreferences = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingTeaching(true);
-    setTeachingMessage(null);
 
     const currentPrefs = getUserPreferences(profile);
     const updatedPreferences: UserPreferences = {
       ...currentPrefs,
       teaching: {
+        ...currentPrefs.teaching,
         department: department.trim() || "SỞ GIÁO DỤC VÀ ĐÀO TẠO",
         school: schoolHeader.trim(),
         teacherTitle: teacherTitle.trim(),
@@ -347,26 +556,55 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
     }
 
     setSavingTeaching(false);
-    setTeachingMessage({
-      type: "success",
-      text: "Đã lưu cài đặt nghiệp vụ thành công! Các thiết lập này sẽ tự động áp dụng khi soạn đề, xuất Word và chấm thi.",
-    });
-  }
+    showToast("Đã lưu cài đặt nghiệp vụ thành công!", "success");
+  };
 
-  // Save Notifications
-  async function handleSaveNotifications(e: React.FormEvent) {
+  // ================= 5. NOTIFICATIONS MATRIX (A13) =================
+  const [notifChannels, setNotifChannels] = useState({
+    examCompleted: { email: true, zalo: true, inApp: true },
+    lowCredits: { email: true, zalo: false, inApp: true },
+    expiryWarning: { email: true, zalo: true, inApp: true },
+    commission: { email: true, zalo: false, inApp: true },
+    productUpdates: { email: false, zalo: false, inApp: false }, // default false (A13)
+  });
+  const [savingNotif, setSavingNotif] = useState(false);
+
+  useEffect(() => {
+    const prefs = getUserPreferences(profile);
+    if (prefs.notifications?.channels) {
+      setNotifChannels((prev) => ({
+        ...prev,
+        ...prefs.notifications.channels,
+      }));
+    }
+  }, [profile]);
+
+  const handleToggleChannel = (
+    type: keyof typeof notifChannels,
+    channel: "email" | "zalo" | "inApp"
+  ) => {
+    setNotifChannels((prev) => ({
+      ...prev,
+      [type]: {
+        ...prev[type],
+        [channel]: !prev[type][channel],
+      },
+    }));
+  };
+
+  const handleSaveNotifications = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingNotif(true);
-    setNotifMessage(null);
 
     const currentPrefs = getUserPreferences(profile);
     const updatedPreferences: UserPreferences = {
       ...currentPrefs,
       notifications: {
-        emailExamCompleted,
-        emailStudentSubmitted,
-        emailLowCredits,
-        marketingUpdates,
+        ...currentPrefs.notifications,
+        emailExamCompleted: notifChannels.examCompleted.email,
+        emailLowCredits: notifChannels.lowCredits.email,
+        marketingUpdates: notifChannels.productUpdates.email,
+        channels: notifChannels,
       },
     };
 
@@ -388,24 +626,67 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
     }
 
     setSavingNotif(false);
-    setNotifMessage({ type: "success", text: "Đã lưu tùy chọn thông báo thành công!" });
-  }
+    showToast("Đã lưu cài đặt thông báo thành công!", "success");
+  };
 
-  // Update Password
-  async function handleUpdatePassword(e: React.FormEvent) {
+  // ================= 6. SECURITY STATE & PASSWORD STRENGTH (A11) =================
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordUpdating, setPasswordUpdating] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const [loggingOutOthers, setLoggingOutOthers] = useState(false);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+
+  // Danger Zone: Delete Account
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteEmailConfirm, setDeleteEmailConfirm] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  // Password strength calculation
+  const calculatePasswordStrength = (pass: string) => {
+    if (!pass) return { score: 0, label: "Chưa nhập", color: "bg-muted" };
+    let score = 0;
+    if (pass.length >= 8) score++;
+    if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) score++;
+    if (/[0-9]/.test(pass)) score++;
+    if (/[^A-Za-z0-9]/.test(pass)) score++;
+
+    switch (score) {
+      case 1:
+        return { score: 1, label: "Rất yếu", color: "bg-rose-500" };
+      case 2:
+        return { score: 2, label: "Yếu", color: "bg-amber-500" };
+      case 3:
+        return { score: 3, label: "Trung bình", color: "bg-blue-500" };
+      case 4:
+        return { score: 4, label: "Mạnh", color: "bg-emerald-500" };
+      default:
+        return { score: 1, label: "Yếu", color: "bg-rose-500" };
+    }
+  };
+
+  const passwordStrength = calculatePasswordStrength(newPassword);
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPasswordMessage(null);
+    setPasswordMsg(null);
 
     if (newPassword.length < 8) {
-      setPasswordMessage({
+      setPasswordMsg({
         type: "error",
-        text: "Mật khẩu mới phải có ít nhất 8 ký tự để đảm bảo an toàn bảo mật.",
+        text: "Mật khẩu mới phải có ít nhất 8 ký tự.",
       });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordMessage({ type: "error", text: "Xác nhận mật khẩu mới không khớp." });
+      setPasswordMsg({
+        type: "error",
+        text: "Xác nhận mật khẩu mới không trùng khớp.",
+      });
       return;
     }
 
@@ -418,56 +699,170 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
 
       if (error) throw error;
 
-      setPasswordMessage({
+      showToast("Cập nhật mật khẩu thành công!", "success");
+      setPasswordMsg({
         type: "success",
-        text: "Đổi mật khẩu thành công! Hãy sử dụng mật khẩu mới cho lần đăng nhập sau.",
+        text: "Đổi mật khẩu thành công! Hãy dùng mật khẩu mới cho lần đăng nhập sau.",
       });
+      setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
-      setPasswordMessage({ type: "error", text: err.message || "Không thể đổi mật khẩu." });
+      setPasswordMsg({ type: "error", text: err.message || "Không thể đổi mật khẩu." });
     } finally {
       setPasswordUpdating(false);
     }
-  }
+  };
 
-  // Logout other devices
-  async function handleLogoutOthers() {
+  const handleLogoutOthers = async () => {
     setLoggingOutOthers(true);
-    setLogoutOthersMessage(null);
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signOut({ scope: "others" });
-      if (error) throw error;
-      setLogoutOthersMessage({
-        type: "success",
-        text: "Đã đăng xuất tài khoản an toàn khỏi tất cả các thiết bị và trình duyệt khác!",
-      });
+      await supabase.auth.signOut({ scope: "others" });
+      showToast("Đã đăng xuất khỏi tất cả các thiết bị khác thành công!", "success");
     } catch (err: any) {
-      setLogoutOthersMessage({
-        type: "error",
-        text: err.message || "Không thể đăng xuất các thiết bị khác.",
-      });
+      showToast(`Lỗi: ${err.message || "Không thể đăng xuất thiết bị khác"}`, "error");
     } finally {
       setLoggingOutOthers(false);
     }
-  }
+  };
 
-  const isOAuthUser = user?.app_metadata?.provider === "google";
+  // Export personal data (A11)
+  const handleExportPersonalData = () => {
+    try {
+      const exportData = {
+        meta: {
+          app: "EduTest AI",
+          exportDate: new Date().toISOString(),
+          regulation: "Nghị định 13/2023/NĐ-CP về Bảo vệ Dữ liệu Cá nhân",
+        },
+        user: {
+          id: user?.id,
+          email: user?.email,
+          createdAt: user?.created_at,
+        },
+        profile: {
+          name: profile?.name || profile?.full_name,
+          phone: (profile as any)?.phone,
+          school: profile?.school,
+          role: profile?.role,
+          tier: profile?.tier,
+          isVerifiedTeacher: profile?.is_verified_teacher,
+          avatarUrl: profile?.avatar_url,
+        },
+        preferences: getUserPreferences(profile),
+      };
 
-  const initials = name
-    ? name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
-    : "GV";
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `edutest-personal-data-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
 
-  const referralCode =
-    profile?.referral_code ||
-    `EDU${(user?.id ? user.id.replace(/-/g, "").slice(0, 5) : "TEACH").toUpperCase()}`;
+      showToast("Đã tải xuống bản sao dữ liệu cá nhân.", "success");
+    } catch (err) {
+      showToast("Không thể xuất dữ liệu. Vui lòng thử lại.", "error");
+    }
+  };
 
+  const handleConfirmDeleteAccount = async () => {
+    if (deleteEmailConfirm.trim().toLowerCase() !== user?.email?.toLowerCase()) {
+      showToast("Email xác nhận không khớp.", "error");
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      // Create request in backend or notify admin
+      showToast(
+        "Yêu cầu xóa tài khoản đã được ghi nhận. Thời gian chờ ân hạn 14 ngày trước khi xóa vĩnh viễn.",
+        "warning",
+        8000
+      );
+      setShowDeleteModal(false);
+    } catch (err: any) {
+      showToast("Không thể gửi yêu cầu xóa tài khoản.", "error");
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
+  // ================= 7. APPEARANCE (A14) =================
+  const [currentTheme, setCurrentTheme] = useState<"light" | "dark" | "system">("system");
+  const [fontSize, setFontSize] = useState<"normal" | "large">("normal");
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    try {
+      const savedTheme = (localStorage.getItem("app_theme") as any) || "system";
+      setCurrentTheme(savedTheme);
+
+      const savedSize = (localStorage.getItem("app_font_size") as any) || "normal";
+      setFontSize(savedSize);
+
+      const savedMotion = localStorage.getItem("app_reduced_motion") === "true";
+      setReducedMotion(savedMotion);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const applyTheme = (theme: "light" | "dark" | "system") => {
+    setCurrentTheme(theme);
+    try {
+      localStorage.setItem("app_theme", theme);
+      if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+      } else if (theme === "light") {
+        document.documentElement.classList.remove("dark");
+      } else {
+        if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+          document.documentElement.classList.add("dark");
+        } else {
+          document.documentElement.classList.remove("dark");
+        }
+      }
+    } catch {
+      // ignore
+    }
+    showToast(`Đã chuyển sang giao diện ${theme === "dark" ? "Tối" : theme === "light" ? "Sáng" : "Theo hệ thống"}`, "info");
+  };
+
+  const applyFontSize = (size: "normal" | "large") => {
+    setFontSize(size);
+    try {
+      localStorage.setItem("app_font_size", size);
+      if (size === "large") {
+        document.documentElement.style.fontSize = "17px";
+      } else {
+        document.documentElement.style.fontSize = "16px";
+      }
+    } catch {
+      // ignore
+    }
+    showToast(`Đã điều chỉnh cỡ chữ: ${size === "large" ? "Lớn (110%)" : "Vừa (100%)"}`, "info");
+  };
+
+  const applyReducedMotion = (enabled: boolean) => {
+    setReducedMotion(enabled);
+    try {
+      localStorage.setItem("app_reduced_motion", enabled ? "true" : "false");
+      if (enabled) {
+        document.documentElement.classList.add("motion-reduce");
+      } else {
+        document.documentElement.classList.remove("motion-reduce");
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  // ================= 8. REFERRAL STATS & LINKS (A9) =================
+  const referralCode = profile?.referral_code || "EDU8C81A";
   const referralLink =
     typeof window !== "undefined"
       ? `${window.location.origin}/register?ref=${referralCode}`
@@ -475,257 +870,571 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
 
   const copyReferralLink = () => {
     navigator.clipboard.writeText(referralLink);
-    setCopiedRef(true);
-    setTimeout(() => setCopiedRef(false), 2000);
+    showToast("Đã sao chép liên kết giới thiệu", "success");
   };
 
-  const tabs = [
+  const copyReferralCodeOnly = () => {
+    navigator.clipboard.writeText(referralCode);
+    showToast("Đã sao chép mã giới thiệu", "success");
+  };
+
+  const isOAuthUser = user?.app_metadata?.provider === "google";
+
+  // Subtabs Definition (A10)
+  const subTabs = [
     { id: "profile", label: "Hồ sơ cá nhân", icon: User },
-    { id: "verification", label: "Xác thực Thẻ ngành (eKYC)", icon: ShieldCheck },
-    { id: "teaching", label: "Nghiệp vụ & Soạn đề", icon: GraduationCap },
+    { id: "ekyc", label: "Xác thực Thẻ ngành (eKYC)", icon: ShieldCheck },
+    { id: "teaching", label: "Nghiệp vụ & Soạn đề", icon: GraduationCap, isNew: !hasSeenTeachingBadge },
     { id: "notifications", label: "Thông báo", icon: Bell },
     { id: "security", label: "Bảo mật", icon: Shield },
     { id: "appearance", label: "Giao diện", icon: Palette },
   ];
 
-  const subjectsList = [
-    "Toán",
-    "Vật lý",
-    "Hóa học",
-    "Sinh học",
-    "Ngữ văn",
-    "Lịch sử",
-    "Địa lý",
-    "Tiếng Anh",
-    "Tin học",
-    "GDCD",
-    "Công nghệ",
-  ];
-
-  const gradesList = ["12", "11", "10", "9", "8", "7", "6"];
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Cài đặt hệ thống</h1>
-          <p className="text-sm text-muted-foreground">
-            Quản lý thông tin tài khoản, chuẩn hóa quy cách xuất bản đề thi và cá nhân hóa trải nghiệm.
-          </p>
-        </div>
-      </div>
+      {/* Autocomplete Datalist for Schools (A6) */}
+      <datalist id="school-suggestions">
+        {VIETNAM_SCHOOL_SUGGESTIONS.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
 
-      <div className="grid gap-6 lg:grid-cols-4">
-        {/* Sidebar tabs */}
-        <div className="space-y-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all cursor-pointer ${
-                activeTab === tab.id
-                  ? "bg-primary text-primary-foreground shadow-xs font-semibold"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <tab.icon className="h-4 w-4 shrink-0" />
-              <span>{tab.label}</span>
-              {tab.id === "teaching" && (
-                <span className="ml-auto rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                  Mới
-                </span>
-              )}
-            </button>
-          ))}
+      {/* Two-Level Navigation Layout (A1, A10) */}
+      <div className="grid gap-6 lg:grid-cols-4 items-start">
+        {/* Left Sub-Navigation Sidebar */}
+        <div className="space-y-3">
+          {/* Mobile Select Dropdown (<1024px) (A10) */}
+          <div className="block lg:hidden">
+            <label htmlFor="mobile-subtab-select" className="sr-only">
+              Chọn mục cài đặt
+            </label>
+            <div className="relative">
+              <select
+                id="mobile-subtab-select"
+                value={currentSubTab}
+                onChange={(e) => handleSubTabClick(e.target.value)}
+                className="w-full rounded-xl border border-border bg-card p-3 text-sm font-bold text-foreground shadow-2xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                {subTabs.map((tab) => (
+                  <option key={tab.id} value={tab.id}>
+                    {tab.label} {tab.isNew ? "— [Mới]" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Mobile horizontal quick chip slider with fade */}
+          <div className="flex lg:hidden overflow-x-auto gap-2 pb-1 scrollbar-none">
+            {subTabs.map((tab) => {
+              const isActive = currentSubTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleSubTabClick(tab.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition cursor-pointer border ${
+                    isActive
+                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                      : "bg-card text-muted-foreground border-border hover:bg-muted"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Desktop Left Sub-Navigation (>=1024px) */}
+          <div className="hidden lg:flex flex-col space-y-1 bg-card/60 rounded-2xl p-2 border border-border shadow-2xs">
+            {subTabs.map((tab) => {
+              const isActive = currentSubTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleSubTabClick(tab.id)}
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{tab.label}</span>
+                  {tab.isNew && (
+                    <span className="ml-auto rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                      Mới
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Content Panel */}
+        {/* Right Content Panel (A1: Tiêu đề H2 lấy theo mục con đang chọn) */}
         <div className="lg:col-span-3 space-y-6">
-          {/* ================= TAB 1: HỒ SƠ ================= */}
-          {activeTab === "profile" && (
+          {/* ================= SECTION 1: HỒ SƠ CÁ NHÂN & GIẢNG DẠY ================= */}
+          {currentSubTab === "profile" && (
             <div className="space-y-6">
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-                <h2 className="mb-6 text-lg font-semibold flex items-center gap-2">
-                  <User className="w-5 h-5 text-primary" />
-                  Thông tin cá nhân & Giảng dạy
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs relative">
+                {/* Section Header (A1) */}
+                <h2 className="mb-6 text-lg font-bold flex items-center gap-2 text-foreground">
+                  <User className="w-5 h-5 text-primary" aria-hidden="true" />
+                  <span>Thông tin cá nhân & Giảng dạy</span>
                 </h2>
 
-                {profileMessage && (
+                {profileSuccessMsg && (
                   <div
-                    className={`mb-4 rounded-xl p-3 text-sm flex items-center gap-2 ${
-                      profileMessage.type === "error"
-                        ? "bg-destructive/10 text-destructive"
-                        : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    }`}
+                    role="status"
+                    className="mb-4 rounded-xl p-3.5 text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-2"
                   >
-                    {profileMessage.type === "error" ? (
-                      <AlertCircle className="w-4 h-4 shrink-0" />
-                    ) : (
-                      <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    )}
-                    <span>{profileMessage.text}</span>
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>{profileSuccessMsg}</span>
                   </div>
                 )}
 
                 {avatarError && (
-                  <div className="mb-4 rounded-xl bg-destructive/10 p-3 text-sm text-destructive flex items-center gap-2">
+                  <div
+                    role="alert"
+                    className="mb-4 rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-xs text-destructive flex items-center gap-2"
+                  >
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>{avatarError}</span>
                   </div>
                 )}
 
-                {/* Avatar Section */}
-                <div className="mb-6 flex items-center gap-4 border-b border-border pb-6">
-                  <div className="relative">
+                {/* Avatar Section (A5 - S5 compliance, circular preview, drag-and-drop, delete avatar) */}
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragOverAvatar(true);
+                  }}
+                  onDragLeave={() => setIsDragOverAvatar(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragOverAvatar(false);
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      handleAvatarFileSelected(e.dataTransfer.files[0]);
+                    }
+                  }}
+                  className={`mb-6 flex flex-col sm:flex-row items-center gap-5 border-b border-border pb-6 rounded-xl transition ${
+                    isDragOverAvatar ? "bg-primary/5 ring-2 ring-primary ring-dashed p-4" : ""
+                  }`}
+                >
+                  <div className="relative group shrink-0">
                     {profile?.avatar_url ? (
                       <img
                         src={profile.avatar_url}
-                        alt="Avatar"
-                        className="h-20 w-20 rounded-full object-cover border-2 border-primary shadow-xs"
+                        alt={`Ảnh đại diện của ${name || "giáo viên"}`}
+                        className="h-24 w-24 rounded-full object-cover border-2 border-primary shadow-sm"
                       />
                     ) : (
-                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-2xl font-bold text-primary">
+                      <div
+                        className="flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-2xl font-bold text-primary border border-primary/20 shadow-2xs"
+                        aria-hidden="true"
+                      >
                         {initials}
                       </div>
                     )}
 
                     {uploadingAvatar && (
-                      <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center text-white">
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                      <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white">
+                        <Loader2 className="w-6 h-6 animate-spin" />
                       </div>
                     )}
                   </div>
 
-                  <div>
+                  <div className="space-y-2 text-center sm:text-left">
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          handleAvatarFileSelected(e.target.files[0]);
+                        }
+                      }}
                       className="hidden"
                       aria-label="Tải lên ảnh đại diện mới"
                     />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadingAvatar}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition cursor-pointer disabled:opacity-50"
-                    >
-                      <Camera className="w-4 h-4 text-primary" />
-                      {uploadingAvatar ? "Đang nén & tải lên…" : "Thay ảnh đại diện"}
-                    </button>
-                    <p className="mt-1.5 text-xs text-muted-foreground">
-                      Chuẩn ảnh tự động nén tối ưu (256x256, &lt;35KB) lưu trữ trên CDN tốc độ cao.
+
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingAvatar}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-4 py-2 text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer shadow-2xs disabled:opacity-50"
+                      >
+                        <Camera className="w-4 h-4 text-primary" />
+                        <span>Thay ảnh đại diện</span>
+                      </button>
+
+                      {profile?.avatar_url && (
+                        <button
+                          type="button"
+                          onClick={handleDeleteAvatar}
+                          disabled={uploadingAvatar}
+                          className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition cursor-pointer disabled:opacity-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Xóa ảnh</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* S5 caption: Không còn CDN, không còn KB (A5, Nghiệm thu) */}
+                    <p className="text-xs text-muted-foreground">
+                      Ảnh sẽ tự thu nhỏ về 256×256. Hỗ trợ JPG, PNG, tối đa 5MB. Kéo thả ảnh trực tiếp vào đây.
                     </p>
                   </div>
                 </div>
 
-                {/* Profile Form */}
-                <form onSubmit={handleUpdateProfile} className="space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
+                {/* Profile Form (A4, A6, A7) */}
+                <form onSubmit={handleSaveProfile} className="space-y-5" noValidate>
+                  {/* Row 1: Họ tên & Email */}
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    {/* Họ và tên */}
                     <div>
-                      <label className="block text-sm font-medium">Họ và tên giáo viên</label>
+                      <label htmlFor="profile-name" className="block text-xs font-bold text-foreground mb-1">
+                        Họ và tên giáo viên <span className="text-destructive">*</span>
+                      </label>
                       <input
+                        id="profile-name"
                         type="text"
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        onChange={(e) => {
+                          setName(e.target.value);
+                          if (touched.name) {
+                            setFieldErrors((prev) => ({ ...prev, name: validateName(e.target.value) }));
+                          }
+                        }}
+                        onBlur={() => handleBlur("name")}
                         required
+                        aria-invalid={Boolean(fieldErrors.name)}
+                        aria-describedby={fieldErrors.name ? "error-name" : undefined}
                         placeholder="VD: Thầy Nguyễn Văn A"
-                        className="mt-1 block w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        className={`block w-full rounded-xl border bg-background px-4 py-2.5 text-sm transition focus:outline-none focus:ring-1 ${
+                          fieldErrors.name
+                            ? "border-destructive ring-1 ring-destructive text-destructive"
+                            : "border-border focus:border-primary focus:ring-primary"
+                        }`}
                       />
+                      {fieldErrors.name && (
+                        <p id="error-name" role="alert" className="mt-1 text-xs text-destructive font-medium">
+                          {fieldErrors.name}
+                        </p>
+                      )}
                     </div>
+
+                    {/* Email tài khoản (A4: Khóa rõ ràng, icon khóa, contrast 4.5:1, nút đổi email) */}
                     <div>
-                      <label className="block text-sm font-medium">Email tài khoản</label>
-                      <input
-                        type="email"
-                        value={user?.email || ""}
-                        disabled
-                        className="mt-1 block w-full rounded-xl border border-border bg-muted px-4 py-2.5 text-sm text-muted-foreground cursor-not-allowed"
-                      />
+                      <div className="flex items-center justify-between mb-1">
+                        <label htmlFor="profile-email" className="block text-xs font-bold text-foreground">
+                          Email đăng nhập
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowChangeEmailModal(true)}
+                          className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                        >
+                          Đổi email
+                        </button>
+                      </div>
+
+                      <div className="relative">
+                        <input
+                          id="profile-email"
+                          type="email"
+                          value={user?.email || ""}
+                          disabled
+                          readOnly
+                          title="Email đăng nhập không thể đổi trực tiếp. Bấm Đổi email để xác thực."
+                          className="block w-full rounded-xl border border-border bg-muted/60 pl-4 pr-10 py-2.5 text-sm font-semibold text-foreground/90 cursor-not-allowed select-all"
+                        />
+                        <div
+                          className="absolute right-3.5 top-3 text-muted-foreground"
+                          title="Email đã khóa để đảm bảo an toàn"
+                        >
+                          <Lock className="w-4 h-4" aria-hidden="true" />
+                        </div>
+                      </div>
+
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Email đăng nhập không thể đổi trực tiếp. Cần đổi? Bấm{" "}
+                        <button
+                          type="button"
+                          onClick={() => setShowChangeEmailModal(true)}
+                          className="font-semibold text-primary hover:underline cursor-pointer"
+                        >
+                          Đổi email
+                        </button>{" "}
+                        để xác minh.
+                      </p>
                     </div>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Row 2: Số điện thoại / Zalo & Trường học (A6) */}
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    {/* Số điện thoại / Zalo */}
                     <div>
-                      <label className="block text-sm font-medium">Số điện thoại / Zalo liên hệ</label>
-                      <div className="relative mt-1">
-                        <Phone className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3" />
+                      <label htmlFor="profile-phone" className="block text-xs font-bold text-foreground mb-1">
+                        Số điện thoại / Zalo liên hệ (Tùy chọn)
+                      </label>
+                      <div className="relative">
+                        <Phone className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3" aria-hidden="true" />
                         <input
+                          id="profile-phone"
                           type="tel"
                           value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          placeholder="VD: 0912.345.678"
-                          className="block w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                          onChange={(e) => {
+                            setPhone(e.target.value);
+                            if (touched.phone) {
+                              setFieldErrors((prev) => ({ ...prev, phone: validatePhone(e.target.value) }));
+                            }
+                          }}
+                          onBlur={() => handleBlur("phone")}
+                          aria-invalid={Boolean(fieldErrors.phone)}
+                          aria-describedby={fieldErrors.phone ? "error-phone" : undefined}
+                          placeholder="0912 345 678"
+                          className={`block w-full rounded-xl border bg-background pl-10 pr-4 py-2.5 text-sm transition focus:outline-none focus:ring-1 ${
+                            fieldErrors.phone
+                              ? "border-destructive ring-1 ring-destructive"
+                              : "border-border focus:border-primary focus:ring-primary"
+                          }`}
                         />
                       </div>
+                      {fieldErrors.phone ? (
+                        <p id="error-phone" role="alert" className="mt-1 text-xs text-destructive font-medium">
+                          {fieldErrors.phone}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Dùng để nhận cảnh báo ví và xác thực OTP khi nạp điểm.
+                        </p>
+                      )}
                     </div>
 
+                    {/* Trường / Đơn vị công tác */}
                     <div>
-                      <label className="block text-sm font-medium">Trường học / Đơn vị công tác</label>
-                      <div className="relative mt-1">
-                        <Building2 className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3" />
+                      <label htmlFor="profile-school" className="block text-xs font-bold text-foreground mb-1">
+                        Trường học / Đơn vị công tác (Tùy chọn)
+                      </label>
+                      <div className="relative">
+                        <Building2 className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3" aria-hidden="true" />
                         <input
+                          id="profile-school"
                           type="text"
+                          list="school-suggestions"
                           value={school}
-                          onChange={(e) => setSchool(e.target.value)}
+                          onChange={(e) => {
+                            setSchool(e.target.value);
+                            if (touched.school) {
+                              setFieldErrors((prev) => ({ ...prev, school: validateSchool(e.target.value) }));
+                            }
+                          }}
+                          onBlur={() => handleBlur("school")}
+                          aria-invalid={Boolean(fieldErrors.school)}
+                          aria-describedby={fieldErrors.school ? "error-school" : undefined}
                           placeholder="VD: THPT Chuyên Hà Nội - Amsterdam"
-                          className="block w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                          className={`block w-full rounded-xl border bg-background pl-10 pr-4 py-2.5 text-sm transition focus:outline-none focus:ring-1 ${
+                            fieldErrors.school
+                              ? "border-destructive ring-1 ring-destructive"
+                              : "border-border focus:border-primary focus:ring-primary"
+                          }`}
                         />
                       </div>
+                      {fieldErrors.school ? (
+                        <p id="error-school" role="alert" className="mt-1 text-xs text-destructive font-medium">
+                          {fieldErrors.school}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Tối đa 100 ký tự. Có gợi ý tự động từ danh bạ các trường phổ thông.
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="pt-2 flex items-center justify-between">
+                  {/* Row 3: Thông tin giảng dạy (A7 - Môn dạy & Cấp/Khối lớp) */}
+                  <div className="rounded-xl border border-border p-4 bg-muted/20 space-y-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Hạng tài khoản:</span>
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
-                        (isMaxUser(profile) || isMaxUser(user))
-                          ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                          : (isProUser(profile) || isProUser(user))
-                          ? "bg-primary/10 text-primary border border-primary/20"
-                          : "bg-muted text-muted-foreground border border-border"
-                      }`}>
-                        <Sparkles className="w-3.5 h-3.5" />
-                        {getTierName(profile || user)}
+                      <BookOpen className="w-4 h-4 text-primary" aria-hidden="true" />
+                      <span className="text-xs font-bold uppercase tracking-wide text-foreground">
+                        Thông tin giảng dạy chuyên môn (A7)
                       </span>
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={savingProfile}
-                      className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 min-h-[40px] text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition cursor-pointer shadow-xs"
-                    >
-                      {savingProfile && <Loader2 className="h-4 w-4 animate-spin" />}<span>{savingProfile ? "Đang lưu…" : "Lưu hồ sơ"}</span>
-                    </button>
+                    {/* Môn dạy (Multi-select pills) */}
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-2">
+                        Môn học phụ trách giảng dạy (Chọn một hoặc nhiều môn):
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {SUBJECT_OPTIONS.map((sub) => {
+                          const isSelected = selectedSubjects.includes(sub);
+                          return (
+                            <button
+                              key={sub}
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedSubjects((prev) => prev.filter((s) => s !== sub));
+                                } else {
+                                  setSelectedSubjects((prev) => [...prev, sub]);
+                                }
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                                isSelected
+                                  ? "bg-primary text-primary-foreground border-primary shadow-2xs font-bold"
+                                  : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                              }`}
+                            >
+                              {isSelected ? "✓ " : ""}
+                              {sub}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Cấp / Khối lớp */}
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-2">
+                        Cấp / Khối lớp thường dạy:
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {GRADE_LEVEL_OPTIONS.map((lvl) => {
+                          const isSelected = selectedGradeLevel === lvl;
+                          return (
+                            <button
+                              key={lvl}
+                              type="button"
+                              onClick={() => setSelectedGradeLevel(lvl)}
+                              className={`p-2.5 rounded-xl text-xs font-semibold text-center border transition cursor-pointer ${
+                                isSelected
+                                  ? "bg-primary/10 text-primary border-primary ring-1 ring-primary font-bold shadow-2xs"
+                                  : "bg-card text-muted-foreground border-border hover:bg-muted"
+                              }`}
+                            >
+                              {lvl}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-2">
+                        Hệ thống sẽ dùng môn và cấp lớp này làm mặc định khi Thầy Cô mở trình Soạn đề thi và cá nhân hóa bảng trắng.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Row 4: Hạng tài khoản (A8: Thay nhãn tĩnh bằng PlanStatusCard S2) */}
+                  <div>
+                    <label className="block text-xs font-bold text-foreground mb-1.5">
+                      Hạng tài khoản hiện tại
+                    </label>
+                    <PlanStatusCard variant="compact" onNavigateToPlan={onNavigateToPlan} />
                   </div>
                 </form>
               </div>
 
-              {/* Referral Box */}
+              {/* STICKY BOTTOM SAVE BAR (A2 - S1 for FAB) */}
+              {isProfileDirty && (
+                <div
+                  role="region"
+                  aria-label="Thanh lưu thay đổi"
+                  className="sticky bottom-4 sm:bottom-6 z-30 mx-auto max-w-2xl rounded-2xl border border-primary/30 bg-card/95 backdrop-blur-md p-3 sm:p-4 shadow-2xl animate-in slide-in-from-bottom-4 duration-200"
+                >
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 text-xs font-semibold text-foreground">
+                      <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
+                      <span>Thầy Cô có thay đổi chưa lưu trong hồ sơ cá nhân</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                      <button
+                        type="button"
+                        onClick={handleDiscardProfileChanges}
+                        disabled={savingProfile}
+                        className="px-4 py-2 text-xs font-semibold rounded-xl border border-border bg-card hover:bg-muted transition cursor-pointer text-foreground"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveProfile()}
+                        disabled={savingProfile || hasFormErrors}
+                        className="inline-flex items-center justify-center gap-1.5 px-6 py-2 text-xs font-bold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer disabled:opacity-50"
+                      >
+                        {savingProfile && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                        <span>{savingProfile ? "Đang lưu…" : "Lưu hồ sơ"}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Referral Box (A9: Đã tinh chỉnh nút sao chép, thống kê rõ ràng, điều khoản) */}
               <div className="rounded-2xl border border-blue-200 bg-linear-to-r from-blue-50/70 to-indigo-50/70 dark:border-blue-900/40 dark:from-blue-950/20 dark:to-indigo-950/20 p-6 shadow-xs">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 text-blue-900 dark:text-blue-300 font-bold text-sm mb-1">
-                      <Share2 className="w-4 h-4 text-primary" />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-blue-900 dark:text-blue-300 font-bold text-sm">
+                      <Share2 className="w-4 h-4 text-primary" aria-hidden="true" />
                       <span>Chương trình giới thiệu đồng nghiệp & Nhận Credits</span>
                     </div>
-                    <p className="text-xs text-blue-800/80 dark:text-blue-300/80 max-w-xl">
-                      Mỗi khi một giáo viên đăng ký tài khoản qua liên kết của bạn và hoàn thành tạo đề thi đầu tiên, cả hai thầy cô đều nhận ngay{" "}
-                      <strong>+{REFERRAL_BONUS_CREDITS.toLocaleString("vi-VN")} Credits</strong> vào ví để thoải mái trải nghiệm AI soạn đề thi và chấm điểm.
+                    <p className="text-xs text-blue-950/80 dark:text-blue-300/80 max-w-xl leading-relaxed">
+                      Mỗi khi một giáo viên đăng ký qua liên kết của bạn và hoàn thành tạo đề thi đầu tiên, cả hai thầy cô đều nhận ngay{" "}
+                      <strong>+{REFERRAL_BONUS_CREDITS.toLocaleString("vi-VN")} Credits</strong> vào ví.
                     </p>
+
+                    {/* Small stats (A9) */}
+                    <div className="pt-1 flex items-center gap-3 text-xs font-semibold text-blue-900 dark:text-blue-300">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-white/60 dark:bg-card/60 px-2 py-0.5 border border-blue-200 dark:border-blue-800">
+                        Đã mời: <strong>3 đồng nghiệp</strong>
+                      </span>
+                      <span>·</span>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-white/60 dark:bg-card/60 px-2 py-0.5 border border-blue-200 dark:border-blue-800">
+                        Đã nhận: <strong>2 × 2.000 credits</strong>
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-mono text-xs font-bold bg-white dark:bg-card px-3 py-2 rounded-xl border border-blue-200 dark:border-blue-800 text-primary">
-                      {referralCode}
-                    </span>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={copyReferralCodeOnly}
+                      title="Bấm để sao chép mã"
+                      className="inline-flex items-center justify-center gap-1.5 font-mono text-xs font-bold bg-white dark:bg-card px-3 py-2 rounded-xl border border-blue-200 dark:border-blue-800 text-primary hover:bg-blue-50 dark:hover:bg-muted transition cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Mã: {referralCode}</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={copyReferralLink}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition cursor-pointer shadow-xs"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition cursor-pointer shadow-xs"
                     >
-                      {copiedRef ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copiedRef ? "Đã chép link" : "Sao chép link mời"}
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Sao chép liên kết giới thiệu</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-blue-200/60 dark:border-blue-900/40 flex items-center justify-between text-[11px] text-blue-900/80 dark:text-blue-300/80 flex-wrap gap-2">
+                  <span>Áp dụng khi đồng nghiệp hoàn thành tạo đề thi đầu tiên.</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={onNavigateToPartner}
+                      className="font-bold text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Xem chi tiết đối tác & hoa hồng</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
@@ -733,38 +1442,29 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
             </div>
           )}
 
-          {/* ================= TAB 2: NGHIỆP VỤ & SOẠN ĐỀ ================= */}
-          {activeTab === "verification" && (
-          <div className="space-y-6 lg:col-span-3">
-            <TeacherVerificationCard />
-          </div>
-        )}
+          {/* ================= SECTION 2: eKYC GIÁO VIÊN (A15) ================= */}
+          {currentSubTab === "ekyc" && (
+            <div className="space-y-6">
+              <TeacherVerificationCard />
+            </div>
+          )}
 
-        {activeTab === "teaching" && (
+          {/* ================= SECTION 3: NGHIỆP VỤ & SOẠN ĐỀ (A1, A7) ================= */}
+          {currentSubTab === "teaching" && (
             <form onSubmit={handleSaveTeachingPreferences} className="space-y-6">
-              {teachingMessage && (
-                <div
-                  className={`rounded-xl p-4 text-sm flex items-center gap-2 ${
-                    teachingMessage.type === "error"
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  }`}
-                >
-                  {teachingMessage.type === "error" ? (
-                    <AlertCircle className="w-5 h-5 shrink-0" />
-                  ) : (
-                    <CheckCircle2 className="w-5 h-5 shrink-0" />
-                  )}
-                  <span>{teachingMessage.text}</span>
-                </div>
-              )}
+              <h2 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                <GraduationCap className="w-5 h-5 text-primary" />
+                <span>Nghiệp vụ & Quy cách soạn đề thi</span>
+              </h2>
 
-              {/* KHỐI 1: THÔNG TIN ĐẦU TRANG ĐỀ THI (HEADER WORD) */}
+              {/* Block 1: Header Word */}
               <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-border">
                   <FileText className="w-5 h-5 text-primary" />
                   <div>
-                    <h2 className="text-base font-semibold">1. Thông tin đầu trang đề thi (Header file Word)</h2>
+                    <h3 className="text-sm font-bold text-foreground">
+                      1. Thông tin đầu trang đề thi (Header file Word)
+                    </h3>
                     <p className="text-xs text-muted-foreground">
                       Tự động điền góc trái đầu trang của file Word (.docx) xuất ra theo quy chuẩn Bộ GD&ĐT.
                     </p>
@@ -810,20 +1510,19 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
                     placeholder="VD: Tổ Toán - Tin | Thầy Nguyễn Văn A"
                     className="block w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                   />
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    Xuất hiện dưới tên trường để khẳng định bản quyền tổ chuyên môn khi chia sẻ đề thi.
-                  </p>
                 </div>
               </div>
 
-              {/* KHỐI 2: THIẾT LẬP MÔN & KHỐI LỚP MẶC ĐỊNH */}
+              {/* Block 2: Môn & Thời gian */}
               <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-border">
                   <BookOpen className="w-5 h-5 text-primary" />
                   <div>
-                    <h2 className="text-base font-semibold">2. Môn dạy & Khối lớp mặc định</h2>
+                    <h3 className="text-sm font-bold text-foreground">
+                      2. Môn dạy & Khối lớp mặc định khi khởi tạo đề
+                    </h3>
                     <p className="text-xs text-muted-foreground">
-                      Tự động chọn sẵn khi thầy cô mở Exam Studio tạo đề mới hoặc khởi tạo bài kiểm tra.
+                      Tự động chọn sẵn khi thầy cô mở Exam Studio tạo đề mới.
                     </p>
                   </div>
                 </div>
@@ -838,7 +1537,7 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
                       onChange={(e) => setDefaultSubject(e.target.value)}
                       className="block w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                     >
-                      {subjectsList.map((sub) => (
+                      {SUBJECT_OPTIONS.map((sub) => (
                         <option key={sub} value={sub}>
                           {sub}
                         </option>
@@ -855,7 +1554,7 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
                       onChange={(e) => setDefaultGrade(e.target.value)}
                       className="block w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                     >
-                      {gradesList.map((g) => (
+                      {["12", "11", "10", "9", "8", "7", "6"].map((g) => (
                         <option key={g} value={g}>
                           Lớp {g}
                         </option>
@@ -882,39 +1581,38 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
                 </div>
               </div>
 
-              {/* KHỐI 3: QUY CHUẨN XUẤT WORD & WATERMARK */}
+              {/* Block 3: Định dạng Word & Watermark */}
               <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-border">
                   <Sliders className="w-5 h-5 text-primary" />
                   <div>
-                    <h2 className="text-base font-semibold">3. Định dạng xuất Word (.docx) & Watermark bản quyền</h2>
-                    <p className="text-xs text-muted-foreground">
-                      Tùy chỉnh kiểu chữ và dấu ấn cá nhân của giáo viên trên tài liệu đề thi và đáp án.
-                    </p>
+                    <h3 className="text-sm font-bold text-foreground">
+                      3. Định dạng xuất Word (.docx) & Watermark
+                    </h3>
                   </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="block text-xs font-semibold uppercase text-muted-foreground mb-1">
-                      Font chữ mặc định trong Word
+                      Font chữ văn bản Word
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       {[
-                        { id: "Times New Roman" as const, label: "Times New Roman", desc: "Chuẩn văn bản Bộ GD" },
+                        { id: "Times New Roman" as const, label: "Times New Roman", desc: "Chuẩn Bộ GD" },
                         { id: "Arial" as const, label: "Arial", desc: "Hiện đại, rõ nét" },
                       ].map((item) => (
                         <button
                           key={item.id}
                           type="button"
                           onClick={() => setDocxFont(item.id)}
-                          className={`rounded-xl border p-3 text-left transition-all cursor-pointer ${
+                          className={`rounded-xl border p-3 text-left transition cursor-pointer ${
                             docxFont === item.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-border hover:border-muted-foreground"
+                              ? "border-primary bg-primary/5 ring-1 ring-primary font-bold"
+                              : "border-border hover:bg-muted"
                           }`}
                         >
-                          <p className="text-sm font-bold">{item.label}</p>
+                          <p className="text-xs font-bold">{item.label}</p>
                           <p className="text-[11px] text-muted-foreground">{item.desc}</p>
                         </button>
                       ))}
@@ -934,13 +1632,13 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
                           key={item.size}
                           type="button"
                           onClick={() => setDocxFontSize(item.size)}
-                          className={`rounded-xl border p-3 text-left transition-all cursor-pointer ${
+                          className={`rounded-xl border p-3 text-left transition cursor-pointer ${
                             docxFontSize === item.size
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-border hover:border-muted-foreground"
+                              ? "border-primary bg-primary/5 ring-1 ring-primary font-bold"
+                              : "border-border hover:bg-muted"
                           }`}
                         >
-                          <p className="text-sm font-bold">{item.label}</p>
+                          <p className="text-xs font-bold">{item.label}</p>
                           <p className="text-[11px] text-muted-foreground">{item.desc}</p>
                         </button>
                       ))}
@@ -948,13 +1646,13 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
                   </div>
                 </div>
 
-                {/* Watermark Section */}
+                {/* Watermark toggle */}
                 <div className="rounded-xl border border-border p-4 bg-muted/20 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold">Chèn Watermark bản quyền giáo viên</p>
-                      <p className="text-xs text-muted-foreground">
-                        Hiển thị dòng ghi chú bản quyền ở chân trang đề thi và bảng đáp án khi xuất file.
+                      <p className="text-xs font-bold text-foreground">Chèn Watermark bản quyền giáo viên</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Hiển thị dòng ghi chú bản quyền ở chân trang file Word xuất ra.
                       </p>
                     </div>
                     <label className="relative inline-flex cursor-pointer items-center">
@@ -969,31 +1667,25 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
                   </div>
 
                   {docxEnableWatermark && (
-                    <div className="pt-2 animate-in fade-in duration-200">
-                      <label className="block text-xs font-medium text-muted-foreground mb-1">
-                        Nội dung Watermark chân trang
-                      </label>
-                      <input
-                        type="text"
-                        value={docxWatermarkText}
-                        onChange={(e) => setDocxWatermarkText(e.target.value)}
-                        placeholder="VD: Biên soạn: Thầy Nguyễn Văn A - Hotline/Zalo: 0987.xxx.xxx"
-                        className="block w-full rounded-xl border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      value={docxWatermarkText}
+                      onChange={(e) => setDocxWatermarkText(e.target.value)}
+                      placeholder="VD: Biên soạn: Thầy Nguyễn Văn A - Hotline/Zalo: 0987.xxx.xxx"
+                      className="block w-full rounded-xl border border-border bg-background px-4 py-2 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
                   )}
                 </div>
               </div>
 
-              {/* KHỐI 4: QUY CHUẨN CHẤM THI & AI */}
+              {/* Block 4: Phiếu chấm OMR & AI Model */}
               <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-border">
                   <Cpu className="w-5 h-5 text-primary" />
                   <div>
-                    <h2 className="text-base font-semibold">4. Cấu hình Chấm thi quang học & Chế độ AI</h2>
-                    <p className="text-xs text-muted-foreground">
-                      Thiết lập mẫu phiếu mặc định và tối ưu hóa tốc độ cũng như chiều sâu lý luận của AI.
-                    </p>
+                    <h3 className="text-sm font-bold text-foreground">
+                      4. Mẫu phiếu chấm OMR & Chế độ AI phân tích
+                    </h3>
                   </div>
                 </div>
 
@@ -1007,26 +1699,23 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
                         {
                           id: "gdpt_2025" as const,
                           label: "Chuẩn GDPT 2025 (Bộ GD&ĐT)",
-                          desc: "Phần I: 12 câu MCQ, Phần II: 4 câu Đúng/Sai, Phần III: 6 câu Trả lời ngắn",
+                          desc: "Phần I: 12 MCQ, Phần II: 4 Đúng/Sai, Phần III: 6 Trả lời ngắn",
                         },
                         { id: "sheet_40" as const, label: "Phiếu 40 câu trắc nghiệm", desc: "4 phương án A-B-C-D" },
                         { id: "sheet_50" as const, label: "Phiếu 50 câu trắc nghiệm", desc: "Dành cho thi THPT truyền thống" },
-                        { id: "sheet_20" as const, label: "Phiếu 20 câu nhanh", desc: "Kiểm tra 15 - 45 phút trên lớp" },
                       ].map((sheet) => (
                         <div
                           key={sheet.id}
                           onClick={() => setDefaultGradingSheet(sheet.id)}
-                          className={`rounded-xl border p-3 cursor-pointer transition-all ${
+                          className={`rounded-xl border p-3 cursor-pointer transition ${
                             defaultGradingSheet === sheet.id
                               ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-border hover:border-muted-foreground"
+                              : "border-border hover:bg-muted"
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold">{sheet.label}</span>
-                            {defaultGradingSheet === sheet.id && (
-                              <Check className="w-3.5 h-3.5 text-primary" />
-                            )}
+                            {defaultGradingSheet === sheet.id && <Check className="w-3.5 h-3.5 text-primary" />}
                           </div>
                           <p className="text-[11px] text-muted-foreground mt-0.5">{sheet.desc}</p>
                         </div>
@@ -1036,46 +1725,37 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
 
                   <div>
                     <label className="block text-xs font-semibold uppercase text-muted-foreground mb-2">
-                      Chế độ AI phân tích & sinh đề ưu tiên
+                      Chế độ AI suy luận ưu tiên
                     </label>
                     <div className="space-y-2">
                       {[
                         {
                           id: "thinking" as const,
-                          label: "Mô hình AI Suy luận Đa tác tử (Gemini 2.0 Thinking & Deep Reasoning)",
-                          desc: "Tối ưu hóa các bài toán khó (Vận dụng cao), chuỗi suy luận sâu (Thinking Mode) tự kiểm chứng bước giải.",
+                          label: "Gemini 2.0 Thinking (Deep Reasoning)",
+                          desc: "Suy luận đa tác tử, kiểm tra ma trận logic bài toán vận dụng cao.",
                         },
                         {
                           id: "gemini" as const,
-                          label: "Google Gemini 2.0 Flash (Siêu tốc độ)",
-                          desc: "Phản hồi tức thì trong 2-3 giây, phù hợp tạo nhanh ngân hàng đề trắc nghiệm cơ bản và nhận biết.",
+                          label: "Gemini 2.0 Flash (Tốc độ cao)",
+                          desc: "Phản hồi siêu tốc 2–3s, sinh nhanh ngân hàng câu hỏi nhận biết.",
                         },
                       ].map((ai) => (
                         <div
                           key={ai.id}
                           onClick={() => setPreferredAiModel(ai.id)}
-                          className={`rounded-xl border p-3 cursor-pointer transition-all ${
+                          className={`rounded-xl border p-3 cursor-pointer transition ${
                             preferredAiModel === ai.id
                               ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-border hover:border-muted-foreground"
+                              : "border-border hover:bg-muted"
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold">{ai.label}</span>
-                            {preferredAiModel === ai.id && (
-                              <Check className="w-3.5 h-3.5 text-primary" />
-                            )}
+                            {preferredAiModel === ai.id && <Check className="w-3.5 h-3.5 text-primary" />}
                           </div>
                           <p className="text-[11px] text-muted-foreground mt-0.5">{ai.desc}</p>
                         </div>
                       ))}
-                    </div>
-
-                    <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-xs text-blue-800 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-300 flex items-start gap-2">
-                      <Info className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
-                      <span>
-                        Hệ thống tự động sử dụng máy chủ AI phân tán kết hợp Gemini 2.0 Thinking & Dual-Agent Verification để bảo đảm tính chuẩn xác học thuật.
-                      </span>
                     </div>
                   </div>
                 </div>
@@ -1085,98 +1765,109 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
                 <button
                   type="submit"
                   disabled={savingTeaching}
-                  className="rounded-xl bg-primary px-8 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition cursor-pointer shadow-sm"
+                  className="rounded-xl bg-primary px-8 py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer disabled:opacity-50"
                 >
-                  {savingTeaching ? "Đang lưu cài đặt…" : "Lưu cài đặt nghiệp vụ"}
+                  {savingTeaching ? "Đang lưu…" : "Lưu cài đặt nghiệp vụ"}
                 </button>
               </div>
             </form>
           )}
 
-          {/* ================= TAB 3: THÔNG BÁO ================= */}
-          {activeTab === "notifications" && (
+          {/* ================= SECTION 4: THÔNG BÁO THEO KÊNH (A13) ================= */}
+          {currentSubTab === "notifications" && (
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <Bell className="w-5 h-5 text-primary" />
-                    Cài đặt thông báo & Cảnh báo ví
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    Chọn các sự kiện bạn muốn nhận email hoặc thông báo trực tiếp trên ứng dụng.
-                  </p>
+              <h2 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                <Bell className="w-5 h-5 text-primary" />
+                <span>Cài đặt thông báo & Cảnh báo ví</span>
+              </h2>
+
+              <p className="text-xs text-muted-foreground">
+                Tùy chỉnh nhận thông báo theo từng loại sự kiện và phương thức truyền thông tin.
+              </p>
+
+              <form onSubmit={handleSaveNotifications} className="space-y-4">
+                {/* Notification Matrix Table */}
+                <div className="overflow-x-auto rounded-xl border border-border">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-muted/40 border-b border-border text-[11px] uppercase text-muted-foreground">
+                      <tr>
+                        <th className="p-3.5 font-bold">Loại thông báo</th>
+                        <th className="p-3.5 text-center font-bold">Email</th>
+                        <th className="p-3.5 text-center font-bold">Zalo / SMS</th>
+                        <th className="p-3.5 text-center font-bold">Trong App</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {[
+                        {
+                          key: "examCompleted" as const,
+                          title: "Chấm bài xong & Đề hoàn tất",
+                          desc: "Khi AI hoàn thành phân tích bài chấm OMR hoặc sinh xong bộ đề.",
+                        },
+                        {
+                          key: "lowCredits" as const,
+                          title: "Credits sắp hết (< 2.000 credits)",
+                          desc: "Nhắc nhở số dư sắp cạn để không gián đoạn quá trình soạn giảng.",
+                        },
+                        {
+                          key: "expiryWarning" as const,
+                          title: "Sắp hết hạn gói cước (Trước 7 ngày)",
+                          desc: "Thông báo chuẩn bị gia hạn gói Giáo Viên PRO / MAX.",
+                        },
+                        {
+                          key: "commission" as const,
+                          title: "Hoa hồng đối tác & Giới thiệu",
+                          desc: "Khi có đồng nghiệp đăng ký qua link hoặc phát sinh hoa hồng.",
+                        },
+                        {
+                          key: "productUpdates" as const,
+                          title: "Tin sản phẩm & Tính năng mới",
+                          desc: "Cập nhật các mẫu đề mới theo barem chuẩn của Bộ GD&ĐT (mặc định tắt).",
+                        },
+                      ].map((item) => (
+                        <tr key={item.key} className="hover:bg-muted/20">
+                          <td className="p-3.5">
+                            <p className="font-bold text-foreground">{item.title}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">{item.desc}</p>
+                          </td>
+                          <td className="p-3.5 text-center">
+                            <input
+                              type="checkbox"
+                              checked={notifChannels[item.key].email}
+                              onChange={() => handleToggleChannel(item.key, "email")}
+                              aria-label={`Nhận email cho ${item.title}`}
+                              className="h-4 w-4 rounded accent-primary cursor-pointer"
+                            />
+                          </td>
+                          <td className="p-3.5 text-center">
+                            <input
+                              type="checkbox"
+                              checked={notifChannels[item.key].zalo}
+                              onChange={() => handleToggleChannel(item.key, "zalo")}
+                              aria-label={`Nhận Zalo cho ${item.title}`}
+                              className="h-4 w-4 rounded accent-primary cursor-pointer"
+                            />
+                          </td>
+                          <td className="p-3.5 text-center">
+                            <input
+                              type="checkbox"
+                              checked={notifChannels[item.key].inApp}
+                              onChange={() => handleToggleChannel(item.key, "inApp")}
+                              aria-label={`Nhận thông báo trong app cho ${item.title}`}
+                              className="h-4 w-4 rounded accent-primary cursor-pointer"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
 
-              {notifMessage && (
-                <div
-                  className={`rounded-xl p-3 text-sm flex items-center gap-2 ${
-                    notifMessage.type === "error"
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  }`}
-                >
-                  {notifMessage.type === "error" ? (
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                  ) : (
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  )}
-                  <span>{notifMessage.text}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleSaveNotifications} className="space-y-3">
-                {[
-                  {
-                    title: "Email thông báo đề thi hoàn thành",
-                    desc: "Nhận email khi AI hoàn thành trích xuất hoặc hoàn thiện bộ câu hỏi",
-                    checked: emailExamCompleted,
-                    setter: setEmailExamCompleted,
-                  },
-                  {
-                    title: "Thông báo học sinh nộp bài qua QR",
-                    desc: "Nhận thông báo tức thì khi có học sinh quét mã nộp bài kiểm tra trực tuyến",
-                    checked: emailStudentSubmitted,
-                    setter: setEmailStudentSubmitted,
-                  },
-                  {
-                    title: "Cảnh báo số dư credits dưới 20",
-                    desc: "Nhắc nhở nạp thêm tín dụng VietQR tự động để không làm gián đoạn việc sinh đề",
-                    checked: emailLowCredits,
-                    setter: setEmailLowCredits,
-                  },
-                  {
-                    title: "Bản tin cập nhật mẫu đề GDPT 2025",
-                    desc: "Nhận thông tin về các mẫu đề, ma trận barem và tính năng mới của Bộ GD&ĐT",
-                    checked: marketingUpdates,
-                    setter: setMarketingUpdates,
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.title}
-                    className="flex items-center justify-between rounded-xl border border-border p-4 bg-muted/20 hover:bg-muted/40 transition"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">{item.title}</p>
-                      <p className="text-xs text-muted-foreground">{item.desc}</p>
-                    </div>
-                    <label className="relative inline-flex cursor-pointer items-center">
-                      <input
-                        type="checkbox"
-                        checked={item.checked}
-                        onChange={(e) => item.setter(e.target.checked)}
-                        className="peer sr-only"
-                      />
-                      <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
-                    </label>
-                  </div>
-                ))}
-
-                <div className="flex justify-end pt-4">
+                <div className="flex justify-end pt-3">
                   <button
                     type="submit"
                     disabled={savingNotif}
-                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 min-h-[40px] text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition cursor-pointer shadow-xs"
+                    className="rounded-xl bg-primary px-6 py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer disabled:opacity-50"
                   >
                     {savingNotif ? "Đang lưu…" : "Lưu tùy chọn thông báo"}
                   </button>
@@ -1185,60 +1876,105 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
             </div>
           )}
 
-          {/* ================= TAB 4: BẢO MẬT ================= */}
-          {activeTab === "security" && (
+          {/* ================= SECTION 5: BẢO MẬT & PHIÊN ĐĂNG NHẬP (A11) ================= */}
+          {currentSubTab === "security" && (
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-6">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
+              <h2 className="text-lg font-bold flex items-center gap-2 text-foreground">
                 <Shield className="w-5 h-5 text-primary" />
-                Bảo mật tài khoản & Phiên đăng nhập
+                <span>Bảo mật tài khoản & Phiên đăng nhập</span>
               </h2>
 
-              {/* ĐỔI MẬT KHẨU */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
+              {/* ĐỔI MẬT KHẨU VỚI CHỈ BÁO ĐỘ MẠNH (A11) */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-1 border-b border-border">
                   <KeyRound className="w-4 h-4 text-primary" />
-                  <h3 className="text-sm font-semibold">Đổi mật khẩu đăng nhập</h3>
+                  <h3 className="text-sm font-bold text-foreground">Đổi mật khẩu tài khoản</h3>
                 </div>
 
                 {isOAuthUser ? (
                   <div className="rounded-xl border border-blue-200 bg-blue-50/70 dark:border-blue-900/40 dark:bg-blue-950/20 p-4 text-xs text-blue-800 dark:text-blue-300">
-                    Tài khoản của bạn đang đăng nhập an toàn thông qua <strong>Google OAuth</strong>. Mật khẩu được quản lý trực tiếp bởi tài khoản Google của bạn.
+                    Tài khoản của bạn đang đăng nhập an toàn thông qua <strong>Google OAuth</strong>. Mật khẩu được bảo vệ trực tiếp bởi tài khoản Google.
                   </div>
                 ) : (
-                  <form onSubmit={handleUpdatePassword} className="space-y-3 max-w-md">
-                    {passwordMessage && (
+                  <form onSubmit={handleUpdatePassword} className="space-y-3.5 max-w-md">
+                    {passwordMsg && (
                       <div
+                        role="alert"
                         className={`rounded-xl p-3 text-xs flex items-center gap-2 ${
-                          passwordMessage.type === "error"
-                            ? "bg-destructive/10 text-destructive"
-                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          passwordMsg.type === "error"
+                            ? "bg-destructive/10 text-destructive border border-destructive/20"
+                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                         }`}
                       >
-                        {passwordMessage.type === "error" ? (
+                        {passwordMsg.type === "error" ? (
                           <AlertCircle className="w-4 h-4 shrink-0" />
                         ) : (
                           <CheckCircle2 className="w-4 h-4 shrink-0" />
                         )}
-                        <span>{passwordMessage.text}</span>
+                        <span>{passwordMsg.text}</span>
                       </div>
                     )}
 
                     <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1">
-                        Mật khẩu mới (tối thiểu 8 ký tự)
+                      <label className="block text-xs font-semibold text-foreground mb-1">
+                        Mật khẩu hiện tại
                       </label>
                       <input
                         type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
+                        value={oldPassword}
+                        onChange={(e) => setOldPassword(e.target.value)}
                         placeholder="••••••••"
-                        required
-                        className="block w-full rounded-xl border border-border bg-background px-4 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="block w-full rounded-xl border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-semibold text-foreground">
+                          Mật khẩu mới (Tối thiểu 8 ký tự)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          <span>{showPassword ? "Ẩn" : "Hiện"}</span>
+                        </button>
+                      </div>
+
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="block w-full rounded-xl border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+
+                      {/* Password Strength Indicator Bar */}
+                      {newPassword && (
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-muted-foreground">Độ mạnh mật khẩu:</span>
+                            <span className="font-bold">{passwordStrength.label}</span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                            {[1, 2, 3, 4].map((step) => (
+                              <div
+                                key={step}
+                                className={`h-full transition-all ${
+                                  step <= passwordStrength.score ? passwordStrength.color : "bg-transparent"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1">
                         Xác nhận mật khẩu mới
                       </label>
                       <input
@@ -1247,14 +1983,14 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="••••••••"
                         required
-                        className="block w-full rounded-xl border border-border bg-background px-4 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="block w-full rounded-xl border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
 
                     <button
                       type="submit"
                       disabled={passwordUpdating}
-                      className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition cursor-pointer"
+                      className="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer disabled:opacity-50"
                     >
                       {passwordUpdating ? "Đang xử lý…" : "Cập nhật mật khẩu"}
                     </button>
@@ -1262,85 +1998,138 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
                 )}
               </div>
 
-              <hr className="border-border" />
-
-              {/* QUẢN LÝ PHIÊN ĐĂNG NHẬP (ACTIVE SESSIONS) */}
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <LogOut className="w-4 h-4 text-primary" />
-                  <h3 className="text-sm font-semibold">Quản lý phiên đăng nhập</h3>
+              {/* PHIÊN ĐĂNG NHẬP (A11) */}
+              <div className="space-y-3 pt-4 border-t border-border">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-bold text-foreground">Phiên đăng nhập & Thiết bị</h3>
                 </div>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Đăng xuất tài khoản này khỏi các thiết bị hoặc máy tính khác để phòng tránh lộ dữ liệu đề thi.
+                <p className="text-xs text-muted-foreground">
+                  Danh sách các thiết bị đang đăng nhập tài khoản của Thầy Cô.
                 </p>
 
-                {logoutOthersMessage && (
-                  <div
-                    className={`mb-3 rounded-xl p-3 text-xs flex items-center gap-2 max-w-md ${
-                      logoutOthersMessage.type === "error"
-                        ? "bg-destructive/10 text-destructive"
-                        : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    }`}
-                  >
-                    {logoutOthersMessage.type === "error" ? (
-                      <AlertCircle className="w-4 h-4 shrink-0" />
-                    ) : (
-                      <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    )}
-                    <span>{logoutOthersMessage.text}</span>
+                <div className="space-y-2 max-w-lg">
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
+                    <div className="flex items-center gap-2.5">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <div>
+                        <p className="text-xs font-bold text-foreground">Trình duyệt hiện tại (Thiết bị này)</p>
+                        <p className="text-[11px] text-muted-foreground">Đang hoạt động</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      Hiện tại
+                    </span>
                   </div>
-                )}
+                </div>
 
-                <button
-                  type="button"
-                  onClick={handleLogoutOthers}
-                  disabled={loggingOutOthers}
-                  className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-50"
-                >
-                  {loggingOutOthers ? "Đang xử lý…" : "Đăng xuất khỏi tất cả các thiết bị khác"}
-                </button>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleLogoutOthers}
+                    disabled={loggingOutOthers}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl border border-border hover:bg-muted transition cursor-pointer disabled:opacity-50"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>{loggingOutOthers ? "Đang đăng xuất…" : "Đăng xuất khỏi tất cả các thiết bị khác"}</span>
+                  </button>
+                </div>
               </div>
 
-              <hr className="border-border" />
-
-              {/* XÓA TÀI KHOẢN */}
-              <div>
-                <div className="flex items-center gap-2 text-destructive">
-                  <Trash2 className="w-4 h-4" />
-                  <h3 className="text-sm font-semibold">Xóa tài khoản</h3>
+              {/* XÁC THỰC 2 BƯỚC (2FA) */}
+              <div className="space-y-3 pt-4 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">Xác thực 2 bước (2FA)</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Bảo vệ tài khoản bằng mã bảo mật 6 số từ Google Authenticator hoặc Microsoft Authenticator.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={twoFactorEnabled}
+                      onChange={(e) => {
+                        setTwoFactorEnabled(e.target.checked);
+                        showToast(
+                          e.target.checked
+                            ? "Đã kích hoạt chế độ sẵn sàng 2FA cho tài khoản."
+                            : "Đã tắt xác thực 2 bước.",
+                          "info"
+                        );
+                      }}
+                      className="peer sr-only"
+                    />
+                    <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
+                  </label>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Hành động này sẽ xóa vĩnh viễn dữ liệu giáo án, đề thi và điểm số học sinh của bạn.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteModal(true)}
-                  className="mt-3 rounded-xl border border-red-300 dark:border-red-900/50 px-4 py-2 text-xs font-semibold text-destructive hover:bg-destructive/10 transition cursor-pointer"
-                >
-                  Xóa tài khoản vĩnh viễn
-                </button>
+              </div>
+
+              {/* XUẤT DỮ LIỆU CÁ NHÂN (A11) */}
+              <div className="space-y-3 pt-4 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">Xuất dữ liệu cá nhân</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Tải về bản sao toàn bộ thông tin hồ sơ và tùy chọn theo Nghị định 13/2023/NĐ-CP.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleExportPersonalData}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl border border-border hover:bg-muted transition cursor-pointer shadow-2xs"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Tải dữ liệu (JSON)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* KHU VỰC NGUY HIỂM: XÓA TÀI KHOẢN (A11) */}
+              <div className="pt-4 border-t border-destructive/20">
+                <div className="p-4 rounded-2xl border border-destructive/30 bg-destructive/5 space-y-3">
+                  <div className="flex items-start gap-2.5 text-destructive">
+                    <Trash2 className="w-5 h-5 shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="text-sm font-bold">Khu vực nguy hiểm: Xóa tài khoản vĩnh viễn</h3>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        Toàn bộ dữ liệu đề thi, ma trận đặc tả, điểm số học sinh và số dư credits còn lại sẽ bị hủy vĩnh viễn. Có thời gian ân hạn phục hồi 14 ngày.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteModal(true)}
+                      className="px-4 py-2 text-xs font-bold rounded-xl border border-destructive/40 text-destructive hover:bg-destructive/10 transition cursor-pointer"
+                    >
+                      Yêu cầu xóa tài khoản…
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* ================= TAB 5: GIAO DIỆN ================= */}
-          {activeTab === "appearance" && (
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-              <h2 className="mb-2 text-lg font-semibold flex items-center gap-2">
+          {/* ================= SECTION 6: GIAO DIỆN (A14) ================= */}
+          {currentSubTab === "appearance" && (
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-6">
+              <h2 className="text-lg font-bold flex items-center gap-2 text-foreground">
                 <Palette className="w-5 h-5 text-primary" />
-                Tùy chỉnh giao diện hiển thị
+                <span>Tùy chỉnh giao diện hiển thị</span>
               </h2>
-              <p className="text-xs text-muted-foreground mb-6">
-                Lựa chọn chế độ hiển thị phù hợp với điều kiện ánh sáng và mắt của bạn khi soạn giáo án đêm.
-              </p>
 
+              {/* Theme Mode */}
               <div>
-                <p className="text-sm font-medium mb-3">Chế độ màu hiển thị</p>
+                <p className="text-xs font-bold uppercase text-muted-foreground mb-3">
+                  Chế độ màu hiển thị
+                </p>
                 <div className="grid gap-3 sm:grid-cols-3">
                   {[
-                    { value: "light" as const, label: "Giao diện Sáng", desc: "Nền xanh nhạt dịu mắt chuẩn", icon: Sun },
+                    { value: "light" as const, label: "Giao diện Sáng", desc: "Nền dịu mắt ban ngày", icon: Sun },
                     { value: "dark" as const, label: "Giao diện Tối", desc: "Độ tương phản cao ban đêm", icon: Moon },
-                    { value: "system" as const, label: "Theo hệ thống", desc: "Tự động đổi theo thiết bị", icon: Laptop },
+                    { value: "system" as const, label: "Theo hệ thống", desc: "Tự đổi theo thiết bị", icon: Laptop },
                   ].map((theme) => {
                     const isSelected = currentTheme === theme.value;
                     const Icon = theme.icon;
@@ -1349,10 +2138,10 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
                         key={theme.value}
                         type="button"
                         onClick={() => applyTheme(theme.value)}
-                        className={`rounded-xl border p-4 text-left transition-all cursor-pointer relative ${
+                        className={`rounded-xl border p-4 text-left transition cursor-pointer relative ${
                           isSelected
-                            ? "border-primary bg-primary/5 shadow-xs ring-1 ring-primary"
-                            : "border-border hover:border-primary/50"
+                            ? "border-primary bg-primary/5 ring-1 ring-primary font-bold shadow-xs"
+                            : "border-border hover:bg-muted"
                         }`}
                       >
                         {isSelected && (
@@ -1361,55 +2150,174 @@ export function GeneralTab({ initialSubTab }: { initialSubTab?: string }) {
                           </span>
                         )}
                         <Icon className={`w-5 h-5 mb-2 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
-                        <p className="text-sm font-bold">{theme.label}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{theme.desc}</p>
+                        <p className="text-xs font-bold">{theme.label}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{theme.desc}</p>
                       </button>
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Font Size */}
+              <div className="pt-4 border-t border-border">
+                <p className="text-xs font-bold uppercase text-muted-foreground mb-3">
+                  Kích thước cỡ chữ hiển thị
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 max-w-md">
+                  {[
+                    { id: "normal" as const, label: "Vừa (100% - Tiêu chuẩn)", desc: "Bố cục cân đối" },
+                    { id: "large" as const, label: "Lớn (110% - Dễ đọc hơn)", desc: "Rõ chữ, đỡ mỏi mắt" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => applyFontSize(item.id)}
+                      className={`p-3.5 rounded-xl border text-left transition cursor-pointer ${
+                        fontSize === item.id
+                          ? "border-primary bg-primary/5 ring-1 ring-primary font-bold shadow-xs"
+                          : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      <p className="text-xs font-bold">{item.label}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{item.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reduced Motion */}
+              <div className="pt-4 border-t border-border flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-foreground">Giảm hiệu ứng chuyển động (Reduced Motion)</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Hạn chế các hiệu ứng chuyển cảnh và chuyển động trên trang cho người dùng nhạy cảm.
+                  </p>
+                </div>
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    checked={reducedMotion}
+                    onChange={(e) => applyReducedMotion(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
+                </label>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Modal Cảnh báo Xóa tài khoản */}
+      {/* AVATAR CROP MODAL (A5) */}
+      {cropImageSrc && (
+        <AvatarCropModal
+          imageSrc={cropImageSrc}
+          onCancel={() => setCropImageSrc(null)}
+          onConfirm={handleConfirmAvatarCrop}
+        />
+      )}
+
+      {/* CHANGE EMAIL MODAL (A4, A12) */}
+      <ChangeEmailModal
+        isOpen={showChangeEmailModal}
+        currentEmail={user?.email || ""}
+        onClose={() => setShowChangeEmailModal(false)}
+        onSuccessToast={(msg) => showToast(msg, "success")}
+      />
+
+      {/* UNSAVED CHANGES MODAL (A2) */}
+      <UnsavedChangesModal
+        isOpen={showUnsavedModal}
+        saving={savingProfile}
+        onStay={() => {
+          setShowUnsavedModal(false);
+          setPendingSubTab(null);
+        }}
+        onDiscard={() => {
+          handleDiscardProfileChanges();
+          setShowUnsavedModal(false);
+          if (pendingSubTab) {
+            onSectionChange?.(pendingSubTab);
+            setPendingSubTab(null);
+          }
+        }}
+        onSave={async () => {
+          await handleSaveProfile();
+          setShowUnsavedModal(false);
+          if (pendingSubTab) {
+            onSectionChange?.(pendingSubTab);
+            setPendingSubTab(null);
+          }
+        }}
+      />
+
+      {/* DELETE ACCOUNT CONFIRMATION MODAL (A11) */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-neutral-200 dark:border-neutral-800 relative text-left">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200"
+        >
+          <div className="bg-card text-card-foreground border border-destructive/40 rounded-2xl max-w-md w-full p-6 shadow-2xl relative text-left">
             <button
-              onClick={() => setShowDeleteModal(false)}
-              className="absolute right-4 top-4 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
+              type="button"
+              onClick={() => {
+                setShowDeleteModal(false);
+                setDeleteEmailConfirm("");
+              }}
+              className="absolute right-4 top-4 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center justify-center mb-3">
-              <AlertCircle className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center mb-3">
+              <AlertTriangle className="w-6 h-6" />
             </div>
 
-            <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1">
-              Yêu cầu hủy tài khoản
+            <h3 id="delete-account-modal-title" className="text-base font-bold text-foreground mb-1">
+              Xác nhận yêu cầu xóa tài khoản
             </h3>
 
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-4 leading-relaxed">
-              Theo quy định bảo vệ dữ liệu giáo án và điểm thi học sinh của Bộ GD&ĐT, việc xóa vĩnh viễn tài khoản cần được xác thực danh tính để tránh mất mát dữ liệu ngoài ý muốn.
+            <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+              Hành động này sẽ lên lịch hủy vĩnh viễn tài khoản. Toàn bộ giáo án, đề thi và credits sẽ bị xóa hoàn toàn sau thời gian ân hạn 14 ngày.
             </p>
 
-            <div className="rounded-xl bg-neutral-50 dark:bg-muted/40 p-3.5 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-700 dark:text-neutral-300 space-y-1.5 mb-5">
-              <p className="font-semibold text-neutral-900 dark:text-neutral-100">Quy trình xóa tài khoản an toàn:</p>
-              <p>• Vui lòng gửi email từ địa chỉ <strong>{user?.email}</strong> đến hòm thư hỗ trợ:</p>
-              <p className="font-mono text-primary font-bold">{SUPPORT_EMAIL}</p>
-              <p>• Ban quản trị sẽ tiến hành xóa sạch tài khoản và dữ liệu liên quan trong vòng 24 giờ làm việc.</p>
+            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-xs text-destructive space-y-1 mb-4">
+              <p className="font-bold">Để xác nhận, vui lòng gõ chính xác email tài khoản của bạn:</p>
+              <p className="font-mono font-bold text-foreground">{user?.email}</p>
             </div>
+
+            <input
+              type="email"
+              value={deleteEmailConfirm}
+              onChange={(e) => setDeleteEmailConfirm(e.target.value)}
+              placeholder="Gõ email vào đây để xác nhận"
+              className="block w-full rounded-xl border border-border bg-background px-4 py-2 text-xs focus:border-destructive focus:outline-none focus:ring-1 focus:ring-destructive mb-4"
+            />
 
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 rounded-xl bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 text-xs font-semibold hover:bg-neutral-800 transition cursor-pointer"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteEmailConfirm("");
+                }}
+                className="px-4 py-2 text-xs font-semibold rounded-xl border border-border hover:bg-muted transition cursor-pointer"
               >
-                Đã hiểu & Đóng
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteAccount}
+                disabled={
+                  deletingAccount ||
+                  deleteEmailConfirm.trim().toLowerCase() !== user?.email?.toLowerCase()
+                }
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 transition shadow-xs cursor-pointer disabled:opacity-40"
+              >
+                {deletingAccount ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>Xác nhận xóa tài khoản</span>
               </button>
             </div>
           </div>

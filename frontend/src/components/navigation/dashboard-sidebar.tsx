@@ -160,7 +160,7 @@ export function DashboardSidebar() {
         </div>
 
         {/* Mobile Nav Links */}
-        <nav className="flex-1 space-y-1.5 overflow-y-auto p-3" aria-label="Điều hướng di động">
+        <nav className="flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden p-3" aria-label="Điều hướng di động">
           {sidebarLinks.map((link) => {
             const isActive =
               pathname === link.href ||
@@ -245,7 +245,7 @@ export function DashboardSidebar() {
       <aside
         id="dashboard-sidebar"
         aria-label="Thanh điều hướng chính"
-        className={`hidden lg:flex flex-col shrink-0 border-r border-border bg-card select-none relative transition-[width] duration-200 ease-in-out motion-reduce:transition-none ${
+        className={`hidden lg:flex flex-col shrink-0 border-r border-border bg-card select-none relative overflow-x-hidden transition-[width] duration-200 ease-in-out motion-reduce:transition-none ${
           isCollapsed ? "w-[72px]" : "w-[280px]"
         }`}
       >
@@ -321,7 +321,7 @@ export function DashboardSidebar() {
 
         {/* Navigation Links */}
         <nav
-          className={`flex-1 space-y-1.5 overflow-y-auto py-3 ${
+          className={`flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden py-3 ${
             isCollapsed ? "px-2" : "px-3"
           }`}
           aria-label="Điều hướng chính"
@@ -378,7 +378,7 @@ export function DashboardSidebar() {
         {/* Bottom Section: Account Block & Logout */}
         <div
           ref={accountPopoverRef}
-          className={`mt-auto border-t border-border bg-card/60 relative ${
+          className={`mt-auto border-t border-border bg-card/60 relative overflow-x-hidden ${
             isCollapsed ? "p-2 flex flex-col items-center gap-2 pb-4" : "p-3 pb-5"
           }`}
         >
