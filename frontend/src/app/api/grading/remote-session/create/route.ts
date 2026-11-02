@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRemoteSession } from "@/lib/grading/remote-cam-store";
+import { createContinuousSession } from "@/lib/grading/continuous-session-store";
 import { createClient } from "@/lib/supabase/server";
 import { getBaseUrl } from "@/lib/constants";
 
@@ -19,6 +20,7 @@ export async function POST(req: NextRequest) {
       questionCount = 20,
       answerKey = {},
       sheetType = "20",
+      roster = [],
     } = body;
 
     if (!sessionId) {
@@ -39,10 +41,23 @@ export async function POST(req: NextRequest) {
       sheetType,
     });
 
-    const baseUrl = getBaseUrl(req);
-    const directUrl = `${baseUrl}/grading/mobile-scanner?token=${session.token}`;
+    // Also register in continuous session store
+    await createContinuousSession({
+      examId: sessionId,
+      teacherId: user?.id || "teacher_default",
+      name: sessionName || "Phiên chấm liên tục",
+      subject,
+      grade: grade.toString(),
+      sheetType: sheetType as any,
+      questionCount: parseInt(questionCount.toString()) || 20,
+      answerKey,
+      roster,
+    });
 
-    // Sinh mã QR dẫn tới link mobile scanner
+    const baseUrl = getBaseUrl(req);
+    const directUrl = `${baseUrl}/scan/${session.token}`;
+
+    // Sinh mã QR dẫn tới link mobile scanner /scan/[token]
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(
       directUrl
     )}`;
