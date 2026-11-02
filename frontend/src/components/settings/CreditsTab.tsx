@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Wallet as WalletIcon,
   Plus,
@@ -12,7 +13,6 @@ import {
   Loader2,
   Sparkles,
   ShieldCheck,
-  Check,
   Crown,
   Layers,
   Coins,
@@ -25,10 +25,6 @@ import { getUserWallet, getWalletTransactions, Wallet, WalletTxn } from "@/lib/a
 import { PaymentCheckoutModal } from "@/components/modals/payment-checkout-modal";
 import { useAuth } from "@/context/auth-context";
 import {
-  PRO_MONTHLY,
-  PRO_SEMESTER,
-  MAX_MONTHLY,
-  MAX_SEMESTER,
   CREDIT_PACKS,
   isProUser,
   isMaxUser,
@@ -36,8 +32,11 @@ import {
   IS_BETA_ALL_FEATURES_UNLOCKED,
   getTierName,
 } from "@/lib/payment/plans";
+import { getUserPlanState } from "@/lib/payment/plan-status";
+import { PlanStatusCard } from "./PlanStatusCard";
 
 export function CreditsTab() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const paymentStatus = searchParams?.get("status");
   const tierParam = searchParams?.get("tier");
@@ -48,18 +47,14 @@ export function CreditsTab() {
   const [txns, setTxns] = useState<WalletTxn[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Billing cycle: "monthly" | "semester"
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "semester">("monthly");
   const [selectedCreditPackIndex, setSelectedCreditPackIndex] = useState(1);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [checkoutTargetPlan, setCheckoutTargetPlan] = useState<any>(PRO_MONTHLY);
+  const [checkoutTargetPlan, setCheckoutTargetPlan] = useState<any>(CREDIT_PACKS[1]);
   const [showSuccessBanner, setShowSuccessBanner] = useState(paymentStatus === "PAID");
 
-  const isUserMax = isMaxUser(profile) || isMaxUser(user);
-  const isUserPro = isProUser(profile) || isProUser(user);
-
-  const activeProPlan = billingCycle === "semester" ? PRO_SEMESTER : PRO_MONTHLY;
-  const activeMaxPlan = billingCycle === "semester" ? MAX_SEMESTER : MAX_MONTHLY;
+  const userPlanState = getUserPlanState(profile, user);
+  const isUserMax = userPlanState === "max-paid" || userPlanState === "max-beta" || isMaxUser(profile);
+  const isUserPro = userPlanState === "pro" || isProUser(profile);
 
   async function loadData() {
     try {
@@ -88,16 +83,12 @@ export function CreditsTab() {
     }
   }, [paymentStatus]);
 
-  // URL query trigger for ?plan=pro or ?plan=max
+  // URL query trigger for ?plan=pro or ?plan=max -> redirect to plan tab
   useEffect(() => {
-    if (planParam === "max" && !isUserMax) {
-      setCheckoutTargetPlan(activeMaxPlan);
-      setIsCheckoutOpen(true);
-    } else if (planParam === "pro" && !isUserPro) {
-      setCheckoutTargetPlan(activeProPlan);
-      setIsCheckoutOpen(true);
+    if (planParam === "max" || planParam === "pro") {
+      router.push(`/settings?tab=plan&plan=${planParam}`);
     }
-  }, [planParam, isUserMax, isUserPro]);
+  }, [planParam, router]);
 
   if (loading) {
     return (
@@ -119,17 +110,17 @@ export function CreditsTab() {
       {showSuccessBanner && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-950/20 p-4 text-emerald-800 dark:text-emerald-300 flex items-center justify-between shadow-xs animate-in fade-in">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" aria-hidden="true" />
             <div>
               <p className="font-bold text-sm">
                 {tierParam === "max"
-                  ? "Thanh toán thành công! Chúc mừng bạn đã nâng cấp GÓI LUYỆN THI MAX VIP."
+                  ? "Thanh toán thành công! Chúc mừng bạn đã kích hoạt GÓI LUYỆN THI MAX."
                   : tierParam === "pro"
                   ? "Thanh toán thành công! Chúc mừng bạn đã lên GÓI GIÁO VIÊN PRO."
                   : "Thanh toán PayOS thành công!"}
               </p>
               <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                Giao dịch của bạn đã được xác nhận tự động. Hạn mức và các đặc quyền VIP đã kích hoạt ngay lập tức.
+                Giao dịch của bạn đã được xác nhận tự động. Hạn mức và các đặc quyền đã kích hoạt ngay lập tức.
               </p>
             </div>
           </div>
@@ -145,40 +136,20 @@ export function CreditsTab() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Ví Credits & Nạp Điểm</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Ví Credits & Nạp Điểm</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Quản lý số dư, mở khóa đặc quyền Gói PRO / Gói MAX và nạp credits tự động 24/7 qua VietQR PayOS.
+            Quản lý số dư, theo dõi lịch sử và nạp credits tự động 24/7 qua VietQR Napas247.
           </p>
         </div>
 
-        {/* Cycle Toggle */}
-        <div className="inline-flex items-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100/70 dark:bg-muted/40 p-1 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => setBillingCycle("monthly")}
-            className={`px-4 py-2 min-h-[36px] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
-              billingCycle === "monthly"
-                ? "bg-white dark:bg-card text-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Gói 1 Tháng
-          </button>
-          <button
-            type="button"
-            onClick={() => setBillingCycle("semester")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              billingCycle === "semester"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <span>Gói Học Kỳ (5 Tháng)</span>
-            <span className="rounded-full bg-amber-400 text-amber-950 px-1.5 py-0.2 text-[9px] font-black">
-              -20%
-            </span>
-          </button>
-        </div>
+        <Link
+          href="/settings?tab=plan"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition shadow-xs cursor-pointer self-start sm:self-auto"
+        >
+          <Crown className="w-3.5 h-3.5" aria-hidden="true" />
+          <span>Xem bảng Gói cước</span>
+          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+        </Link>
       </div>
 
       {/* Overview Cards */}
@@ -186,11 +157,11 @@ export function CreditsTab() {
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-primary/10 p-3">
-              <WalletIcon className="h-6 w-6 text-primary" />
+              <WalletIcon className="h-6 w-6 text-primary" aria-hidden="true" />
             </div>
             <div>
               <p className="text-xs font-semibold text-muted-foreground">Số dư hiện tại</p>
-              <p className="text-2xl font-black text-foreground">{balance.toLocaleString()} credits</p>
+              <p className="text-2xl font-black text-foreground">{balance.toLocaleString("vi-VN")} credits</p>
             </div>
           </div>
         </div>
@@ -206,7 +177,11 @@ export function CreditsTab() {
                   : "bg-muted text-muted-foreground"
               }`}
             >
-              {isUserMax ? <Crown className="h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
+              {isUserMax ? (
+                <Crown className="h-6 w-6" aria-hidden="true" />
+              ) : (
+                <Sparkles className="h-6 w-6" aria-hidden="true" />
+              )}
             </div>
             <div>
               <p className="text-xs font-semibold text-muted-foreground">Hạng tài khoản</p>
@@ -220,11 +195,11 @@ export function CreditsTab() {
                       : "text-slate-600 dark:text-slate-300"
                   }`}
                 >
-                  {getTierName(profile || user)}
+                  {isUserMax ? "Luyện thi MAX" : isUserPro ? "Giáo viên PRO" : "Miễn Phí"}
                 </p>
                 {isUserMax ? (
                   <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[9px] font-black text-white">
-                    MAX VIP
+                    MAX
                   </span>
                 ) : isUserPro ? (
                   <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[9px] font-bold text-white">
@@ -236,11 +211,9 @@ export function CreditsTab() {
                   </span>
                 )}
               </div>
-              {IS_BETA_ALL_FEATURES_UNLOCKED && (
+              {IS_BETA_ALL_FEATURES_UNLOCKED && !profile?.tier && (
                 <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-medium">
-                  {isRealPayingUser(profile)
-                    ? "Tài khoản Giáo viên PRO được mở khóa thêm toàn bộ tính năng Gói MAX trong giai đoạn Beta."
-                    : "Tài khoản đang được kích hoạt dùng thử 100% tính năng Gói MAX trong giai đoạn Beta."}
+                  Tài khoản đang được dùng thử 100% tính năng Gói MAX trong giai đoạn Beta.
                 </p>
               )}
             </div>
@@ -250,7 +223,7 @@ export function CreditsTab() {
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-emerald-500/10 p-3 text-emerald-600">
-              <ShieldCheck className="h-6 w-6" />
+              <ShieldCheck className="h-6 w-6" aria-hidden="true" />
             </div>
             <div>
               <p className="text-xs font-semibold text-muted-foreground">Cổng thanh toán tự động</p>
@@ -260,14 +233,33 @@ export function CreditsTab() {
         </div>
       </div>
 
+      {/* Current Plan Status Card - Replacing duplicate PRO/MAX cards (P4 & P1) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-foreground">Gói cước & Đặc quyền tài khoản</h3>
+          <Link
+            href="/settings?tab=plan"
+            className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+          >
+            <span>Đổi gói cước</span>
+            <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+          </Link>
+        </div>
+
+        <PlanStatusCard
+          variant="compact"
+          onNavigateToPlan={() => router.push("/settings?tab=plan")}
+        />
+      </div>
+
       {/* 3-Bucket Wallet Breakdown */}
       <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-4">
           <div>
-            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-              <Layers className="w-5 h-5 text-primary" />
-              Chi tiết cấu trúc Ví 3 Ngăn (3-Bucket Economics)
-            </h2>
+            <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+              <Layers className="w-5 h-5 text-primary" aria-hidden="true" />
+              <span>Cấu trúc Ví 3 Ngăn (3-Bucket Economics)</span>
+            </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Phân định minh bạch giữa Credits tiêu dùng (Mua vs Thưởng), Tiền mặt rút về ngân hàng và Quỹ ký quỹ Escrow bảo đảm.
             </p>
@@ -282,10 +274,10 @@ export function CreditsTab() {
           <div className="rounded-2xl border border-blue-100 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-950/10 p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">Credits Nạp / Mua</span>
-              <Coins className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <Coins className="w-4 h-4 text-blue-600 dark:text-blue-400" aria-hidden="true" />
             </div>
             <p className="text-xl font-black text-blue-900 dark:text-blue-100">
-              {purchasedBal.toLocaleString()} <span className="text-xs font-medium">credits</span>
+              {purchasedBal.toLocaleString("vi-VN")} <span className="text-xs font-medium">credits</span>
             </p>
             <p className="text-[11px] text-blue-700/80 dark:text-blue-300/80 leading-snug">
               Dùng để sinh đề AI & mua tài liệu tác quyền trên Marketplace.
@@ -296,10 +288,10 @@ export function CreditsTab() {
           <div className="rounded-2xl border border-purple-100 bg-purple-50/50 dark:border-purple-900/30 dark:bg-purple-950/10 p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">Credits Thưởng / Promo</span>
-              <Gift className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <Gift className="w-4 h-4 text-purple-600 dark:text-purple-400" aria-hidden="true" />
             </div>
             <p className="text-xl font-black text-purple-900 dark:text-purple-100">
-              {promoBal.toLocaleString()} <span className="text-xs font-medium">credits</span>
+              {promoBal.toLocaleString("vi-VN")} <span className="text-xs font-medium">credits</span>
             </p>
             <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80 leading-snug">
               Thưởng eKYC & Giới thiệu. Ưu tiên tự động cấn trừ trước khi tạo đề.
@@ -310,7 +302,7 @@ export function CreditsTab() {
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 dark:border-emerald-900/30 dark:bg-emerald-950/10 p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Doanh thu Rút tiền</span>
-              <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
             </div>
             <p className="text-xl font-black text-emerald-900 dark:text-emerald-100">
               {withdrawableVnd.toLocaleString("vi-VN")} <span className="text-xs font-medium">VNĐ</span>
@@ -324,7 +316,7 @@ export function CreditsTab() {
           <div className="rounded-2xl border border-amber-100 bg-amber-50/50 dark:border-amber-900/30 dark:bg-amber-950/10 p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">Ký quỹ Escrow (Tạm giữ)</span>
-              <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
             </div>
             <p className="text-xl font-black text-amber-900 dark:text-amber-100">
               {escrowVnd.toLocaleString("vi-VN")} <span className="text-xs font-medium">VNĐ</span>
@@ -336,152 +328,14 @@ export function CreditsTab() {
         </div>
       </div>
 
-      {/* Main Pricing Cards Grid (PRO vs MAX) */}
-      <div className="space-y-4">
-        <div className="text-center max-w-xl mx-auto mb-2">
-          <h2 className="text-xl font-bold tracking-tight">Gói dịch vụ dành riêng cho Giáo viên Việt Nam</h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            Thiết kế tối ưu theo nghiệp vụ thực tế: Không watermark, tráo mã đề chuẩn Bộ GD&ĐT 2025 và chấm tự động.
-          </p>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Card 1: GÓI PRO */}
-          <div
-            className={`rounded-3xl border p-6 sm:p-7 transition-all flex flex-col justify-between relative bg-card ${
-              isUserPro && !isUserMax
-                ? "border-primary ring-2 ring-primary/40 shadow-md"
-                : "border-border shadow-xs hover:border-primary/50"
-            }`}
-          >
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="rounded-full bg-primary/10 text-primary px-3 py-1 text-xs font-bold">
-                  {activeProPlan.badge}
-                </span>
-                <span className="text-xs font-medium text-muted-foreground">
-                  {activeProPlan.period}
-                </span>
-              </div>
-
-              <h3 className="text-2xl font-black text-foreground">{activeProPlan.name}</h3>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-3xl font-black text-primary">{activeProPlan.price}</span>
-                <span className="text-xs text-muted-foreground">{activeProPlan.period}</span>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                {activeProPlan.description}
-              </p>
-
-              <hr className="my-5 border-border" />
-
-              <div className="space-y-2.5 text-xs">
-                <p className="font-bold text-foreground">Đặc quyền nổi bật:</p>
-                {activeProPlan.features.map((feat, i) => (
-                  <div key={i} className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <span className="text-neutral-700 dark:text-neutral-300 leading-snug">{feat}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setCheckoutTargetPlan(activeProPlan);
-                setIsCheckoutOpen(true);
-              }}
-              disabled={isUserPro}
-              className={`mt-6 w-full py-3.5 rounded-2xl text-xs font-bold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5 ${
-                isUserPro && !isUserMax
-                  ? "bg-emerald-600 text-white opacity-90 cursor-default"
-                  : isUserMax
-                  ? "bg-muted text-muted-foreground cursor-default"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90"
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>
-                {isUserPro && !isUserMax
-                  ? "Đang sử dụng Gói PRO"
-                  : isUserMax
-                  ? "Bạn đã có đặc quyền MAX cao hơn"
-                  : `Nâng cấp Gói PRO (${activeProPlan.price})`}
-              </span>
-            </button>
-          </div>
-
-          {/* Card 2: GÓI MAX (HIGHLIGHTED) */}
-          <div className="rounded-3xl border-2 border-amber-400 bg-linear-to-b from-amber-500/10 via-amber-500/5 to-transparent p-6 sm:p-7 shadow-lg flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute -right-12 -top-12 w-36 h-36 bg-amber-400/20 rounded-full blur-2xl pointer-events-none" />
-
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="rounded-full bg-linear-to-r from-amber-500 to-amber-600 px-3.5 py-1 text-xs font-black text-white shadow-xs flex items-center gap-1">
-                  <Crown className="w-3.5 h-3.5" />
-                  {activeMaxPlan.badge}
-                </span>
-                <span className="text-xs font-bold text-amber-800 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 px-2.5 py-0.5 rounded-md">
-                  {activeMaxPlan.period}
-                </span>
-              </div>
-
-              <h3 className="text-2xl font-black text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
-                {activeMaxPlan.name}
-              </h3>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-3xl font-black text-amber-600 dark:text-amber-400">{activeMaxPlan.price}</span>
-                <span className="text-xs text-neutral-500">{activeMaxPlan.period}</span>
-              </div>
-              <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
-                {activeMaxPlan.description}
-              </p>
-
-              <hr className="my-5 border-amber-200/60 dark:border-amber-800/40" />
-
-              <div className="space-y-2.5 text-xs">
-                <p className="font-bold text-amber-900 dark:text-amber-300">Toàn bộ quyền lợi PRO cộng thêm:</p>
-                {activeMaxPlan.features.map((feat, i) => (
-                  <div key={i} className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                    <span className="text-neutral-800 dark:text-neutral-200 font-medium leading-snug">{feat}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setCheckoutTargetPlan(activeMaxPlan);
-                setIsCheckoutOpen(true);
-              }}
-              disabled={isUserMax}
-              className={`mt-6 w-full py-3.5 rounded-2xl text-xs font-black transition shadow-md cursor-pointer flex items-center justify-center gap-2 ${
-                isUserMax
-                  ? "bg-emerald-600 text-white opacity-90 cursor-default"
-                  : "bg-linear-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white shadow-amber-500/25"
-              }`}
-            >
-              <Crown className="w-4 h-4" />
-              <span>
-                {isUserMax ? "Bạn đang sở hữu Gói MAX VIP" : `Nâng cấp Gói MAX ngay (${activeMaxPlan.price})`}
-              </span>
-              {!isUserMax && <ArrowRight className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Credit Packs & Transaction history */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Transaction History */}
         <div className="rounded-2xl border border-border bg-card lg:col-span-2 shadow-xs">
           <div className="flex items-center justify-between border-b border-border p-5">
-            <h2 className="font-semibold text-base">Lịch sử giao dịch ví</h2>
+            <h3 className="font-semibold text-base text-foreground">Lịch sử giao dịch ví</h3>
             <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" /> Gần đây nhất
+              <Clock className="h-3.5 w-3.5" aria-hidden="true" /> Gần đây nhất
             </span>
           </div>
           <div className="overflow-x-auto divide-y divide-border">
@@ -499,13 +353,13 @@ export function CreditsTab() {
                       }`}
                     >
                       {txn.amount < 0 ? (
-                        <ArrowUpRight className="h-4 w-4" />
+                        <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
                       ) : (
-                        <ArrowDownLeft className="h-4 w-4" />
+                        <ArrowDownLeft className="h-4 w-4" aria-hidden="true" />
                       )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{txn.description || txn.type}</p>
+                      <p className="text-sm font-medium text-foreground">{txn.description || txn.type}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(txn.created_at).toLocaleDateString("vi-VN", {
                           hour: "2-digit",
@@ -530,7 +384,7 @@ export function CreditsTab() {
         {/* Nạp thêm credits lẻ */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
           <div>
-            <h2 className="font-semibold text-base">Nạp thêm Credits lẻ</h2>
+            <h3 className="font-semibold text-base text-foreground">Nạp thêm Credits lẻ</h3>
             <p className="text-xs text-muted-foreground">Dành cho nhu cầu sinh thêm đề thi tức thời.</p>
           </div>
 
@@ -557,7 +411,7 @@ export function CreditsTab() {
                   )}
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-bold text-sm">{plan.credits.toLocaleString()} Credits</p>
+                      <p className="font-bold text-sm text-foreground">{plan.credits.toLocaleString("vi-VN")} Credits</p>
                       <p className="text-[11px] text-muted-foreground">{plan.perCredit}/credit</p>
                     </div>
                     <span className="text-sm font-bold text-primary">{plan.price}</span>
@@ -575,8 +429,10 @@ export function CreditsTab() {
             }}
             className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
           >
-            <Plus className="w-4 h-4" />
-            <span>Nạp {CREDIT_PACKS[selectedCreditPackIndex].credits.toLocaleString()} Credits ({CREDIT_PACKS[selectedCreditPackIndex].price})</span>
+            <Plus className="w-4 h-4" aria-hidden="true" />
+            <span>
+              Nạp {CREDIT_PACKS[selectedCreditPackIndex].credits.toLocaleString("vi-VN")} Credits ({CREDIT_PACKS[selectedCreditPackIndex].price})
+            </span>
           </button>
         </div>
       </div>

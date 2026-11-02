@@ -64,11 +64,11 @@ export const MAX_MONTHLY: PricingPlan = {
   credits: 100000,
   period: "/tháng",
   billingCycle: "monthly",
-  badge: "Vũ khí Luyện thi VIP",
+  badge: "Dành cho gia sư & trung tâm",
   description: "Dành cho Giáo viên Luyện thi / Dạy thêm chuyên nghiệp / Trung tâm",
   features: [
     "Bao gồm toàn bộ quyền lợi của Gói PRO",
-    "Cộng +100.000 Credits/tháng (Mô hình AI Suy luận Đa tác tử: Gemini 2.0 Thinking & Deep Reasoning)",
+    "Cộng +100.000 Credits/tháng (AI suy luận nâng cao - chế độ Thinking)",
     "Tải lên PDF/Ảnh đề cũ -> AI bóc tách & 'Nhân bản đề tương tự'",
     "Trộn đề công nghiệp: Trộn từ 8 đến 12 mã đề thi độc lập",
     "Đóng dấu Watermark thương hiệu riêng của Giáo viên / Lớp học chống lộ đề",
@@ -209,11 +209,11 @@ export function getTierName(profile: any): string {
       email.includes("truongcri0101") ||
       profile?.tier === "school"
     ) {
-      return "GÓI LUYỆN THI MAX VIP";
+      return "GÓI LUYỆN THI MAX";
     }
     return "GÓI LUYỆN THI MAX";
   }
   if (isProUser(profile)) return "GÓI GIÁO VIÊN PRO";
-  if (IS_BETA_ALL_FEATURES_UNLOCKED) return "BETA VIP (MỞ TOÀN BỘ TÍNH NĂNG)";
+  if (IS_BETA_ALL_FEATURES_UNLOCKED) return "GÓI LUYỆN THI MAX (BETA)";
   return "GÓI MIỄN PHÍ";
 }
