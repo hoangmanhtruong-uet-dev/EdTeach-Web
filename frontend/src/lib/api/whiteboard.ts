@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { Whiteboard, WhiteboardInsert, WhiteboardUpdate } from "@/types/whiteboard";
 import { WHITEBOARD_TEMPLATES } from "@/lib/whiteboard/templates";
+import { sanitizeExcalidrawElements } from "@/lib/whiteboard/sanitize-elements";
 
 export const FREE_TIER_MAX_BOARDS = 5;
 
@@ -41,7 +42,30 @@ export async function getWhiteboardById(id: string): Promise<Whiteboard | null> 
     return null;
   }
 
-  return ((data as unknown) as Whiteboard) || null;
+  if (!data) return null;
+
+  // Khôi phục dữ liệu pages và files từ app_state nếu bảng chưa có cột tương ứng
+  const appState = (data.app_state as Record<string, unknown>) || {};
+  const pages =
+    data.pages && Array.isArray(data.pages) && data.pages.length > 0
+      ? data.pages
+      : appState.pages && Array.isArray(appState.pages) && appState.pages.length > 0
+      ? appState.pages
+      : undefined;
+
+  const files =
+    data.files && typeof data.files === "object" && !Array.isArray(data.files)
+      ? data.files
+      : appState.files && typeof appState.files === "object" && !Array.isArray(appState.files)
+      ? appState.files
+      : {};
+
+  return {
+    ...data,
+    elements: sanitizeExcalidrawElements(data.elements || []),
+    pages,
+    files,
+  } as Whiteboard;
 }
 
 /**
@@ -83,7 +107,7 @@ export async function createWhiteboard(
   if (templateKey) {
     const tpl = WHITEBOARD_TEMPLATES.find((t) => t.key === templateKey);
     if (tpl) {
-      initialElements = tpl.generateElements();
+      initialElements = sanitizeExcalidrawElements(tpl.generateElements());
       if (tpl.appState) {
         initialAppState = { ...initialAppState, ...tpl.appState };
       }
@@ -97,7 +121,7 @@ export async function createWhiteboard(
     user_id: user.id,
     title,
     description: templateKey ? `template:${templateKey}` : null,
-    elements: initialElements,
+    elements: sanitizeExcalidrawElements(initialElements),
     app_state: initialAppState,
     thumbnail_url: null,
     is_favorite: false
@@ -117,17 +141,55 @@ export async function createWhiteboard(
 
 /**
  * Cập nhật bảng vẽ
+ * Tự động dự phòng lưu `files` và `pages` vào `app_state` nếu database chưa có cột tương ứng (WBD-05 fallback)
  */
 export async function updateWhiteboard(
   id: string,
   updates: WhiteboardUpdate
 ): Promise<{ success: boolean; error: string | null }> {
   const supabase = createClient();
+  const payload: Record<string, any> = { ...updates };
+
   const { error } = await (supabase.from as any)("whiteboards")
-    .update(updates)
+    .update(payload)
     .eq("id", id);
 
   if (error) {
+    const errorMsg = error.message || "";
+    // Graceful fallback nếu bảng whiteboards trên Supabase chưa có cột 'files' hoặc 'pages'
+    if (
+      errorMsg.includes("Could not find the 'files' column") ||
+      errorMsg.includes("Could not find the 'pages' column") ||
+      errorMsg.includes("in the schema cache")
+    ) {
+      console.warn("Bảng whiteboards thiếu cột files/pages, tự động lưu dự phòng vào app_state:", errorMsg);
+      const fallbackPayload: Record<string, any> = { ...payload };
+
+      const currentAppState =
+        typeof fallbackPayload.app_state === "object" && fallbackPayload.app_state !== null
+          ? { ...fallbackPayload.app_state }
+          : {};
+
+      if (fallbackPayload.files !== undefined) {
+        currentAppState.files = fallbackPayload.files;
+        delete fallbackPayload.files;
+      }
+      if (fallbackPayload.pages !== undefined) {
+        currentAppState.pages = fallbackPayload.pages;
+        delete fallbackPayload.pages;
+      }
+      fallbackPayload.app_state = currentAppState;
+
+      const retryRes = await (supabase.from as any)("whiteboards")
+        .update(fallbackPayload)
+        .eq("id", id);
+
+      if (retryRes.error) {
+        return { success: false, error: retryRes.error.message };
+      }
+      return { success: true, error: null };
+    }
+
     return { success: false, error: error.message };
   }
 

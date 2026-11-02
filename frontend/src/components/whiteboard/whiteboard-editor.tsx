@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Whiteboard } from "@/types/whiteboard";
 import { updateWhiteboard } from "@/lib/api/whiteboard";
+import { sanitizeExcalidrawElements } from "@/lib/whiteboard/sanitize-elements";
 import { STEM_LIBRARY_ITEMS, ExcalidrawLibraryItem } from "@/lib/whiteboard/stem-libraries";
 import { BOARD_THEMES, BoardTheme, getThemeById } from "@/lib/whiteboard/board-themes";
 import { convertQuestionToExcalidrawCard } from "@/lib/whiteboard/question-to-excalidraw";
@@ -461,7 +462,7 @@ export default function WhiteboardEditor({
       }
 
       excalidrawAPI.updateScene({
-        elements: targetPage.elements || [],
+        elements: sanitizeExcalidrawElements(targetPage.elements || []) as any,
         appState: {
           ...targetPage.app_state,
           viewBackgroundColor: currentTheme.viewBackgroundColor,

@@ -10,6 +10,10 @@ if (typeof window !== "undefined") {
 import { Excalidraw } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
 import { STEM_LIBRARY_ITEMS } from "@/lib/whiteboard/stem-libraries";
+import {
+  sanitizeExcalidrawElements,
+  sanitizeExcalidrawFiles,
+} from "@/lib/whiteboard/sanitize-elements";
 
 type ExcalidrawImperativeAPI = {
   updateLibrary: (opts: { libraryItems: unknown[]; merge?: boolean; openLibraryMenu?: boolean }) => void;
@@ -77,8 +81,12 @@ export default function WhiteboardCanvas({
       // Nếu là gói Pro, tự động load thư viện STEM giáo dục vào kho Excalidraw Library
       if (isPro && !isLibraryLoadedRef.current) {
         try {
+          const sanitizedLibrary = STEM_LIBRARY_ITEMS.map((item) => ({
+            ...item,
+            elements: sanitizeExcalidrawElements(item.elements),
+          }));
           excalidrawAPI.updateLibrary({
-            libraryItems: STEM_LIBRARY_ITEMS,
+            libraryItems: sanitizedLibrary,
             merge: true,
             openLibraryMenu: false,
           });
@@ -101,15 +109,19 @@ export default function WhiteboardCanvas({
 
   // Stable initial data (Excalidraw only consumes this on initial mount)
   const initialData = useMemo(() => {
+    const rawElements = Array.isArray(initialElements) ? initialElements : [];
+    const elements = sanitizeExcalidrawElements(rawElements);
+    const files = sanitizeExcalidrawFiles(initialFiles);
+
     return {
-      elements: (initialElements || []) as unknown as readonly Record<string, unknown>[] as any,
+      elements: elements as any,
       appState: {
         viewBackgroundColor: (initialAppState?.viewBackgroundColor as string) || "#ffffff",
         currentItemStrokeColor: (initialAppState?.currentItemStrokeColor as string) || "#1e1e1e",
         gridSize: (initialAppState?.gridSize as number) ?? 20,
         ...initialAppState,
       } as any,
-      files: (initialFiles || {}) as any,
+      files: files as any,
       scrollToContent: true,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

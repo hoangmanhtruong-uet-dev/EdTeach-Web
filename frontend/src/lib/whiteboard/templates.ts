@@ -1,3 +1,5 @@
+import { sanitizeExcalidrawElements } from "@/lib/whiteboard/sanitize-elements";
+
 /**
  * 4 Quick Templates Sư Phạm Mẫu cho Bảng trắng EdTeach
  * Mở khóa cho toàn bộ giáo viên (Free & Pro)
@@ -25,8 +27,9 @@ export const WHITEBOARD_TEMPLATES: WhiteboardTemplate[] = [
       viewBackgroundColor: "#ffffff",
       gridSize: 20,
     },
-    generateElements: () => [
-      // Tiêu đề cột trái
+    generateElements: () =>
+      sanitizeExcalidrawElements([
+        // Tiêu đề cột trái
       {
         id: "col-left-header-bg",
         type: "rectangle",
@@ -131,7 +134,7 @@ export const WHITEBOARD_TEMPLATES: WhiteboardTemplate[] = [
         fontFamily: 1,
         strokeColor: "#64748b",
       },
-    ],
+    ]),
   },
 
   // 2. Sơ đồ tư duy (Mindmap)
@@ -145,8 +148,9 @@ export const WHITEBOARD_TEMPLATES: WhiteboardTemplate[] = [
       viewBackgroundColor: "#fdfbf7",
       gridSize: 20,
     },
-    generateElements: () => [
-      // Nút trung tâm
+    generateElements: () =>
+      sanitizeExcalidrawElements([
+        // Nút trung tâm
       {
         id: "mindmap-center",
         type: "rectangle",
@@ -315,7 +319,7 @@ export const WHITEBOARD_TEMPLATES: WhiteboardTemplate[] = [
         fontFamily: 1,
         strokeColor: "#7e22ce",
       },
-    ],
+    ]),
   },
 
   // 3. Ô kẻ ô ly 5mm (Tập học sinh)
@@ -388,7 +392,7 @@ export const WHITEBOARD_TEMPLATES: WhiteboardTemplate[] = [
         });
       }
 
-      return elements;
+      return sanitizeExcalidrawElements(elements);
     },
   },
 
@@ -403,8 +407,9 @@ export const WHITEBOARD_TEMPLATES: WhiteboardTemplate[] = [
       viewBackgroundColor: "#f1f5f9",
       gridSize: 20,
     },
-    generateElements: () => [
-      // Tờ giấy A4 (794 x 1123 px)
+    generateElements: () =>
+      sanitizeExcalidrawElements([
+        // Tờ giấy A4 (794 x 1123 px)
       {
         id: "a4-paper",
         type: "rectangle",
@@ -452,6 +457,6 @@ export const WHITEBOARD_TEMPLATES: WhiteboardTemplate[] = [
         strokeWidth: 1.5,
         roughness: 0,
       },
-    ],
+    ]),
   },
 ];
