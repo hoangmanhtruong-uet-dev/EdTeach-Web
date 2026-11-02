@@ -282,7 +282,6 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
   const [lineSpacing, setLineSpacing] = useState("1.3");
   const [columnCount, setColumnCount] = useState(1);
   const [teacherMode, setTeacherMode] = useState(true); // true: shows answers & solutions
-  const [showRuler, setShowRuler] = useState(true);
 
   // Undo / Redo history
   const [history, setHistory] = useState<DocItem[][]>([]);
@@ -334,17 +333,37 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
   // Standard Header Visibility (default false for fresh blank canvas)
   const [showStandardHeader, setShowStandardHeader] = useState(false);
 
-  // Responsive sidebar defaults for tablet & mobile (CRT-16)
+  // Responsive sidebar defaults and localStorage memory
   useEffect(() => {
     if (typeof window !== "undefined") {
-      if (window.innerWidth < 1024) {
+      const savedLeftOpen = localStorage.getItem("exam_studio_left_sidebar_open");
+      const savedLeftWidth = localStorage.getItem("exam_studio_left_sidebar_width");
+      if (savedLeftWidth) {
+        const parsedW = parseInt(savedLeftWidth, 10);
+        if (parsedW >= 220 && parsedW <= 380) setLeftWidth(parsedW);
+      }
+      if (savedLeftOpen !== null) {
+        setLeftSidebarOpen(savedLeftOpen === "true");
+      } else if (window.innerWidth < 1366) {
+        // Under 1366px: default to compact Dock Rail
         setLeftSidebarOpen(false);
       }
-      if (window.innerWidth < 768) {
+
+      if (window.innerWidth < 1024) {
         setAiSidebarOpen(false);
       }
     }
   }, []);
+
+  const toggleLeftSidebar = (open?: boolean) => {
+    const next = open !== undefined ? open : !leftSidebarOpen;
+    setLeftSidebarOpen(next);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("exam_studio_left_sidebar_open", String(next));
+      } catch {}
+    }
+  };
 
   // Dropdown states for menus
   const [showZoomMenu, setShowZoomMenu] = useState(false);
@@ -464,6 +483,10 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
   const [showShareExamModal, setShowShareExamModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const [showMoreActions, setShowMoreActions] = useState(false);
+  const moreActionsRef = useRef<HTMLDivElement>(null);
+  const [showAiAttachmentMenu, setShowAiAttachmentMenu] = useState(false);
+  const aiAttachmentMenuRef = useRef<HTMLDivElement>(null);
   const [showShuffleModal, setShowShuffleModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState<"pro" | "max" | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<PricingPlan | null>(null);
@@ -471,20 +494,27 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
   const [dailyUsed, setDailyUsed] = useState(0);
   const [userReferralCode, setUserReferralCode] = useState("EDUTEACH");
 
-  // Click outside to close user menu
+  // Click outside to close dropdown menus
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (userMenuRef.current && !userMenuRef.current.contains(target)) {
         setShowUserMenu(false);
       }
+      if (moreActionsRef.current && !moreActionsRef.current.contains(target)) {
+        setShowMoreActions(false);
+      }
+      if (aiAttachmentMenuRef.current && !aiAttachmentMenuRef.current.contains(target)) {
+        setShowAiAttachmentMenu(false);
+      }
     };
-    if (showUserMenu) {
+    if (showUserMenu || showMoreActions || showAiAttachmentMenu) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showUserMenu]);
+  }, [showUserMenu, showMoreActions, showAiAttachmentMenu]);
 
   // Load referral code
   useEffect(() => {
@@ -734,11 +764,27 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isDraggingLeft) {
-        const newW = Math.max(180, Math.min(e.clientX, 480));
-        setLeftWidth(newW);
+        if (e.clientX < 180) {
+          // Snap closed to Dock Rail
+          setLeftSidebarOpen(false);
+          setIsDraggingLeft(false);
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("exam_studio_left_sidebar_open", "false");
+            } catch {}
+          }
+        } else {
+          const newW = Math.max(220, Math.min(e.clientX, 380));
+          setLeftWidth(newW);
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("exam_studio_left_sidebar_width", String(newW));
+            } catch {}
+          }
+        }
       }
       if (isDraggingRight) {
-        const newW = Math.max(280, Math.min(window.innerWidth - e.clientX, 650));
+        const newW = Math.max(280, Math.min(window.innerWidth - e.clientX, 560));
         setRightWidth(newW);
       }
     };
@@ -2301,13 +2347,13 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
             setSwitchingTypeId(switchingTypeId === q.id ? null : q.id);
           }}
           className={clsx(
-            "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold border transition hover:opacity-85 shadow-xs",
+            "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold border transition hover:opacity-90 shadow-2xs cursor-pointer",
             typeColor
           )}
           title="Bấm để đổi loại câu hỏi này"
         >
           <span>{typeLabel}</span>
-          <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+          <ChevronDown className="h-3 w-3 opacity-70" />
         </button>
 
         {switchingTypeId === q.id && (
@@ -2870,21 +2916,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
 
                     <button
                       onClick={() => {
-                        setShowRuler(!showRuler);
-                        setShowActiveMenu(null);
-                      }}
-                      className="flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-slate-50"
-                    >
-                      <div className="flex items-center gap-2">
-                        <SlidersHorizontal className="h-3.5 w-3.5 text-slate-500" />
-                        <span>Hiện thước kẻ</span>
-                      </div>
-                      {showRuler && <Check className="h-3.5 w-3.5 text-blue-600" />}
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setLeftSidebarOpen(!leftSidebarOpen);
+                        toggleLeftSidebar();
                         setShowActiveMenu(null);
                       }}
                       className="flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-slate-50"
@@ -4275,14 +4307,14 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
         </div>
 
         {/* Right: Actions & User Info */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Flagship Action 1: Trộn Mã Đề & Ma Trận (Xanh dương nổi bật) */}
           <button
             type="button"
             onClick={() => setShowShuffleModal(true)}
             aria-label="Trộn 4-8 mã đề và tạo ma trận đáp án"
             title="Trộn bộ 4-8 mã đề con hoán vị kèm ma trận barem chuẩn Bộ GD&ĐT"
-            className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-blue-700 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 sm:px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-blue-700 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 shrink-0"
           >
             <Shuffle className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">Trộn Mã Đề</span>
@@ -4294,53 +4326,89 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
             onClick={handleExportDocx}
             aria-label="Tải về file Word (.docx) chuẩn Bộ GD&ĐT"
             title="Xuất file Word (.docx) chuẩn Times New Roman và hình vẽ vector"
-            className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 sm:px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 shrink-0"
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">Xuất Word</span>
           </button>
 
-          {/* Mời đồng nghiệp nhận +2.000 credits */}
-          <button
-            type="button"
-            onClick={() => setShowQuotaModal(true)}
-            className="hidden xl:flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 shadow-sm transition hover:bg-amber-100 cursor-pointer"
-            title="Mời đồng nghiệp để cả hai cùng nhận +2.000 credits miễn phí"
-          >
-            <Gift className="h-3.5 w-3.5 text-amber-600" aria-hidden="true" />
-            <span>🎁 Mời đồng nghiệp (+2.000 cr)</span>
-          </button>
+          {/* More Actions Dropdown Menu "⋯" (Holds Chia sẻ, Mời đồng nghiệp, Xem kho đề) */}
+          <div className="relative" ref={moreActionsRef}>
+            <button
+              type="button"
+              onClick={() => setShowMoreActions(!showMoreActions)}
+              aria-label="Thao tác khác"
+              title="Thao tác khác: Chia sẻ đề thi, Mời nhận credits, Xem kho đề"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 transition cursor-pointer shadow-xs"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
 
-          {/* Chia sẻ */}
-          <button
-            onClick={handleShare}
-            className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 sm:flex cursor-pointer"
-            title="Chia sẻ đề thi và link giới thiệu nhận 2.000 credits"
-          >
-            <Share2 className="h-3.5 w-3.5 text-slate-500" />
-            Chia sẻ
-          </button>
+            {showMoreActions && (
+              <div
+                className="absolute right-0 top-full mt-1.5 z-50 w-60 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl text-xs space-y-0.5 text-slate-700 animate-in fade-in slide-in-from-top-1 duration-150 text-left font-normal"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMoreActions(false);
+                    handleShare();
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-blue-50 text-slate-800 hover:text-blue-700 transition cursor-pointer"
+                >
+                  <Share2 className="h-4 w-4 text-blue-600 shrink-0" />
+                  <span className="font-semibold">Chia sẻ đề thi (HS & GV)</span>
+                </button>
 
-          {/* Xem kho đề của tôi */}
-          <Link
-            href="/exams"
-            className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-          >
-            <FolderOpen className="h-3.5 w-3.5 text-slate-500" />
-            <span className="hidden md:inline">Xem kho đề của tôi</span>
-          </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMoreActions(false);
+                    setShowQuotaModal(true);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-amber-50 text-amber-900 transition cursor-pointer"
+                >
+                  <Gift className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span className="font-semibold">Mời đồng nghiệp (+2.000 cr)</span>
+                </button>
+
+                <Link
+                  href="/exams"
+                  onClick={() => setShowMoreActions(false)}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-slate-100 text-slate-700 transition"
+                >
+                  <FolderOpen className="h-4 w-4 text-slate-500 shrink-0" />
+                  <span>Kho đề thi của tôi</span>
+                </Link>
+
+                {examId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreActions(false);
+                      router.push(`/teach/${examId}`);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-amber-50 text-amber-800 transition cursor-pointer"
+                  >
+                    <Presentation className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span>Mở Bục Giảng Số</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Hỏi AI Toggle Button */}
           <button
             onClick={() => setAiSidebarOpen(!aiSidebarOpen)}
-            className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition shadow-sm ${
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition shadow-xs shrink-0 cursor-pointer ${
               aiSidebarOpen
                 ? "bg-primary text-primary-foreground"
                 : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
           >
             <Sparkles className="h-3.5 w-3.5" />
-            Hỏi AI
+            <span>Hỏi AI</span>
           </button>
 
           {/* User Badge: Interactive Avatar with Profile Dropdown */}
@@ -4500,8 +4568,8 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
       {/* ============================================================== */}
       {/* 2. RICH TEXT FORMATTING TOOLBAR                                */}
       {/* ============================================================== */}
-      <div className="relative z-40 flex h-11 w-full shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-4">
-        <div className="flex items-center gap-1 text-slate-700">
+      <div className="relative z-40 flex h-11 w-full shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-4 overflow-hidden">
+        <div className="flex items-center gap-1 text-slate-700 overflow-x-auto no-scrollbar whitespace-nowrap min-w-0 pr-2">
           {/* Undo / Redo */}
           <button
             onClick={handleUndo}
@@ -4779,29 +4847,12 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
         </div>
 
         {/* Word count & Total questions */}
-        <div className="hidden items-center gap-2 text-xs text-muted-foreground lg:flex">
+        <div className="hidden xl:flex items-center gap-2 text-xs text-muted-foreground shrink-0 whitespace-nowrap pl-2">
           <span>{questions.length} câu hỏi</span>
           <span>•</span>
           <span>Thang điểm: 10</span>
         </div>
       </div>
-
-      {/* ============================================================== */}
-      {/* 3. DOCUMENT RULER BAR (THƯỚC ĐO CĂN LỀ A4)                     */}
-      {/* ============================================================== */}
-      {showRuler && (
-        <div className="relative flex h-5 w-full shrink-0 items-center justify-center border-b border-slate-200 bg-slate-50 select-none">
-          <div className="flex w-[820px] items-center justify-between px-8 text-[9px] text-slate-400">
-            <div className="h-2 w-2 border-t-4 border-l-2 border-r-2 border-blue-600 border-l-transparent border-r-transparent" />
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].map((num) => (
-              <span key={num} className="font-mono">
-                {num}
-              </span>
-            ))}
-            <div className="h-2 w-2 border-t-4 border-l-2 border-r-2 border-blue-600 border-l-transparent border-r-transparent" />
-          </div>
-        </div>
-      )}
 
       {/* ============================================================== */}
       {/* 4. THREE-COLUMN MAIN WORKSPACE                                 */}
@@ -4820,14 +4871,16 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
         {leftSidebarOpen ? (
           <aside
             style={{ width: `${leftWidth}px` }}
-            className="fixed inset-y-0 left-0 z-50 flex shrink-0 flex-col border-r border-slate-200 bg-white shadow-2xl lg:static lg:z-auto lg:shadow-none"
+            className={`fixed inset-y-0 left-0 z-50 flex shrink-0 flex-col border-r border-slate-200 bg-white shadow-2xl lg:static lg:z-auto lg:shadow-none ${
+              isDraggingLeft ? "transition-none select-none" : "transition-[width] duration-200 ease-out"
+            }`}
           >
             <div className="flex h-12 items-center justify-between border-b border-slate-100 px-4">
               <span className="text-sm font-semibold text-slate-700">Tài liệu</span>
               <button
-                onClick={() => setLeftSidebarOpen(false)}
+                onClick={() => toggleLeftSidebar(false)}
                 title="Thu gọn thanh tài liệu"
-                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
               >
                 <PanelLeftClose className="h-4 w-4" />
               </button>
@@ -4880,28 +4933,29 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                       </span>
                     </div>
 
+                    {/* Fixed 2-column grid layout for zero-reflow resizing */}
                     <div className="space-y-1 text-[11px]">
-                      <div className="flex items-center justify-between text-slate-700">
-                        <span>Phần I (MCQ):</span>
+                      <div className="grid grid-cols-[1fr_auto] items-center gap-x-2 py-0.5 whitespace-nowrap text-slate-700">
+                        <span className="truncate">Phần I (MCQ):</span>
                         <span className="font-semibold tabular-nums text-slate-900">
                           {questions.filter((q) => !q.blockType || q.blockType === "question" || q.type === "multiple_choice").length}/12 câu (3.0đ)
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-slate-700">
-                        <span>Phần II (Đúng/Sai):</span>
+                      <div className="grid grid-cols-[1fr_auto] items-center gap-x-2 py-0.5 whitespace-nowrap text-slate-700">
+                        <span className="truncate">Phần II (Đúng/Sai):</span>
                         <span className="font-semibold tabular-nums text-slate-900">
                           {questions.filter((q) => q.blockType === "true_false" || q.type === "true_false").length}/4 câu (4.0đ)
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-slate-700">
-                        <span>Phần III (Trả lời ngắn):</span>
+                      <div className="grid grid-cols-[1fr_auto] items-center gap-x-2 py-0.5 whitespace-nowrap text-slate-700">
+                        <span className="truncate">Phần III (Trả lời ngắn):</span>
                         <span className="font-semibold tabular-nums text-slate-900">
                           {questions.filter((q) => q.blockType === "short_answer" || q.type === "short_answer").length}/6 câu (3.0đ)
                         </span>
                       </div>
                       {questions.some((q) => q.blockType === "essay" || q.type === "essay") && (
-                        <div className="flex items-center justify-between text-slate-700">
-                          <span>Phần Tự luận:</span>
+                        <div className="grid grid-cols-[1fr_auto] items-center gap-x-2 py-0.5 whitespace-nowrap text-slate-700">
+                          <span className="truncate">Phần Tự luận:</span>
                           <span className="font-semibold tabular-nums text-slate-900">
                             {questions.filter((q) => q.blockType === "essay" || q.type === "essay").length} câu
                           </span>
@@ -4936,48 +4990,50 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                         CÁC CÂU HỎI ({questions.length})
                       </p>
                     {questions.map((q, idx) => {
-                      let label = `Câu ${idx + 1}:`;
-                      let preview = q.content ? q.content.replace(/\$[^$]*\$/g, "[công thức]") : "";
-                      if (q.blockType === "section_title") {
-                        label = "§ Phần:";
-                        preview = q.sectionTitle || "Tiêu đề phần";
+                      let label = `Câu ${idx + 1}`;
+                      let typeLabel = "Trắc nghiệm";
+                      if (q.blockType === "true_false") typeLabel = "Đúng / Sai";
+                      else if (q.blockType === "short_answer") typeLabel = "Trả lời ngắn";
+                      else if (q.blockType === "essay") typeLabel = "Tự luận";
+                      else if (q.blockType === "section_title") {
+                        label = "§";
+                        typeLabel = "Phần đề mục";
                       } else if (q.blockType === "header_custom") {
-                        label = "Đầu đề:";
-                        preview = q.headerType === "two_col" ? "Đầu đề hai cột" : q.headerType === "centered" ? "Tên đề căn giữa" : "Thông tin đề";
+                        label = "Đầu đề";
+                        typeLabel = "Tiêu đề";
                       } else if (q.blockType === "formula") {
-                        label = "∑ Công thức:";
-                        preview = q.content || "Công thức";
-                      } else if (q.blockType === "rubric_table") {
-                        label = "📋 Barem:";
-                        preview = "Bảng barem điểm";
-                      } else if (q.blockType === "rubric_with_geometry") {
-                        label = "📋 Barem hình:";
-                        preview = "Barem có hình học";
+                        label = "∑";
+                        typeLabel = "Công thức";
                       } else if (q.blockType === "svg") {
-                        label = "📐 Hình:";
-                        preview = q.svgType === "sheet_box" ? "Tấm nhôm và hộp" : q.svgType === "heater" ? "Sơ đồ máy sưởi" : q.svgType === "radiation" ? "Biển phóng xạ" : q.svgType === "variation_table" ? "Bảng biến thiên" : q.svgType === "function_graph" ? "Đồ thị Oxy" : q.svgType === "chart" ? "Biểu đồ" : "Hình học";
-                      } else if (q.blockType === "table") {
-                        label = "▦ Bảng:";
-                        preview = "Bảng dữ liệu";
-                      } else if (q.blockType === "callout") {
-                        label = "💡 Lưu ý:";
-                        preview = q.content;
-                      } else if (q.blockType === "divider") {
-                        label = "―";
-                        preview = "Đường kẻ ngang";
-                      } else if (q.blockType === "page_break") {
-                        label = "📄";
-                        preview = "Ngắt trang";
+                        label = "📐";
+                        typeLabel = "Hình vẽ";
                       }
+
+                      // Clean math preview from raw $math$ LaTeX
+                      const cleanedPreview = q.content
+                        ? q.content
+                            .replace(/\$([^$]+)\$/g, " $1 ")
+                            .replace(/\\(frac|sqrt|times|cdot|le|ge|pm|approx)/g, "")
+                            .replace(/[{}]/g, "")
+                            .replace(/\s+/g, " ")
+                            .trim()
+                        : q.sectionTitle || "";
+
                       return (
                         <button
                           key={q.id}
                           onClick={() => scrollToQuestion(idx)}
-                          className="group flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition hover:bg-slate-100"
+                          title={q.content || `${label}: ${typeLabel}`}
+                          className="group flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-xs transition hover:bg-slate-100 cursor-pointer"
                         >
-                          <span className="font-semibold text-blue-600 shrink-0">{label}</span>
-                          <span className="truncate text-slate-600 group-hover:text-slate-900">
-                            {preview}
+                          <div className="flex items-center gap-1.5 w-full">
+                            <span className="font-bold text-blue-600 text-xs shrink-0">{label}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium shrink-0 truncate max-w-[120px]">
+                              {typeLabel}
+                            </span>
+                          </div>
+                          <span className="truncate text-[11px] text-slate-500 group-hover:text-slate-800 w-full pl-0.5">
+                            {cleanedPreview || "Nội dung mục..."}
                           </span>
                         </button>
                       );
@@ -5039,66 +5095,123 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               </div>
             ) : (
                 /* Templates Tab */
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                    CẤU TRÚC MA TRẬN CHUẨN
+                    CẤU TRÚC MA TRẬN CHUẨN GDPT 2025
                   </p>
                   <div
-                    onClick={() => {
-                      executeAiGenerate("Soạn đề giữa kì I Toán 4 gồm trắc nghiệm và tự luận thang điểm 10");
-                    }}
-                    className="cursor-pointer rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 transition hover:border-primary hover:bg-blue-50/30"
+                    className="rounded-xl border border-slate-200 bg-white p-3 transition shadow-xs hover:border-blue-400 hover:shadow-sm"
                   >
-                    <p className="text-xs font-semibold text-slate-800">Đề giữa kì I Toán 4</p>
-                    <p className="mt-1 text-[11px] text-slate-500">Trắc nghiệm + Đúng/Sai + Tự luận</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-slate-900">Đề giữa kì I môn Toán</p>
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">90 phút</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-500 leading-relaxed">
+                      12 câu MCQ (3đ) + 4 câu Đúng/Sai (4đ) + 6 câu Trả lời ngắn (3đ)
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => executeAiGenerate("Soạn đề giữa kì I môn Toán chuẩn ma trận Bộ GD&ĐT 2025 gồm đầy đủ 3 phần: 12 trắc nghiệm, 4 đúng/sai, 6 trả lời ngắn")}
+                      className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-50 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-600 hover:text-white transition cursor-pointer"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" /> Dùng mẫu này
+                    </button>
                   </div>
 
                   <div
-                    onClick={() => {
-                      executeAiGenerate("Soạn đề kiểm tra 15 phút Toán khối 10 chương Mệnh đề và Tập hợp");
-                    }}
-                    className="cursor-pointer rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 transition hover:border-primary hover:bg-blue-50/30"
+                    className="rounded-xl border border-slate-200 bg-white p-3 transition shadow-xs hover:border-emerald-400 hover:shadow-sm"
                   >
-                    <p className="text-xs font-semibold text-slate-800">Kiểm tra 15 phút Toán 10</p>
-                    <p className="mt-1 text-[11px] text-slate-500">10 câu trắc nghiệm nhanh</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-slate-900">Kiểm tra 15 phút (Đánh giá nhanh)</p>
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">15 phút</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-500 leading-relaxed">
+                      10 câu trắc nghiệm 4 lựa chọn lấy điểm hệ số 1
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => executeAiGenerate("Soạn đề kiểm tra 15 phút môn Toán 10 câu trắc nghiệm nhanh")}
+                      className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-50 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-600 hover:text-white transition cursor-pointer"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" /> Dùng mẫu này
+                    </button>
                   </div>
 
                   <div
-                    onClick={() => {
-                      executeAiGenerate("Soạn đề thi học kì I môn Toán khối 12 chuẩn ma trận 2025");
-                    }}
-                    className="cursor-pointer rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 transition hover:border-primary hover:bg-blue-50/30"
+                    className="rounded-xl border border-slate-200 bg-white p-3 transition shadow-xs hover:border-purple-400 hover:shadow-sm"
                   >
-                    <p className="text-xs font-semibold text-slate-800">Đề thi học kì I chuẩn 2025</p>
-                    <p className="mt-1 text-[11px] text-slate-500">Đầy đủ 3 phần format mới Bộ GD</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-slate-900">Đề thi học kì I (Tốt nghiệp THPT)</p>
+                      <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700">120 phút</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-500 leading-relaxed">
+                      Đầy đủ 3 phần format mới Bộ GD&ĐT kèm câu hỏi phân hóa cao
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => executeAiGenerate("Soạn đề thi học kì I môn Toán lớp 12 chuẩn cấu trúc Bộ GD&ĐT 2025 có tính phân hóa")}
+                      className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-purple-50 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-600 hover:text-white transition cursor-pointer"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" /> Dùng mẫu này
+                    </button>
                   </div>
                 </div>
               )}
             </div>
           </aside>
         ) : (
-          <button
-            onClick={() => setLeftSidebarOpen(true)}
-            title="Mở thanh tài liệu"
-            className="flex h-10 w-9 items-center justify-center border-r border-b border-slate-200 bg-white text-slate-500 hover:text-slate-800"
-          >
-            <PanelLeft className="h-4 w-4" />
-          </button>
+          <aside className="w-10 shrink-0 border-r border-slate-200 bg-slate-50/90 flex flex-col items-center py-3 gap-3 z-30 transition-all duration-200 select-none">
+            <button
+              onClick={() => toggleLeftSidebar(true)}
+              title="Mở thanh tài liệu & Mục lục (Ctrl+\)"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-xs transition cursor-pointer"
+            >
+              <PanelLeft className="h-4 w-4" />
+            </button>
+            <div className="w-5 h-[1px] bg-slate-200" />
+            <button
+              onClick={() => {
+                setActiveLeftTab("toc");
+                toggleLeftSidebar(true);
+              }}
+              title="Mục lục các câu hỏi"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-blue-600 hover:shadow-xs transition cursor-pointer"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => {
+                setActiveLeftTab("templates");
+                toggleLeftSidebar(true);
+              }}
+              title="Mẫu ma trận đề thi"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-blue-600 hover:shadow-xs transition cursor-pointer"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+            </button>
+            <div className="mt-auto">
+              <span className="text-[10px] font-bold text-slate-400 rotate-90 block tracking-wider uppercase">
+                Tài liệu
+              </span>
+            </div>
+          </aside>
         )}
 
         {/* Left Resizer Drag Handle */}
         {leftSidebarOpen && (
           <div
             onMouseDown={() => setIsDraggingLeft(true)}
-            className="w-1.5 cursor-col-resize hover:w-2 hover:bg-primary/50 active:bg-primary bg-slate-200 transition-all shrink-0 z-20 select-none"
-            title="Kéo sang trái/phải để chỉnh độ rộng bảng Tài liệu"
-          />
+            className="w-2 hover:w-2.5 cursor-col-resize hover:bg-blue-500/50 active:bg-blue-600 bg-slate-200/80 transition-colors shrink-0 z-20 select-none group relative"
+            title="Kéo sang trái/phải để chỉnh độ rộng (hoặc kéo dưới 180px để thu gọn)"
+          >
+            <div className="absolute inset-y-0 -left-1 -right-1 cursor-col-resize" />
+          </div>
         )}
 
         {/* ============================================================ */}
         {/* CENTER COLUMN: A4 DOCUMENT CANVAS                            */}
         {/* ============================================================ */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center min-w-0">
           <div
             style={{
               fontFamily: FONT_FAMILIES.find((f) => f.name === fontFamily)?.fontStack || fontFamily,
@@ -5115,7 +5228,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               transform: `scale(${zoom / 100})`,
               transformOrigin: "top center",
             }}
-            className="w-[820px] min-h-[1160px] shrink-0 rounded-sm border border-slate-200/80 bg-white p-12 shadow-[0_4px_24px_rgba(0,0,0,0.06)] print:shadow-none print:border-none print:m-0 print:p-8"
+            className="w-[820px] min-h-[1160px] shrink-0 mx-auto rounded-sm border border-slate-200/80 bg-white p-12 shadow-[0_4px_24px_rgba(0,0,0,0.06)] print:shadow-none print:border-none print:m-0 print:p-8"
           >
             {/* Standard Vietnamese School Exam Header (Optional - Toggleable) */}
             {showStandardHeader && (
@@ -5530,10 +5643,10 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                   if (q.blockType === "true_false") {
                     return (
                       <div key={q.id} id={`question-anchor-${idx}`} className="group relative rounded-lg border border-transparent p-3 transition hover:border-slate-200 hover:bg-slate-50/50">
-                        <div className="absolute top-2 right-2 hidden items-center gap-1 rounded-md border border-slate-200 bg-white p-1 shadow-sm group-hover:flex print:hidden">
-                          <button onClick={() => handleStartEdit(q)} title="Sửa câu" className="rounded p-1 text-slate-500 hover:bg-slate-100"><Edit3 className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => handleDuplicateQuestion(q)} title="Nhân bản câu" className="rounded p-1 text-slate-500 hover:bg-slate-100"><Copy className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => handleDeleteQuestion(q.id)} title="Xóa câu" className="rounded p-1 text-slate-500 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
+                        <div className="absolute top-2 right-2 flex items-center gap-1 rounded-lg border border-slate-200/90 bg-white/95 backdrop-blur-xs p-0.5 shadow-xs opacity-60 group-hover:opacity-100 focus-within:opacity-100 transition-opacity print:hidden z-10">
+                          <button onClick={() => handleStartEdit(q)} title="Chỉnh sửa câu hỏi" className="h-7 w-7 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"><Edit3 className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => handleDuplicateQuestion(q)} title="Nhân bản câu hỏi" className="h-7 w-7 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"><Copy className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => handleDeleteQuestion(q.id)} title="Xóa câu hỏi" className="h-7 w-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-red-50 hover:text-red-600 transition cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></button>
                         </div>
                         <div className="flex items-start gap-2">
                           <div className="flex items-center gap-1 shrink-0">
@@ -5547,8 +5660,8 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                             <thead className="bg-slate-50 border-b border-slate-200">
                               <tr>
                                 <th className="p-2 text-left font-semibold text-slate-700">Mệnh đề / Khẳng định</th>
-                                <th className="p-2 w-16 text-center font-semibold text-slate-700">Đúng</th>
-                                <th className="p-2 w-16 text-center font-semibold text-slate-700">Sai</th>
+                                <th className="p-2 w-20 text-center font-semibold text-slate-700">Đúng</th>
+                                <th className="p-2 w-20 text-center font-semibold text-slate-700">Sai</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-200">
@@ -5559,16 +5672,20 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                                   </td>
                                   <td className="p-2 text-center">
                                     {teacherMode && tf.isCorrect ? (
-                                      <span className="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Đ</span>
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs">
+                                        <Check className="h-3.5 w-3.5" /> Đúng
+                                      </span>
                                     ) : (
-                                      <div className="h-4 w-4 rounded-full border border-slate-300 mx-auto" />
+                                      <div className="h-4 w-4 rounded-full border-2 border-slate-300 mx-auto" />
                                     )}
                                   </td>
                                   <td className="p-2 text-center">
                                     {teacherMode && !tf.isCorrect ? (
-                                      <span className="inline-block px-2 py-0.5 rounded bg-red-100 text-red-800 font-bold">S</span>
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-100 text-rose-800 border border-rose-300 font-bold text-xs">
+                                        <X className="h-3.5 w-3.5" /> Sai
+                                      </span>
                                     ) : (
-                                      <div className="h-4 w-4 rounded-full border border-slate-300 mx-auto" />
+                                      <div className="h-4 w-4 rounded-full border-2 border-slate-300 mx-auto" />
                                     )}
                                   </td>
                                 </tr>
@@ -5595,10 +5712,10 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                   if (q.blockType === "short_answer") {
                     return (
                       <div key={q.id} id={`question-anchor-${idx}`} className="group relative rounded-lg border border-transparent p-3 transition hover:border-slate-200 hover:bg-slate-50/50">
-                        <div className="absolute top-2 right-2 hidden items-center gap-1 rounded-md border border-slate-200 bg-white p-1 shadow-sm group-hover:flex print:hidden">
-                          <button onClick={() => handleStartEdit(q)} title="Sửa câu" className="rounded p-1 text-slate-500 hover:bg-slate-100"><Edit3 className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => handleDuplicateQuestion(q)} title="Nhân bản câu" className="rounded p-1 text-slate-500 hover:bg-slate-100"><Copy className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => handleDeleteQuestion(q.id)} title="Xóa câu" className="rounded p-1 text-slate-500 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
+                        <div className="absolute top-2 right-2 flex items-center gap-1 rounded-lg border border-slate-200/90 bg-white/95 backdrop-blur-xs p-0.5 shadow-xs opacity-60 group-hover:opacity-100 focus-within:opacity-100 transition-opacity print:hidden z-10">
+                          <button onClick={() => handleStartEdit(q)} title="Chỉnh sửa câu hỏi" className="h-7 w-7 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"><Edit3 className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => handleDuplicateQuestion(q)} title="Nhân bản câu hỏi" className="h-7 w-7 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"><Copy className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => handleDeleteQuestion(q.id)} title="Xóa câu hỏi" className="h-7 w-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-red-50 hover:text-red-600 transition cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></button>
                         </div>
                         <div className="flex items-start gap-2">
                           <div className="flex items-center gap-1 shrink-0">
@@ -5632,10 +5749,10 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                   if (q.blockType === "essay") {
                     return (
                       <div key={q.id} id={`question-anchor-${idx}`} className="group relative rounded-lg border border-transparent p-3 transition hover:border-slate-200 hover:bg-slate-50/50">
-                        <div className="absolute top-2 right-2 hidden items-center gap-1 rounded-md border border-slate-200 bg-white p-1 shadow-sm group-hover:flex print:hidden">
-                          <button onClick={() => handleStartEdit(q)} title="Sửa câu" className="rounded p-1 text-slate-500 hover:bg-slate-100"><Edit3 className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => handleDuplicateQuestion(q)} title="Nhân bản câu" className="rounded p-1 text-slate-500 hover:bg-slate-100"><Copy className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => handleDeleteQuestion(q.id)} title="Xóa câu" className="rounded p-1 text-slate-500 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
+                        <div className="absolute top-2 right-2 flex items-center gap-1 rounded-lg border border-slate-200/90 bg-white/95 backdrop-blur-xs p-0.5 shadow-xs opacity-60 group-hover:opacity-100 focus-within:opacity-100 transition-opacity print:hidden z-10">
+                          <button onClick={() => handleStartEdit(q)} title="Chỉnh sửa câu hỏi" className="h-7 w-7 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"><Edit3 className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => handleDuplicateQuestion(q)} title="Nhân bản câu hỏi" className="h-7 w-7 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"><Copy className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => handleDeleteQuestion(q.id)} title="Xóa câu hỏi" className="h-7 w-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-red-50 hover:text-red-600 transition cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></button>
                         </div>
                         <div className="flex items-start gap-2">
                           <div className="flex items-center gap-1 shrink-0">
@@ -5893,25 +6010,25 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                       className="group relative rounded-lg border border-transparent p-3 transition hover:border-slate-200 hover:bg-slate-50/50"
                     >
                       {/* Floating actions menu */}
-                      <div className="absolute top-2 right-2 hidden items-center gap-1 rounded-md border border-slate-200 bg-white p-1 shadow-sm group-hover:flex print:hidden">
+                      <div className="absolute top-2 right-2 flex items-center gap-1 rounded-lg border border-slate-200/90 bg-white/95 backdrop-blur-xs p-0.5 shadow-xs opacity-60 group-hover:opacity-100 focus-within:opacity-100 transition-opacity print:hidden z-10">
                         <button
                           onClick={() => handleStartEdit(q)}
                           title="Chỉnh sửa câu hỏi"
-                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                          className="h-7 w-7 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
                         >
                           <Edit3 className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleDuplicateQuestion(q)}
                           title="Nhân bản câu hỏi"
-                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                          className="h-7 w-7 flex items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
                         >
                           <Copy className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleDeleteQuestion(q.id)}
                           title="Xóa câu hỏi"
-                          className="rounded p-1 text-slate-500 hover:bg-red-50 hover:text-red-600"
+                          className="h-7 w-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-red-50 hover:text-red-600 transition cursor-pointer"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -6047,11 +6164,10 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
 
             {/* Scrollable Body */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Headline with Typewriter / Cursor Look */}
-              <div className="py-2 text-center">
-                <h3 className="text-lg font-semibold leading-snug text-blue-600">
-                  {`Giữa kì I rồi, soạn đề ${subject || "Toán"} ${grade || "12"} theo cấu trúc Thầy/Cô hay dùng nhé?`}
-                  <span className="inline-block animate-pulse font-normal text-slate-400">|</span>
+              {/* Headline with 1-line clean title */}
+              <div className="py-1 text-center">
+                <h3 className="text-sm font-bold leading-normal text-blue-600 truncate">
+                  {`Soạn đề ${subject || "Toán"} ${grade || "12"} theo cấu trúc nào Thầy/Cô nhỉ?`}
                 </h3>
               </div>
 
@@ -6258,76 +6374,77 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                   className="w-full resize-none border-none p-1 text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
                 />
 
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-slate-100">
-                  {/* Left icons: Image, Attachment */}
-                  <div className="flex items-center gap-1 text-slate-400">
+                <div className="mt-2 flex items-center justify-between gap-1.5 pt-1.5 border-t border-slate-100">
+                  {/* Left: Consolidated "+" Attachment and Modes Menu */}
+                  <div className="relative" ref={aiAttachmentMenuRef}>
                     <button
                       type="button"
-                      onClick={() => ocrImageInputRef.current?.click()}
-                      title="Tải ảnh đề thi lên (AI quét OCR nhận diện chữ & công thức)"
-                      className={`flex items-center gap-1 rounded p-1 transition cursor-pointer ${
-                        attachedImage
-                          ? "bg-blue-100 text-blue-700"
-                          : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                      }`}
+                      onClick={() => setShowAiAttachmentMenu(!showAiAttachmentMenu)}
+                      title="Thêm đính kèm hoặc chế độ nhân bản"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition cursor-pointer"
                     >
-                      <ImageIcon className="h-4 w-4" />
-                      <span className="text-[10px] hidden sm:inline">OCR</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => docAttachmentInputRef.current?.click()}
-                      title="Đính kèm file tài liệu (.txt, .docx, .pdf)"
-                      className={`flex items-center gap-1 rounded p-1 transition cursor-pointer ${
-                        attachedDoc
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                      }`}
-                    >
-                      <Paperclip className="h-4 w-4" />
-                      <span className="text-[10px] hidden sm:inline">Kẹp file</span>
+                      <Plus className="h-4 w-4" />
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!isMaxUser(profile)) {
-                          setShowUpgradeModal("max");
-                          return;
-                        }
-                        setAiPrompt("Hãy phân tích toàn bộ các câu hỏi hiện có trong đề thi này và tạo ra một đề thi MỚI tương đương (cùng ma trận kiến thức, cùng dạng bài toán và độ khó, nhưng thay đổi toàn bộ số liệu, ngữ cảnh và các phương án gây nhiễu chuẩn Bộ GD&ĐT 2025).");
-                      }}
-                      title="Đặc quyền Gói MAX: AI tự động phân tích và nhân bản đề thi tương đương"
-                      className="flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition cursor-pointer"
-                    >
-                      <Crown className="h-3.5 w-3.5 text-amber-600" />
-                      <span className="text-[10px] font-bold">Clone đề (MAX)</span>
-                    </button>
+                    {showAiAttachmentMenu && (
+                      <div className="absolute left-0 bottom-full mb-1.5 z-50 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl text-xs space-y-0.5 text-left font-normal animate-in fade-in slide-in-from-bottom-1 duration-150">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAiAttachmentMenu(false);
+                            ocrImageInputRef.current?.click();
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 hover:bg-blue-50 text-slate-700 hover:text-blue-700 transition cursor-pointer"
+                        >
+                          <ImageIcon className="h-4 w-4 text-blue-600 shrink-0" />
+                          <span className="font-medium">Quét ảnh OCR nhận diện đề</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAiAttachmentMenu(false);
+                            docAttachmentInputRef.current?.click();
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 transition cursor-pointer"
+                        >
+                          <Paperclip className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span className="font-medium">Kẹp file tài liệu (.docx, .pdf)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAiAttachmentMenu(false);
+                            if (!isMaxUser(profile)) {
+                              setShowUpgradeModal("max");
+                              return;
+                            }
+                            setAiPrompt("Hãy phân tích toàn bộ các câu hỏi hiện có trong đề thi này và tạo ra một đề thi MỚI tương đương (cùng ma trận kiến thức, cùng dạng bài toán và độ khó, nhưng thay đổi toàn bộ số liệu, ngữ cảnh và các phương án gây nhiễu chuẩn Bộ GD&ĐT 2025).");
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 hover:bg-amber-50 text-amber-900 font-semibold transition cursor-pointer"
+                        >
+                          <Crown className="h-4 w-4 text-amber-600 shrink-0" />
+                          <span>Clone đề tương đương (MAX)</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Right: Model Tier, Thinking Effort & Send button */}
-                  <div className="flex flex-wrap items-center gap-1.5 ml-auto">
+                  {/* Right: Unified AI Model & Effort Selector & Send button */}
+                  <div className="flex items-center gap-2 ml-auto">
                     <select
-                      value={aiModelTier}
-                      onChange={(e) => setAiModelTier(e.target.value as "medium" | "high")}
-                      aria-label="Chọn mô hình AI"
-                      className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shadow-xs"
-                      title="Flash: 500 cr (Gemini 3.5 Lite - 500 lượt/ngày siêu tốc) | Pro: 1.600 cr (Gemini 3.8 Flash - Flagship suy luận sâu & OCR chuẩn 2025)"
+                      value={`${aiModelTier}-${aiThinkingEffort}`}
+                      onChange={(e) => {
+                        const [m, t] = e.target.value.split("-") as ["medium" | "high", "low" | "medium" | "high"];
+                        setAiModelTier(m);
+                        setAiThinkingEffort(t);
+                      }}
+                      aria-label="Cấu hình mô hình AI"
+                      className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shadow-2xs"
                     >
-                      <option value="medium">⚡ Flash (500 cr)</option>
-                      <option value="high">✨ Pro (1.600 cr)</option>
-                    </select>
-
-                    <select
-                      value={aiThinkingEffort}
-                      onChange={(e) => setAiThinkingEffort(e.target.value as "low" | "medium" | "high")}
-                      aria-label="Mức độ suy luận AI"
-                      className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shadow-xs"
-                      title="Mức độ suy luận của AI: Thấp (Nhanh) | Trung bình (Chuẩn hóa ma trận) | Cao (Tự giải từng bước & kiểm chứng bẫy)"
-                    >
-                      <option value="medium">⚖️ Trung bình (Khuyên dùng)</option>
-                      <option value="low">⚡ Thấp</option>
-                      <option value="high">🧠 Cao</option>
+                      <option value="medium-medium">⚡ Flash · Cân bằng (500 cr)</option>
+                      <option value="medium-low">⚡ Flash · Siêu tốc (500 cr)</option>
+                      <option value="high-medium">✨ Pro · Chuẩn ma trận (1.600 cr)</option>
+                      <option value="high-high">🧠 Pro · Suy luận sâu (1.600 cr)</option>
                     </select>
 
                     <button
@@ -6335,11 +6452,11 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                       onClick={() => executeAiGenerate()}
                       disabled={isGenerating || (!aiPrompt.trim() && !attachedImage && !attachedDoc)}
                       aria-label={isGenerating ? "Đang xử lý yêu cầu sinh đề..." : "Gửi yêu cầu tới AI"}
-                      className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-white shadow transition hover:bg-slate-800 disabled:opacity-40 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white shadow-xs transition hover:bg-slate-800 disabled:opacity-40 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       title="Gửi yêu cầu tới AI"
                     >
                       {isGenerating ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <ArrowUp className="h-4 w-4 stroke-[2.5]" />
                       )}
@@ -6349,12 +6466,24 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               </div>
 
               {/* Disclaimer */}
-              <p className="mt-2 text-center text-[10px] text-slate-400">
-                Trợ lý AI có thể mắc sai sót. Hãy kiểm tra kỹ nội dung nhé.
+              <p className="mt-2 text-center text-xs text-slate-500 font-medium">
+                Trợ lý AI có thể mắc sai sót. Hãy đối soát kỹ đề thi trước khi in nhé.
               </p>
             </div>
           </aside>
         ) : null}
+
+        {/* Floating AI Assistant Launcher when panel is closed */}
+        {!aiSidebarOpen && (
+          <button
+            onClick={() => setAiSidebarOpen(true)}
+            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 shadow-xl transition-all cursor-pointer hover:scale-105 active:scale-95"
+            title="Mở bảng Trợ lý AI soạn đề"
+          >
+            <Sparkles className="h-4 w-4" />
+            <span className="text-xs font-bold">Trợ lý AI</span>
+          </button>
+        )}
       </div>
 
       {/* Visual Formula Editor Modal (Math & Chemistry) */}
