@@ -19,14 +19,16 @@ import {
 } from "lucide-react";
 import { getUserExams, getExamById, Question } from "@/lib/api/exams";
 import { MarketplaceItem } from "@/types/marketplace";
+import { detectStemShapeIdForQuestion } from "@/lib/whiteboard/question-to-excalidraw";
 
 interface ExamDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onInsertQuestion: (question: any, options?: { includeExplanation?: boolean; subject?: string; grade?: number }) => void;
+  onInsertQuestion: (question: any, options?: { includeExplanation?: boolean; revealMode?: boolean; subject?: string; grade?: number }) => void;
   onInsertAllQuestions?: (questions: any[], subject?: string, grade?: number) => void;
   onTriggerLiveClone?: (question: any, subject?: string, grade?: number) => Promise<void>;
   onTriggerScaffold?: (question: any, subject?: string, grade?: number) => Promise<void>;
+  onTriggerAiGeometryDraw?: (question: any) => void;
   isDarkTheme?: boolean;
 }
 
@@ -37,6 +39,7 @@ export function ExamDrawer({
   onInsertAllQuestions,
   onTriggerLiveClone,
   onTriggerScaffold,
+  onTriggerAiGeometryDraw,
 }: ExamDrawerProps) {
   const [activeTab, setActiveTab] = useState<"personal" | "marketplace">("personal");
   const [searchQuery, setSearchQuery] = useState("");
@@ -320,22 +323,43 @@ export function ExamDrawer({
                           </p>
 
                           {/* Nhóm nút hành động trên câu hỏi */}
-                          <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-700">
+                          <div className="grid grid-cols-3 gap-1 pt-1 border-t border-slate-100 dark:border-slate-700">
                             <button
                               onClick={() => onInsertQuestion(q, { includeExplanation: false, subject: exam.subject, grade: exam.grade })}
-                              className="flex items-center justify-center gap-1 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-600 text-[10px] font-bold transition"
+                              className="flex items-center justify-center gap-0.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-600 text-[10px] font-bold transition cursor-pointer"
+                              title="Chèn nội dung đề bài và 4 đáp án"
                             >
                               <Plus className="h-3 w-3" />
                               <span>Chèn đề</span>
                             </button>
                             <button
-                              onClick={() => onInsertQuestion(q, { includeExplanation: true, subject: exam.subject, grade: exam.grade })}
-                              className="flex items-center justify-center gap-1 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 text-[10px] font-bold transition"
+                              onClick={() => onInsertQuestion(q, { includeExplanation: true, revealMode: false, subject: exam.subject, grade: exam.grade })}
+                              className="flex items-center justify-center gap-0.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 text-[10px] font-bold transition cursor-pointer"
+                              title="Chèn đề kèm hướng dẫn giải đầy đủ"
                             >
                               <Lightbulb className="h-3 w-3" />
                               <span>Kèm giải</span>
                             </button>
+                            <button
+                              onClick={() => onInsertQuestion(q, { includeExplanation: true, revealMode: true, subject: exam.subject, grade: exam.grade })}
+                              className="flex items-center justify-center gap-0.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 hover:bg-amber-100 text-[10px] font-bold transition cursor-pointer"
+                              title="Chế độ Reveal: che đáp án để mở từng bước"
+                            >
+                              <span>🔒 Reveal</span>
+                            </button>
                           </div>
+
+                          {/* Nút AI Dựng hình theo đề nếu phát hiện dạng bài hình học/STEM */}
+                          {onTriggerAiGeometryDraw && detectStemShapeIdForQuestion(q.content) && (
+                            <button
+                              onClick={() => onTriggerAiGeometryDraw(q)}
+                              className="w-full flex items-center justify-center gap-1.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 text-[10px] font-bold transition cursor-pointer"
+                              title="Tự động nhận diện và vẽ khối hình học tương ứng theo đề"
+                            >
+                              <Sparkles className="h-3 w-3 text-indigo-600" />
+                              <span>📐 AI Dựng hình theo đề</span>
+                            </button>
+                          )}
 
                           {/* Nút kích hoạt AI */}
                           {(onTriggerLiveClone || onTriggerScaffold) && (

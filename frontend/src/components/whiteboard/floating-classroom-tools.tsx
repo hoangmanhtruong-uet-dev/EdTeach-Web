@@ -12,6 +12,8 @@ import {
   Radio,
   Volume2,
   VolumeX,
+  Calculator,
+  FlaskConical,
 } from "lucide-react";
 
 interface FloatingClassroomToolsProps {
@@ -19,6 +21,9 @@ interface FloatingClassroomToolsProps {
   onToggleZenMode: () => void;
   isLaserActive: boolean;
   onToggleLaser: () => void;
+  onOpenMathModal?: () => void;
+  onOpenCasioModal?: () => void;
+  onOpenPipLabModal?: () => void;
 }
 
 /**
@@ -63,6 +68,9 @@ export function FloatingClassroomTools({
   onToggleZenMode,
   isLaserActive,
   onToggleLaser,
+  onOpenMathModal,
+  onOpenCasioModal,
+  onOpenPipLabModal,
 }: FloatingClassroomToolsProps) {
   // Timer state
   const [showTimerModal, setShowTimerModal] = useState(false);
@@ -150,7 +158,7 @@ export function FloatingClassroomTools({
         {/* Nút Bút Laser */}
         <button
           onClick={onToggleLaser}
-          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition ${
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer ${
             isLaserActive
               ? "bg-red-600 text-white shadow-md shadow-red-500/30"
               : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -160,6 +168,51 @@ export function FloatingClassroomTools({
           <Radio className="h-4 w-4" />
           <span className="hidden sm:inline">Laser</span>
         </button>
+
+        {/* Nút Gõ Công thức f(x) */}
+        {onOpenMathModal && (
+          <>
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+            <button
+              onClick={onOpenMathModal}
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-serif italic font-black text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition cursor-pointer"
+              title="Gõ công thức Toán / Khoa học KaTeX (LaTeX)"
+            >
+              <span>f(x)</span>
+              <span className="font-sans not-italic text-[10px] hidden sm:inline">Toán</span>
+            </button>
+          </>
+        )}
+
+        {/* Nút Máy tính Casio fx-580 */}
+        {onOpenCasioModal && (
+          <>
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+            <button
+              onClick={onOpenCasioModal}
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition cursor-pointer"
+              title="Mở máy tính Casio fx-580VN X ảo nổi"
+            >
+              <Calculator className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Casio</span>
+            </button>
+          </>
+        )}
+
+        {/* Nút Thí nghiệm STEM 3D */}
+        {onOpenPipLabModal && (
+          <>
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+            <button
+              onClick={onOpenPipLabModal}
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition cursor-pointer"
+              title="Mở mô phỏng thí nghiệm 3D (PhET Labs)"
+            >
+              <FlaskConical className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Mô phỏng 3D</span>
+            </button>
+          </>
+        )}
 
         <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
 

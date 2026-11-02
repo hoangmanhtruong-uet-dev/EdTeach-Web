@@ -33,6 +33,13 @@ import { BOARD_THEMES, BoardTheme, getThemeById } from "@/lib/whiteboard/board-t
 import { convertQuestionToExcalidrawCard } from "@/lib/whiteboard/question-to-excalidraw";
 import { ExamDrawer } from "@/components/whiteboard/exam-drawer";
 import { FloatingClassroomTools } from "@/components/whiteboard/floating-classroom-tools";
+import { MathFormulaModal } from "@/components/whiteboard/math-formula-modal";
+import { CasioCalculatorModal } from "@/components/whiteboard/casio-calculator-modal";
+import { PipLabModal } from "@/components/whiteboard/pip-lab-modal";
+import { BottomSlideBar } from "@/components/whiteboard/bottom-slide-bar";
+import { detectStemShapeIdForQuestion } from "@/lib/whiteboard/question-to-excalidraw";
+import { WhiteboardPage } from "@/types/whiteboard";
+import { Calculator } from "lucide-react";
 
 type ExcalidrawEditorAPI = {
   getSceneElements: () => Record<string, unknown>[];
@@ -117,6 +124,31 @@ export default function WhiteboardEditor({
   const [isZenMode, setIsZenMode] = useState(false);
   const [isLaserActive, setIsLaserActive] = useState(false);
 
+  // Multi-page state (Sprint STEM-1)
+  const initialPages: WhiteboardPage[] =
+    initialBoard.pages && initialBoard.pages.length > 0
+      ? initialBoard.pages
+      : (initialBoard.app_state as any)?.pages && (initialBoard.app_state as any).pages.length > 0
+      ? (initialBoard.app_state as any).pages
+      : [
+          {
+            id: "page_1",
+            title: "Trang 1",
+            elements: initialBoard.elements || [],
+            app_state: initialBoard.app_state || {},
+            files: initialBoard.files || {},
+            thumbnail_url: initialBoard.thumbnail_url,
+          },
+        ];
+  const [pages, setPages] = useState<WhiteboardPage[]>(initialPages);
+  const [currentPageIndex, setCurrentPageIndex] = useState<number>(0);
+
+  // STEM Floating Modals
+  const [showMathModal, setShowMathModal] = useState(false);
+  const [showCasioModal, setShowCasioModal] = useState(false);
+  const [showPipLabModal, setShowPipLabModal] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
   const handleToggleLaser = useCallback(() => {
     setIsLaserActive((prev) => {
       const next = !prev;
@@ -148,22 +180,30 @@ export default function WhiteboardEditor({
   const lastThumbHashRef = useRef<number>(initialBoard.elements?.length || 0);
   const currentThumbUrlRef = useRef<string | null>(initialBoard.thumbnail_url);
 
-  // Auto-save logic với tự động sinh Thumbnail ngầm (Sprint W-1)
+  // Auto-save logic với tự động sinh Thumbnail ngầm & lưu Multi-page
   const performSave = useCallback(
     async (
       elements: Record<string, unknown>[],
       appState: Record<string, unknown>,
       newTitle?: string,
-      files?: Record<string, unknown> | unknown[]
+      files?: Record<string, unknown> | unknown[],
+      updatedPagesList?: WhiteboardPage[]
     ) => {
       setSaveStatus("saving");
       try {
+        const pagesToSave = updatedPagesList || pages.map((p, idx) =>
+          idx === currentPageIndex
+            ? { ...p, elements, app_state: appState, files: files || p.files }
+            : p
+        );
+
         if (typeof window !== "undefined") {
           localStorage.setItem(
             localCacheKey,
             JSON.stringify({
               elements,
               appState,
+              pages: pagesToSave,
               title: newTitle || title,
               savedAt: Date.now(),
             })
@@ -183,11 +223,13 @@ export default function WhiteboardEditor({
         const updatePayload: any = {
           title: newTitle || title,
           elements,
+          pages: pagesToSave,
           app_state: {
             viewBackgroundColor: (appState?.viewBackgroundColor as string) || currentTheme.viewBackgroundColor,
             currentItemStrokeColor: (appState?.currentItemStrokeColor as string) || currentTheme.defaultStrokeColor,
             gridSize: (appState?.gridSize as number) ?? currentTheme.gridSize ?? 20,
             theme_preset: currentTheme.id,
+            pages: pagesToSave,
           },
         };
 
@@ -212,7 +254,7 @@ export default function WhiteboardEditor({
         setSaveStatus("unsaved");
       }
     },
-    [board.id, title, localCacheKey, currentTheme]
+    [board.id, title, localCacheKey, currentTheme, pages, currentPageIndex]
   );
 
   // Lưu trước khi rời trang
@@ -373,6 +415,331 @@ export default function WhiteboardEditor({
 
     latestDataRef.current.elements = [...currentElements, ...newQuestionElements];
     performSave(latestDataRef.current.elements, latestDataRef.current.appState);
+  };
+
+  // ================= MULTI-PAGE SLIDE HANDLERS =================
+  const handleSelectPage = (targetIndex: number) => {
+    if (targetIndex === currentPageIndex || targetIndex < 0 || targetIndex >= pages.length) return;
+
+    // 1. Lưu dữ liệu trang hiện tại
+    const currentElements = excalidrawAPI ? (excalidrawAPI.getSceneElements() as any[]) : latestDataRef.current.elements;
+    const currentFiles = (excalidrawAPI as any)?.getFiles ? (excalidrawAPI as any).getFiles() : latestDataRef.current.files;
+
+    const updatedPages = pages.map((p, idx) =>
+      idx === currentPageIndex
+        ? {
+            ...p,
+            elements: currentElements,
+            app_state: latestDataRef.current.appState,
+            files: currentFiles,
+          }
+        : p
+    );
+    setPages(updatedPages);
+    setCurrentPageIndex(targetIndex);
+
+    // 2. Chuyển sang trang đích
+    const targetPage = updatedPages[targetIndex];
+    latestDataRef.current = {
+      elements: targetPage.elements || [],
+      appState: {
+        ...targetPage.app_state,
+        viewBackgroundColor: currentTheme.viewBackgroundColor,
+        currentItemStrokeColor: currentTheme.defaultStrokeColor,
+      },
+      files: targetPage.files || {},
+    };
+
+    if (excalidrawAPI) {
+      if ((excalidrawAPI as any).addFiles && targetPage.files) {
+        const filesArr = Array.isArray(targetPage.files)
+          ? targetPage.files
+          : Object.values(targetPage.files);
+        if (filesArr.length > 0) {
+          (excalidrawAPI as any).addFiles(filesArr);
+        }
+      }
+
+      excalidrawAPI.updateScene({
+        elements: targetPage.elements || [],
+        appState: {
+          ...targetPage.app_state,
+          viewBackgroundColor: currentTheme.viewBackgroundColor,
+          currentItemStrokeColor: currentTheme.defaultStrokeColor,
+        },
+      });
+    }
+
+    performSave(targetPage.elements || [], targetPage.app_state || {}, undefined, targetPage.files, updatedPages);
+  };
+
+  const handleAddPage = () => {
+    const newPageNum = pages.length + 1;
+    const newPage: WhiteboardPage = {
+      id: `page_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      title: `Trang ${newPageNum}`,
+      elements: [],
+      app_state: {
+        viewBackgroundColor: currentTheme.viewBackgroundColor,
+        currentItemStrokeColor: currentTheme.defaultStrokeColor,
+      },
+      files: {},
+    };
+    const nextPages = [...pages, newPage];
+    setPages(nextPages);
+    handleSelectPage(nextPages.length - 1);
+  };
+
+  const handleDuplicatePage = (idx: number) => {
+    const srcPage = pages[idx];
+    if (!srcPage) return;
+    const duplicatedElements = (srcPage.elements || []).map((el: any) => ({
+      ...el,
+      id: `${el.type || "el"}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    }));
+    const newPage: WhiteboardPage = {
+      id: `page_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      title: `${srcPage.title} (Bản sao)`,
+      elements: duplicatedElements,
+      app_state: { ...srcPage.app_state },
+      files: srcPage.files ? { ...srcPage.files } : {},
+    };
+    const nextPages = [...pages.slice(0, idx + 1), newPage, ...pages.slice(idx + 1)];
+    setPages(nextPages);
+    handleSelectPage(idx + 1);
+  };
+
+  const handleDeletePage = (idx: number) => {
+    if (pages.length <= 1) return;
+    const nextPages = pages.filter((_, i) => i !== idx);
+    setPages(nextPages);
+    const nextIndex = Math.min(currentPageIndex, nextPages.length - 1);
+    handleSelectPage(nextIndex);
+  };
+
+  const handleRenamePage = (idx: number, newTitle: string) => {
+    const nextPages = pages.map((p, i) => (i === idx ? { ...p, title: newTitle } : p));
+    setPages(nextPages);
+    performSave(latestDataRef.current.elements, latestDataRef.current.appState, undefined, undefined, nextPages);
+  };
+
+  // ================= STEM TOOLS INSERTION HANDLERS =================
+  const handleInsertFormula = (svgDataUrl: string, width: number, height: number, rawLatex: string) => {
+    if (!excalidrawAPI) return;
+
+    const fileId = `math_file_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const newFile = {
+      id: fileId,
+      dataURL: svgDataUrl,
+      mimeType: "image/svg+xml",
+      created: Date.now(),
+    };
+
+    if ((excalidrawAPI as any).addFiles) {
+      (excalidrawAPI as any).addFiles([newFile]);
+    }
+
+    const currentElements = excalidrawAPI.getSceneElements() as any[];
+    let maxY = 100;
+    currentElements.forEach((el) => {
+      if (el && typeof el.y === "number" && typeof el.height === "number") {
+        const bottom = el.y + el.height;
+        if (bottom > maxY) maxY = bottom;
+      }
+    });
+
+    const newElement: any = {
+      id: `math_el_${Date.now()}`,
+      type: "image",
+      fileId,
+      status: "saved",
+      x: 140,
+      y: currentElements.length === 0 ? 100 : maxY + 40,
+      width: Math.max(120, width),
+      height: Math.max(50, height),
+      scale: [1, 1],
+      isDeleted: false,
+      customData: { type: "latex", rawLatex },
+    };
+
+    excalidrawAPI.updateScene({
+      elements: [...currentElements, newElement],
+    });
+
+    latestDataRef.current.elements = [...currentElements, newElement];
+    performSave(latestDataRef.current.elements, latestDataRef.current.appState);
+  };
+
+  const handlePasteFromCasio = (calcText: string) => {
+    if (!excalidrawAPI || !calcText.trim()) return;
+    const currentElements = excalidrawAPI.getSceneElements() as any[];
+    let maxY = 100;
+    currentElements.forEach((el) => {
+      if (el && typeof el.y === "number" && typeof el.height === "number") {
+        const bottom = el.y + el.height;
+        if (bottom > maxY) maxY = bottom;
+      }
+    });
+
+    const textElement: any = {
+      id: `casio_calc_${Date.now()}`,
+      type: "text",
+      x: 140,
+      y: currentElements.length === 0 ? 100 : maxY + 30,
+      text: `[CASIO fx-580] ${calcText}`,
+      fontSize: 20,
+      fontFamily: 2,
+      textAlign: "left",
+      verticalAlign: "top",
+      strokeColor: "#f59e0b",
+      backgroundColor: "transparent",
+      isDeleted: false,
+    };
+
+    excalidrawAPI.updateScene({
+      elements: [...currentElements, textElement],
+    });
+    latestDataRef.current.elements = [...currentElements, textElement];
+    performSave(latestDataRef.current.elements, latestDataRef.current.appState);
+  };
+
+  const handleSnapshotFromLab = (lab: any) => {
+    if (!excalidrawAPI || !lab) return;
+    const currentElements = excalidrawAPI.getSceneElements() as any[];
+    let maxY = 100;
+    currentElements.forEach((el) => {
+      if (el && typeof el.y === "number" && typeof el.height === "number") {
+        const bottom = el.y + el.height;
+        if (bottom > maxY) maxY = bottom;
+      }
+    });
+
+    const labBox: any = {
+      id: `lab_box_${Date.now()}`,
+      type: "rectangle",
+      x: 140,
+      y: currentElements.length === 0 ? 100 : maxY + 30,
+      width: 480,
+      height: 90,
+      strokeColor: "#059669",
+      backgroundColor: currentTheme.isDark ? "#064e3b33" : "#ecfdf5",
+      fillStyle: "solid",
+      strokeWidth: 2,
+      roundness: { type: 3 },
+      isDeleted: false,
+    };
+
+    const labText: any = {
+      id: `lab_txt_${Date.now()}`,
+      type: "text",
+      x: 160,
+      y: (currentElements.length === 0 ? 100 : maxY + 30) + 16,
+      text: `🧪 THÍ NGHIỆM STEM: ${lab.titleVi.toUpperCase()}\n${lab.gdpt || "Chương trình GDPT 2018"} • Thầy cô ghi chú số liệu tại đây`,
+      fontSize: 15,
+      fontFamily: 2,
+      textAlign: "left",
+      verticalAlign: "top",
+      strokeColor: currentTheme.isDark ? "#6ee7b7" : "#047857",
+      isDeleted: false,
+    };
+
+    excalidrawAPI.updateScene({
+      elements: [...currentElements, labBox, labText],
+    });
+    latestDataRef.current.elements = [...currentElements, labBox, labText];
+    performSave(latestDataRef.current.elements, latestDataRef.current.appState);
+  };
+
+  const handleTriggerAiGeometryDraw = (question: any) => {
+    if (!excalidrawAPI || !question) return;
+    const shapeId = detectStemShapeIdForQuestion(question.content);
+    if (!shapeId) return;
+
+    const matchedItem =
+      STEM_LIBRARY_ITEMS.find(
+        (item) =>
+          (item as any).id === shapeId ||
+          (item as any).name?.toLowerCase().includes("chóp") ||
+          (item as any).name?.toLowerCase().includes("mạch")
+      ) || STEM_LIBRARY_ITEMS[0];
+
+    if (matchedItem) {
+      handleInsertStemItem(matchedItem);
+    }
+  };
+
+  const handleExportAllPagesPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      const { exportToBlob } = await import("@excalidraw/excalidraw");
+      const currentElements = excalidrawAPI ? (excalidrawAPI.getSceneElements() as any[]) : latestDataRef.current.elements;
+      const currentFiles = (excalidrawAPI as any)?.getFiles ? (excalidrawAPI as any).getFiles() : latestDataRef.current.files;
+
+      const allPagesSnapshot = pages.map((p, idx) =>
+        idx === currentPageIndex ? { ...p, elements: currentElements, files: currentFiles } : p
+      );
+
+      const pageImages: string[] = [];
+      for (const p of allPagesSnapshot) {
+        if (!p.elements || p.elements.length === 0) continue;
+        const blob = await exportToBlob({
+          elements: p.elements as any,
+          appState: {
+            exportWithDarkMode: currentTheme.isDark,
+            exportBackground: true,
+            viewBackgroundColor: currentTheme.viewBackgroundColor,
+          } as any,
+          files: (p.files || {}) as any,
+          mimeType: "image/png",
+          quality: 0.95,
+        });
+        if (blob) {
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+          pageImages.push(dataUrl);
+        }
+      }
+
+      if (pageImages.length === 0) {
+        alert("Chưa có trang nào có nội dung để xuất PDF.");
+        return;
+      }
+
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>${title} - Toàn Bộ Bài Giảng</title>
+              <style>
+                @page { size: landscape; margin: 0; }
+                body { margin: 0; padding: 0; background: #fff; }
+                .slide-page { width: 100vw; height: 100vh; page-break-after: always; display: flex; align-items: center; justify-content: center; }
+                .slide-page img { max-width: 100%; max-height: 100%; object-fit: contain; }
+              </style>
+            </head>
+            <body>
+              ${pageImages.map((src, i) => `<div class="slide-page"><img src="${src}" alt="Trang ${i + 1}" /></div>`).join("")}
+              <script>
+                window.onload = function() {
+                  setTimeout(function() { window.print(); }, 400);
+                };
+              </script>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      }
+    } catch (err) {
+      console.error("Lỗi xuất PDF toàn bộ bài giảng:", err);
+      alert("Đã xảy ra lỗi khi tạo tệp PDF bài giảng.");
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   // Chèn toàn bộ đề vào canvas
@@ -671,17 +1038,35 @@ export default function WhiteboardEditor({
             )}
           </div>
 
-          {/* NÚT PHÒNG THÍ NGHIỆM 3D */}
-          <Link
-            href="/labs"
-            target="_blank"
-            className="hidden lg:flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 transition"
-            title="Mở 54+ Phòng Thí Nghiệm 3D (Vật lý, Hóa học, Sinh học, Địa lý) kèm kính vẽ"
+          {/* Nút Gõ Công thức f(x) */}
+          <button
+            onClick={() => setShowMathModal(true)}
+            className="hidden sm:flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/70 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300 transition cursor-pointer"
+            title="Gõ công thức Toán / Khoa học KaTeX chuẩn nét"
           >
-            <FlaskConical className="h-3.5 w-3.5 text-indigo-600" />
-            <span>Phòng TN 3D</span>
-            <ExternalLink className="h-3 w-3 text-indigo-400" />
-          </Link>
+            <span className="font-serif italic font-black">f(x)</span>
+            <span>Công thức</span>
+          </button>
+
+          {/* Nút Máy tính Casio fx-580 */}
+          <button
+            onClick={() => setShowCasioModal(true)}
+            className="hidden md:flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 transition cursor-pointer"
+            title="Mở máy tính Casio fx-580VN X ảo nổi trên bục giảng"
+          >
+            <Calculator className="h-3.5 w-3.5 text-amber-600" />
+            <span>Casio fx-580</span>
+          </button>
+
+          {/* NÚT PHÒNG THÍ NGHIỆM 3D (PiP Modal) */}
+          <button
+            onClick={() => setShowPipLabModal(true)}
+            className="hidden lg:flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 transition cursor-pointer"
+            title="Mở 54+ Phòng Thí Nghiệm 3D (Vật lý, Hóa học, Sinh học, Địa lý) cửa sổ nổi"
+          >
+            <FlaskConical className="h-3.5 w-3.5 text-emerald-600" />
+            <span>Mô phỏng 3D</span>
+          </button>
 
           {/* STEM Library Menu Dropdown */}
           <div className="relative">
@@ -770,15 +1155,31 @@ export default function WhiteboardEditor({
           </button>
         )}
 
-        {/* 3. BỘ CÔNG CỤ BỤC GIẢNG NỔI (Timer, Laser, Fullscreen) */}
+        {/* 3. BỘ CÔNG CỤ BỤC GIẢNG NỔI (Timer, Laser, Fullscreen, Math, Casio, Labs) */}
         <FloatingClassroomTools
           isZenMode={isZenMode}
           onToggleZenMode={() => setIsZenMode(!isZenMode)}
           isLaserActive={isLaserActive}
           onToggleLaser={handleToggleLaser}
+          onOpenMathModal={() => setShowMathModal(true)}
+          onOpenCasioModal={() => setShowCasioModal(true)}
+          onOpenPipLabModal={() => setShowPipLabModal(true)}
         />
 
-        {/* 4. NGĂN KÉO KHO ĐỀ THI & CHÈN CÂU HỎI */}
+        {/* 4. THANH ĐIỀU HƯỚNG SLIDE NHIỀU TRANG CHÂN TRANG */}
+        <BottomSlideBar
+          pages={pages}
+          currentPageIndex={currentPageIndex}
+          onSelectPage={handleSelectPage}
+          onAddPage={handleAddPage}
+          onDuplicatePage={handleDuplicatePage}
+          onDeletePage={handleDeletePage}
+          onRenamePage={handleRenamePage}
+          onExportAllPagesPdf={handleExportAllPagesPdf}
+          isExportingPdf={isExportingPdf}
+        />
+
+        {/* 5. NGĂN KÉO KHO ĐỀ THI & CHÈN CÂU HỎI (KÈM REVEAL & AI DỰNG HÌNH) */}
         <ExamDrawer
           isOpen={showExamDrawer}
           onClose={() => setShowExamDrawer(false)}
@@ -786,7 +1187,30 @@ export default function WhiteboardEditor({
           onInsertAllQuestions={handleInsertAllQuestions}
           onTriggerLiveClone={handleTriggerLiveClone}
           onTriggerScaffold={handleTriggerScaffold}
+          onTriggerAiGeometryDraw={handleTriggerAiGeometryDraw}
           isDarkTheme={currentTheme.isDark}
+        />
+
+        {/* 6. MODAL GÕ CÔNG THỨC TOÁN KATEX / LATEX */}
+        <MathFormulaModal
+          isOpen={showMathModal}
+          onClose={() => setShowMathModal(false)}
+          onInsertFormula={handleInsertFormula}
+          themeTextColor={currentTheme.defaultStrokeColor}
+        />
+
+        {/* 7. MÁY TÍNH CASIO FX-580VN X ẢO NỔI */}
+        <CasioCalculatorModal
+          isOpen={showCasioModal}
+          onClose={() => setShowCasioModal(false)}
+          onPasteToCanvas={handlePasteFromCasio}
+        />
+
+        {/* 8. CỬA SỔ THÍ NGHIỆM MÔ PHỎNG NỔI (PIP LABS) */}
+        <PipLabModal
+          isOpen={showPipLabModal}
+          onClose={() => setShowPipLabModal(false)}
+          onSnapshotToCanvas={handleSnapshotFromLab}
         />
       </main>
     </div>

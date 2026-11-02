@@ -15,6 +15,10 @@ type ExcalidrawImperativeAPI = {
   updateLibrary: (opts: { libraryItems: unknown[]; merge?: boolean; openLibraryMenu?: boolean }) => void;
   getSceneElements: () => unknown[];
   updateScene: (sceneData: { elements?: unknown[]; appState?: Record<string, unknown> }) => void;
+  addFiles?: (files: unknown[]) => void;
+  getFiles?: () => Record<string, unknown>;
+  scrollToContent?: (target?: unknown, opts?: Record<string, unknown>) => void;
+  setActiveTool?: (tool: { type: string } | { type: "custom"; customType: string }) => void;
 };
 
 interface WhiteboardCanvasProps {

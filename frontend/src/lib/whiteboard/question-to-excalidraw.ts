@@ -5,6 +5,7 @@ interface ConvertQuestionOptions {
   startX?: number;
   startY?: number;
   includeExplanation?: boolean;
+  revealMode?: boolean;
   isDarkTheme?: boolean;
   subject?: string;
   grade?: number;
@@ -249,7 +250,68 @@ export function convertQuestionToExcalidrawCard(
       strokeColor: isDark ? '#6ee7b7' : '#047857',
       groupIds: [groupId],
     });
+
+    // Nếu ở chế độ Reveal (Che đáp án để giáo viên bóc tách từng bước)
+    if (options.revealMode) {
+      elements.push({
+        id: `reveal_mask_${groupId}`,
+        type: 'rectangle',
+        x: startX + 16,
+        y: currentY + 4,
+        width: cardWidth - 32,
+        height: expBoxHeight,
+        strokeColor: '#f59e0b',
+        backgroundColor: isDark ? '#1e293b' : '#f8fafc',
+        fillStyle: 'solid',
+        strokeWidth: 2,
+        strokeStyle: 'dashed',
+        roughness: 0,
+        roundness: { type: 3 },
+        opacity: 98,
+      });
+
+      elements.push({
+        id: `reveal_txt_${groupId}`,
+        type: 'text',
+        x: startX + 32,
+        y: currentY + Math.max(14, expBoxHeight / 2 - 12),
+        text: '🔒 [ REVEAL MODE: Click chọn & kéo/xóa hộp che để hiện lời giải ]',
+        fontSize: 13,
+        fontFamily: 2,
+        textAlign: 'center',
+        verticalAlign: 'middle',
+        strokeColor: '#f59e0b',
+      });
+    }
   }
 
   return elements;
+}
+
+/**
+ * Tự động phát hiện dạng hình học hoặc mô phỏng từ nội dung câu hỏi
+ */
+export function detectStemShapeIdForQuestion(content: string): string | null {
+  if (!content) return null;
+  const lower = content.toLowerCase();
+
+  if (lower.includes("hình chóp") || lower.includes("tứ diện") || lower.includes("s.abcd") || lower.includes("s.abc")) {
+    return "stem_geom_pyramid";
+  }
+  if (lower.includes("lăng trụ") || lower.includes("hình hộp") || lower.includes("hình lập phương")) {
+    return "stem_geom_prism";
+  }
+  if (lower.includes("nón") || lower.includes("trụ") || lower.includes("hình cầu") || lower.includes("mặt cầu")) {
+    return "stem_geom_cone";
+  }
+  if (lower.includes("mạch điện") || lower.includes("điện trở") || lower.includes("hiệu điện thế") || lower.includes("định luật ôm")) {
+    return "stem_phys_circuit";
+  }
+  if (lower.includes("thấu kính") || lower.includes("tiêu cự") || lower.includes("quang học") || lower.includes("chiết suất")) {
+    return "stem_phys_optics";
+  }
+  if (lower.includes("benzen") || lower.includes("este") || lower.includes("ancol") || lower.includes("cacbohiđrat")) {
+    return "stem_chem_benzene";
+  }
+  return null;
 }

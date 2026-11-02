@@ -1,3 +1,12 @@
+export interface WhiteboardPage {
+  id: string;
+  title: string;
+  elements: Record<string, unknown>[];
+  app_state?: Record<string, unknown>;
+  files?: Record<string, unknown> | unknown[];
+  thumbnail_url?: string | null;
+}
+
 export interface Whiteboard {
   id: string;
   user_id: string;
@@ -5,6 +14,7 @@ export interface Whiteboard {
   description: string | null;
   elements?: Record<string, unknown>[];
   app_state?: Record<string, unknown>;
+  pages?: WhiteboardPage[];
   thumbnail_url: string | null;
   is_favorite: boolean;
   files?: Record<string, unknown> | unknown[];
