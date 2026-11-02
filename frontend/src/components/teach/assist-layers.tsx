@@ -31,7 +31,7 @@ export function AssistLayers({
   const [revealedStepIdx, setRevealedStepIdx] = useState(1);
   const [prevExplanation, setPrevExplanation] = useState(explanation);
 
-  // Sync state if explanation changes during render (recommended by React Docs)
+  // Sync state if explanation changes during render
   if (explanation !== prevExplanation) {
     setPrevExplanation(explanation);
     setRevealedStepIdx(1);
@@ -43,7 +43,6 @@ export function AssistLayers({
     if (!explanation) {
       return ["Xác định giả thiết bài toán, phân tích câu hỏi và áp dụng định lý cơ bản."];
     }
-    // Split by double newline or numbered bullet points
     const lines = explanation
       .split(/\n\s*\n|\n(?=[0-9]+[.)\-]|Bước|\+|-|\*)/)
       .map((s) => s.trim())
@@ -83,7 +82,6 @@ export function AssistLayers({
     if (!explanation) {
       return "Áp dụng định lý biến đổi chuẩn theo chương trình Giáo Dục Phổ Thông 2018.";
     }
-    // Extract lines containing formulas or the explanation body
     const formulaLines = explanation
       .split("\n")
       .filter((line) => line.includes("$") || line.includes("=") || line.includes("\\"));
@@ -99,7 +97,7 @@ export function AssistLayers({
       <div
         role="tablist"
         aria-label="Các lớp gợi ý và lời giải bài toán"
-        className="flex items-center gap-2 pt-2"
+        className="flex items-center gap-2 w-full flex-nowrap whitespace-nowrap min-w-0"
       >
         {/* Chip 1: Gợi ý */}
         <button
@@ -108,14 +106,14 @@ export function AssistLayers({
           aria-selected={activeLayer === 1}
           aria-label="Lớp 1: Gợi ý phương pháp (Phím 1)"
           onClick={() => onToggleLayer(1)}
-          className={`flex min-h-[40px] items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all cursor-pointer ${
+          className={`flex min-h-[38px] items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
             activeLayer === 1
               ? "border-amber-400 bg-amber-500/25 text-amber-200 shadow-md ring-2 ring-amber-400/50"
               : "border-slate-800 bg-slate-900/90 text-amber-300 hover:border-amber-500/40 hover:bg-amber-950/20"
           }`}
         >
-          <Lightbulb className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
-          <span>Gợi ý</span>
+          <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-hidden="true" />
+          <span className="qpane-chip-label">Gợi ý</span>
           <kbd className="rounded bg-slate-800/80 px-1.5 py-0.2 text-[10px] text-amber-300/80 font-mono">
             1
           </kbd>
@@ -128,14 +126,14 @@ export function AssistLayers({
           aria-selected={activeLayer === 2}
           aria-label="Lớp 2: Công thức cốt lõi (Phím 2)"
           onClick={() => onToggleLayer(2)}
-          className={`flex min-h-[40px] items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all cursor-pointer ${
+          className={`flex min-h-[38px] items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
             activeLayer === 2
               ? "border-blue-400 bg-blue-500/25 text-blue-200 shadow-md ring-2 ring-blue-400/50"
               : "border-slate-800 bg-slate-900/90 text-blue-300 hover:border-blue-500/40 hover:bg-blue-950/20"
           }`}
         >
-          <FileCode2 className="w-4 h-4 text-blue-400 shrink-0" aria-hidden="true" />
-          <span>Công thức</span>
+          <FileCode2 className="w-3.5 h-3.5 text-blue-400 shrink-0" aria-hidden="true" />
+          <span className="qpane-chip-label">Công thức</span>
           <kbd className="rounded bg-slate-800/80 px-1.5 py-0.2 text-[10px] text-blue-300/80 font-mono">
             2
           </kbd>
@@ -148,14 +146,14 @@ export function AssistLayers({
           aria-selected={activeLayer === 3}
           aria-label="Lớp 3: Đáp án và lời giải chi tiết (Phím 3)"
           onClick={() => onToggleLayer(3)}
-          className={`flex min-h-[40px] items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all cursor-pointer ${
+          className={`flex min-h-[38px] items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
             activeLayer === 3
               ? "border-emerald-400 bg-emerald-500/25 text-emerald-200 shadow-md ring-2 ring-emerald-400/50"
               : "border-slate-800 bg-slate-900/90 text-emerald-300 hover:border-emerald-500/40 hover:bg-emerald-950/20"
           }`}
         >
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
-          <span>Lời giải</span>
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" aria-hidden="true" />
+          <span className="qpane-chip-label">Lời giải</span>
           <kbd className="rounded bg-slate-800/80 px-1.5 py-0.2 text-[10px] text-emerald-300/80 font-mono">
             3
           </kbd>
@@ -164,7 +162,7 @@ export function AssistLayers({
 
       {/* SLIDE-UP PANEL OVERLAY (220ms slide-up, floats over bottom of question container without pushing) */}
       <div
-        className={`absolute inset-x-0 bottom-0 z-30 max-h-[75%] rounded-t-3xl border-t border-slate-700 bg-slate-950/98 p-5 shadow-2xl backdrop-blur-xl transition-all duration-[220ms] ease-out overflow-y-auto flex flex-col justify-between ${
+        className={`absolute inset-x-0 bottom-0 z-30 max-h-[75%] rounded-t-3xl border-t border-slate-700 bg-slate-950/98 p-4 sm:p-5 shadow-2xl backdrop-blur-xl transition-all duration-[220ms] ease-out overflow-y-auto flex flex-col justify-between ${
           activeLayer !== null
             ? "translate-y-0 opacity-100 pointer-events-auto"
             : "translate-y-full opacity-0 pointer-events-none"
@@ -174,53 +172,53 @@ export function AssistLayers({
           <div className="space-y-4">
             {/* Header with Title + Close button */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
                 {activeLayer === 1 && (
                   <>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
                       <Lightbulb className="w-4 h-4" />
                     </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-amber-200">
-                        Lớp 1: Gợi ý phương pháp tư duy
+                    <div className="truncate">
+                      <h3 className="text-sm font-bold text-amber-200 truncate">
+                        Lớp 1: Gợi ý phương pháp
                       </h3>
-                      <p className="text-[11px] text-slate-400">Định hướng giải bài cho học sinh</p>
+                      <p className="text-[11px] text-slate-400 truncate">Định hướng giải bài</p>
                     </div>
                   </>
                 )}
                 {activeLayer === 2 && (
                   <>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/20 text-blue-400">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/20 text-blue-400 shrink-0">
                       <FileCode2 className="w-4 h-4" />
                     </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-blue-200">
-                        Lớp 2: Công thức & Kiến thức cốt lõi
+                    <div className="truncate">
+                      <h3 className="text-sm font-bold text-blue-200 truncate">
+                        Lớp 2: Công thức cốt lõi
                       </h3>
-                      <p className="text-[11px] text-slate-400">Công thức trọng tâm cần vận dụng</p>
+                      <p className="text-[11px] text-slate-400 truncate">Công thức trọng tâm</p>
                     </div>
                   </>
                 )}
                 {activeLayer === 3 && (
                   <>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0">
                       <CheckCircle2 className="w-4 h-4" />
                     </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-emerald-200">
-                        Lớp 3: Đáp án đúng & Lời giải chi tiết
+                    <div className="truncate">
+                      <h3 className="text-sm font-bold text-emerald-200 truncate">
+                        Lớp 3: Lời giải chi tiết
                       </h3>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[11px] text-slate-400 truncate">
                         {revealAll
                           ? "Đã hiện toàn bộ lời giải"
-                          : `Đang dẫn dắt từng bước (${revealedStepIdx}/${solutionSteps.length})`}
+                          : `Đang dẫn dắt (${revealedStepIdx}/${solutionSteps.length})`}
                       </p>
                     </div>
                   </>
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 {/* Reveal step-by-step buttons in Layer 3 */}
                 {activeLayer === 3 && solutionSteps.length > 1 && (
                   <div className="flex items-center gap-1.5 mr-2">

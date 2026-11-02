@@ -87,9 +87,11 @@ function findAutoMatchingLab(content: string, subject?: string): LabLesson | nul
   return LABS[0] || null;
 }
 
+const emptySubscribe = () => () => {};
+
 function TeachingStudioContent() {
   const isClient = useSyncExternalStore(
-    () => () => {},
+    emptySubscribe,
     () => true,
     () => false
   );
@@ -153,38 +155,6 @@ function TeachingStudioContent() {
   // Split Ratio (0 to 100) & Dragging
   const [splitRatio, setSplitRatio] = useState<number>(50);
   const [isDragging, setIsDragging] = useState(false);
-  const startDragging = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const handleMove = (e: MouseEvent | TouchEvent) => {
-      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-      const totalWidth = window.innerWidth;
-      let newRatio = Math.round((clientX / totalWidth) * 100);
-      newRatio = Math.max(15, Math.min(85, newRatio));
-      setSplitRatio(newRatio);
-    };
-
-    const handleUp = () => {
-      setIsDragging(false);
-    };
-
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
-    window.addEventListener("touchmove", handleMove);
-    window.addEventListener("touchend", handleUp);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
-      window.removeEventListener("touchmove", handleMove);
-      window.removeEventListener("touchend", handleUp);
-    };
-  }, [isDragging]);
 
   // Fullscreen
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -358,8 +328,11 @@ function TeachingStudioContent() {
           return;
         }
 
-        // Standard Exam from DB
-        const savedExamDrawings = await getTeachWhiteboard(examId);
+        // Standard Exam from DB (fetch drawings & exam in parallel)
+        const [savedExamDrawings, data] = await Promise.all([
+          getTeachWhiteboard(examId).catch((): Record<string, unknown[]> => ({})),
+          getExamById(examId),
+        ]);
         if (savedExamDrawings && Object.keys(savedExamDrawings).length > 0) {
           drawingsMapRef.current = savedExamDrawings;
           const initMap: Record<string, boolean> = {};
@@ -369,7 +342,6 @@ function TeachingStudioContent() {
           setQuestionsWithDrawings(initMap);
         }
 
-        const data: any = await getExamById(examId);
         if (!data) {
           setError("Không tìm thấy đề thi hoặc đề thi đã bị xóa.");
         } else {
@@ -960,9 +932,10 @@ function TeachingStudioContent() {
         splitRatio={splitRatio}
         onSetSplitRatio={setSplitRatio}
         isDragging={isDragging}
-        onStartDrag={startDragging}
+        setIsDragging={setIsDragging}
         leftPane={
           <QuestionPanel
+            isDraggingSplitter={isDragging}
             questionNumber={currentIdx + 1}
             totalQuestions={totalQuestions}
             question={currentQ}

@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface AutoFitOptions {
-  minFontSize?: number; // Minimum font size in px (default 18)
-  maxFontSize?: number; // Maximum font size in px (default 40)
-  multiplier?: number; // Font size multiplier (0.9, 1.0, 1.2, 1.4)
-  dependencies?: unknown[]; // Triggers re-calculation when changed
+  isDragging?: boolean;
+  questionId?: string | number;
+  fontScale?: number; // Multiplier (0.9, 1.0, 1.2, 1.4)
 }
 
 const STORAGE_KEY = "edteach_font_multiplier";
@@ -41,92 +40,99 @@ export function useFontMultiplier(initial = 1.0): [number, (val: number) => void
   return [multiplier, setMultiplier];
 }
 
+/**
+ * useAutoFitText:
+ * 1. Only runs on: (a) question change, (b) dragging end (pointerup), (c) font multiplier change.
+ * 2. NEVER runs while dragging to eliminate layout thrashing.
+ * 3. Measures both scrollWidth and scrollHeight vs clientWidth and clientHeight.
+ * 4. Only REDUCES from CSS clamp (starts at 1.0 down to max 0.70).
+ * 5. Applies result directly via CSS variable `--fit` on the container DOM element without React setState.
+ * 6. Includes hysteresis (only updates if delta >= 0.03).
+ */
 export function useAutoFitText(
   containerRef: React.RefObject<HTMLElement | null>,
   contentRef: React.RefObject<HTMLElement | null>,
   options: AutoFitOptions = {}
-): {
-  fontSize: number;
-  recalculate: () => void;
-} {
-  const { minFontSize = 18, maxFontSize = 40, multiplier = 1.0, dependencies = [] } = options;
+) {
+  const { isDragging = false, questionId, fontScale = 1.0 } = options;
+  const currentFitRef = useRef<number>(1.0);
+  const isMeasuringRef = useRef<boolean>(false);
 
-  const [fontSize, setFontSize] = useState<number>(() =>
-    Math.round(24 * multiplier)
-  );
+  const measureAndFit = useCallback(() => {
+    // DO NOT run while dragging
+    if (isDragging) return;
 
-  const recalculate = useCallback(() => {
     const container = containerRef.current;
     const content = contentRef.current;
     if (!container || !content) return;
 
-    const availableHeight = container.clientHeight;
-    if (availableHeight <= 50) return;
+    const clientH = container.clientHeight;
+    const clientW = container.clientWidth;
+    if (clientH <= 60 || clientW <= 100) return;
 
-    // Save previous inline styles to restore after binary search
-    const prevFontSize = content.style.fontSize;
-    const prevLineHeight = content.style.lineHeight;
+    isMeasuringRef.current = true;
 
-    let low = minFontSize;
-    let high = maxFontSize;
-    let best = minFontSize;
+    requestAnimationFrame(() => {
+      // Step 1: Test at baseline fit = 1.0 (pure CSS clamp)
+      container.style.setProperty("--fit", "1");
+      const overflowH = content.scrollHeight > clientH;
+      const overflowW = content.scrollWidth > clientW;
 
-    // Binary search 5-6 steps to find largest font size fitting within container
-    while (low <= high) {
-      const mid = Math.floor((low + high) / 2);
-      const testSize = mid * multiplier;
+      let targetFit = 1.0;
 
-      content.style.fontSize = `${testSize}px`;
-      content.style.lineHeight = "1.5";
+      // If content overflows at 1.0, binary search reduction between 0.70 and 1.0
+      if (overflowH || overflowW) {
+        let low = 0.7; // Maximum reduction 30%
+        let high = 1.0;
+        let best = 0.7;
 
-      // Check if content exceeds container height or width
-      const overflowsHeight = content.scrollHeight > availableHeight;
-      const overflowsWidth = content.scrollWidth > container.clientWidth + 10;
+        for (let step = 0; step < 6; step++) {
+          const mid = (low + high) / 2;
+          container.style.setProperty("--fit", mid.toFixed(3));
 
-      if (!overflowsHeight && !overflowsWidth) {
-        best = mid;
-        low = mid + 1; // Try larger
+          const fits = content.scrollHeight <= clientH && content.scrollWidth <= clientW;
+          if (fits) {
+            best = mid;
+            low = mid + 0.02; // Try larger
+          } else {
+            high = mid - 0.02; // Try smaller
+          }
+        }
+        targetFit = Math.max(0.7, Math.min(1.0, best));
+      }
+
+      // Hysteresis: only update if change >= 0.03
+      if (Math.abs(currentFitRef.current - targetFit) >= 0.03 || targetFit === 1.0) {
+        currentFitRef.current = targetFit;
+        container.style.setProperty("--fit", targetFit.toFixed(2));
       } else {
-        high = mid - 1; // Try smaller
+        // Restore current
+        container.style.setProperty("--fit", currentFitRef.current.toFixed(2));
+      }
+
+      isMeasuringRef.current = false;
+    });
+  }, [containerRef, contentRef, isDragging]);
+
+  // Run on question change, fontScale change, or when isDragging transitions from true to false
+  const prevDraggingRef = useRef(isDragging);
+  useEffect(() => {
+    const wasDragging = prevDraggingRef.current;
+    prevDraggingRef.current = isDragging;
+
+    // Trigger when dragging stops or when not dragging
+    if (!isDragging) {
+      if (wasDragging) {
+        // Ended dragging: measure once after layout settles
+        const raf = requestAnimationFrame(() => {
+          measureAndFit();
+        });
+        return () => cancelAnimationFrame(raf);
+      } else {
+        measureAndFit();
       }
     }
+  }, [isDragging, questionId, fontScale, measureAndFit]);
 
-    // Restore style
-    content.style.fontSize = prevFontSize;
-    content.style.lineHeight = prevLineHeight;
-
-    const finalPx = Math.round(
-      Math.max(minFontSize, Math.min(maxFontSize, best)) * multiplier
-    );
-    setFontSize(finalPx);
-  }, [containerRef, contentRef, minFontSize, maxFontSize, multiplier]);
-
-  // Run calculation on dependencies change or ResizeObserver
-  const depsKey = JSON.stringify(dependencies);
-  useEffect(() => {
-    // Initial calculate after render
-    const raf = requestAnimationFrame(() => {
-      recalculate();
-    });
-
-    const container = containerRef.current;
-    if (!container || typeof ResizeObserver === "undefined") {
-      return () => cancelAnimationFrame(raf);
-    }
-
-    const observer = new ResizeObserver(() => {
-      requestAnimationFrame(() => {
-        recalculate();
-      });
-    });
-
-    observer.observe(container);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      observer.disconnect();
-    };
-  }, [containerRef, recalculate, depsKey]);
-
-  return { fontSize, recalculate };
+  return { recalculate: measureAndFit };
 }

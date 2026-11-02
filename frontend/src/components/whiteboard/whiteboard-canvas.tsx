@@ -17,22 +17,30 @@ if (typeof window !== "undefined") {
         this,
         function (item: any, index: number, array: any[]) {
           if (item && typeof item === "object" && item.type) {
-            if (!Array.isArray(item.groupIds)) {
-              item.groupIds = [];
+            if (!Array.isArray(item.groupIds) && Object.isExtensible(item)) {
+              try {
+                item.groupIds = [];
+              } catch {
+                // ignore if non-extensible
+              }
             }
           }
           try {
             return fn.call(thisArg, item, index, array);
           } catch (err: any) {
             if (err && typeof err.message === "string" && err.message.includes("reading 'length'")) {
-              if (item && typeof item === "object") {
-                if (!Array.isArray(item.groupIds)) item.groupIds = [];
-                if (item.boundElements === undefined) item.boundElements = null;
-                if (
-                  !Array.isArray(item.points) &&
-                  (item.type === "line" || item.type === "arrow" || item.type === "freedraw")
-                ) {
-                  item.points = [[0, 0], [item.width || 100, item.height || 100]];
+              if (item && typeof item === "object" && Object.isExtensible(item)) {
+                try {
+                  if (!Array.isArray(item.groupIds)) item.groupIds = [];
+                  if (item.boundElements === undefined) item.boundElements = null;
+                  if (
+                    !Array.isArray(item.points) &&
+                    (item.type === "line" || item.type === "arrow" || item.type === "freedraw")
+                  ) {
+                    item.points = [[0, 0], [item.width || 100, item.height || 100]];
+                  }
+                } catch {
+                  // ignore
                 }
               }
               try {
