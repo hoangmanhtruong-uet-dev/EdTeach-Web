@@ -14,7 +14,7 @@ import {
   Sparkles,
   Layers,
 } from "lucide-react";
-import { LABS, LabLesson, LabSubject, SUBJECT_LABEL } from "@/data/labs";
+import { LABS, LabLesson, LabSubject, SUBJECT_LABEL, labFileUrl } from "@/data/labs";
 
 interface PipLabModalProps {
   isOpen: boolean;
@@ -191,13 +191,13 @@ export function PipLabModal({
                 </div>
               </div>
 
-              {/* Embedded Lab Iframe */}
+              {/* Embedded Lab Iframe (Trực tiếp Canvas WebGL 3D từ courses/*.html) */}
               <div className="flex-1 w-full bg-slate-950 relative">
                 <iframe
-                  src={`/labs/${selectedLab.slug}?embed=true`}
+                  src={labFileUrl(selectedLab.slug)}
                   className="w-full h-full border-0"
                   title={selectedLab.titleVi}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
+                  allow="fullscreen; accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
                 />
               </div>
             </div>

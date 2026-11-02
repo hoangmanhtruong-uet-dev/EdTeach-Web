@@ -6,33 +6,47 @@ import React, { useEffect, useState, useRef, useMemo, useCallback } from "react"
 if (typeof window !== "undefined") {
   (window as any).EXCALIDRAW_ASSET_PATH = "/";
 
-  // Lớp phòng vệ chống crash Excalidraw: Tự động bắt lỗi reading 'length' khi filter element thiếu groupIds
+  // Lớp phòng vệ chống crash Excalidraw: Tự động chữa lành phần tử nếu thiếu groupIds/points
   const origFilter = Array.prototype.filter;
   Array.prototype.filter = function (fn: any, thisArg: any) {
-    const safePredicate = function (item: any, index: number, array: any[]) {
-      try {
-        return fn.call(thisArg, item, index, array);
-      } catch (err: any) {
-        if (err && typeof err.message === "string" && err.message.includes("reading 'length'")) {
-          const fnStr = typeof fn === "function" ? fn.toString() : "";
-          if (fnStr.includes("groupIds.length === 0")) {
-            return true;
+    return origFilter.call(
+      this,
+      function (item: any, index: number, array: any[]) {
+        if (item && typeof item === "object" && item.type) {
+          if (!Array.isArray(item.groupIds)) {
+            item.groupIds = [];
           }
-          if (fnStr.includes("groupIds.length > 0")) {
-            return false;
-          }
-          return false;
         }
-        throw err;
-      }
-    };
-    return origFilter.call(this, safePredicate, thisArg);
+        try {
+          return fn.call(thisArg, item, index, array);
+        } catch (err: any) {
+          if (err && typeof err.message === "string" && err.message.includes("reading 'length'")) {
+            if (item && typeof item === "object") {
+              if (!Array.isArray(item.groupIds)) item.groupIds = [];
+              if (item.boundElements === undefined) item.boundElements = null;
+              if (
+                !Array.isArray(item.points) &&
+                (item.type === "line" || item.type === "arrow" || item.type === "freedraw")
+              ) {
+                item.points = [[0, 0], [item.width || 100, item.height || 100]];
+              }
+            }
+            try {
+              return fn.call(thisArg, item, index, array);
+            } catch {
+              return false;
+            }
+          }
+          throw err;
+        }
+      },
+      thisArg
+    );
   };
 }
 
 import { Excalidraw } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
-import { STEM_LIBRARY_ITEMS } from "@/lib/whiteboard/stem-libraries";
 import {
   sanitizeExcalidrawElements,
   sanitizeExcalidrawFiles,
@@ -76,7 +90,6 @@ export default function WhiteboardCanvas({
 }: WhiteboardCanvasProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
   const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null);
-  const isLibraryLoadedRef = useRef(false);
   const onApiReadyCalledRef = useRef(false);
 
   // Keep callback refs stable to prevent dependency cascade
@@ -94,33 +107,15 @@ export default function WhiteboardCanvas({
     }
   }, []);
 
-  // One-time API ready notification and Pro library loading
+  // One-time API ready notification
   useEffect(() => {
     if (excalidrawAPI) {
       if (!onApiReadyCalledRef.current) {
         onApiReadyCalledRef.current = true;
         onApiReadyRef.current?.(excalidrawAPI);
       }
-
-      // Nếu là gói Pro, tự động load thư viện STEM giáo dục vào kho Excalidraw Library
-      if (isPro && !isLibraryLoadedRef.current) {
-        try {
-          const sanitizedLibrary = STEM_LIBRARY_ITEMS.map((item) => ({
-            ...item,
-            elements: sanitizeExcalidrawElements(item.elements),
-          }));
-          excalidrawAPI.updateLibrary({
-            libraryItems: sanitizedLibrary,
-            merge: true,
-            openLibraryMenu: false,
-          });
-          isLibraryLoadedRef.current = true;
-        } catch (e) {
-          console.error("Lỗi khi nạp STEM Library vào Excalidraw:", e);
-        }
-      }
     }
-  }, [excalidrawAPI, isPro]);
+  }, [excalidrawAPI]);
 
   // Stable onChange handler passed to Excalidraw
   const handleExcalidrawChange = useCallback((elements: readonly any[], appState: any, files?: any) => {

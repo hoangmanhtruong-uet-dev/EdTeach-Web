@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
@@ -25,10 +25,11 @@ import {
   Maximize,
   FlaskConical,
   ExternalLink,
+  Search,
 } from "lucide-react";
 import { Whiteboard } from "@/types/whiteboard";
 import { updateWhiteboard } from "@/lib/api/whiteboard";
-import { sanitizeExcalidrawElements } from "@/lib/whiteboard/sanitize-elements";
+import { sanitizeExcalidrawElements, sanitizeExcalidrawAppState } from "@/lib/whiteboard/sanitize-elements";
 import { STEM_LIBRARY_ITEMS, ExcalidrawLibraryItem } from "@/lib/whiteboard/stem-libraries";
 import { BOARD_THEMES, BoardTheme, getThemeById } from "@/lib/whiteboard/board-themes";
 import { convertQuestionToExcalidrawCard } from "@/lib/whiteboard/question-to-excalidraw";
@@ -58,15 +59,17 @@ async function generateThumbnailWebP(
   if (!elements || elements.length === 0) return null;
   try {
     const { exportToBlob } = await import("@excalidraw/excalidraw");
+    const sanitizedEls = sanitizeExcalidrawElements(elements);
+    const sanitizedAppState = sanitizeExcalidrawAppState(appState);
     const blob = await exportToBlob({
-      elements: elements as any,
+      elements: sanitizedEls as any,
       appState: {
-        ...appState,
+        ...sanitizedAppState,
         exportWithDarkMode: false,
         exportBackground: true,
-        viewBackgroundColor: (appState?.viewBackgroundColor as string) || "#ffffff",
+        viewBackgroundColor: (sanitizedAppState?.viewBackgroundColor as string) || "#ffffff",
       } as any,
-      files: null,
+      files: {},
       mimeType: "image/webp",
       quality: 0.55,
       maxWidthOrHeight: 360,
@@ -79,7 +82,7 @@ async function generateThumbnailWebP(
       reader.readAsDataURL(blob);
     });
   } catch (err) {
-    console.warn("Lỗi sinh thumbnail WebP:", err);
+    console.warn("Lỗi sinh thumbnail WebP (bỏ qua an toàn):", err);
     return null;
   }
 }
@@ -121,6 +124,19 @@ export default function WhiteboardEditor({
   const [currentTheme, setCurrentTheme] = useState<BoardTheme>(getThemeById(initialThemeId));
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showStemMenu, setShowStemMenu] = useState(false);
+  const [stemSearchQuery, setStemSearchQuery] = useState("");
+  const [stemSubjectFilter, setStemSubjectFilter] = useState<"all" | "math" | "physics" | "chemistry">("all");
+
+  const filteredStemItems = useMemo(() => {
+    return STEM_LIBRARY_ITEMS.filter((item) => {
+      const matchSub = stemSubjectFilter === "all" || item.subjectGroup === stemSubjectFilter;
+      const matchSearch =
+        !stemSearchQuery.trim() ||
+        item.name.toLowerCase().includes(stemSearchQuery.toLowerCase()) ||
+        item.category.toLowerCase().includes(stemSearchQuery.toLowerCase());
+      return matchSub && matchSearch;
+    });
+  }, [stemSearchQuery, stemSubjectFilter]);
   const [showExamDrawer, setShowExamDrawer] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
   const [isLaserActive, setIsLaserActive] = useState(false);
@@ -356,7 +372,7 @@ export default function WhiteboardEditor({
     }
   };
 
-  // Chèn Mẫu vẽ STEM
+  // Chèn Mẫu vẽ STEM thông minh: căn giữa màn hình hiện tại, gom nhóm groupId, tự chọn đối tượng
   const handleInsertStemItem = (item: ExcalidrawLibraryItem) => {
     if (!excalidrawAPI) return;
     if (!isPro) {
@@ -365,17 +381,67 @@ export default function WhiteboardEditor({
     }
 
     const currentElements = excalidrawAPI.getSceneElements();
-    const newElements = item.elements.map((el) => ({
-      ...el,
-      id: `${(el as any).type || "item"}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      x: ((el as any).x || 0) + 120,
-      y: ((el as any).y || 0) + 100,
-    }));
+    const appState = (excalidrawAPI as any).getAppState?.() || {};
+    const scrollX = typeof appState.scrollX === "number" ? appState.scrollX : 0;
+    const scrollY = typeof appState.scrollY === "number" ? appState.scrollY : 0;
+    const zoomVal = appState.zoom?.value || 1;
+    const vpWidth = appState.width || (typeof window !== "undefined" ? window.innerWidth : 1200);
+    const vpHeight = appState.height || (typeof window !== "undefined" ? window.innerHeight : 800);
+
+    // Tính toạ độ tâm khung nhìn hiện tại (theo scene coordinate)
+    const centerX = -scrollX + (vpWidth / 2) / zoomVal;
+    const centerY = -scrollY + (vpHeight / 2) / zoomVal;
+
+    // Tìm bounding box gốc của item
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    item.elements.forEach((el: any) => {
+      const ex = typeof el.x === "number" ? el.x : 0;
+      const ey = typeof el.y === "number" ? el.y : 0;
+      const ew = typeof el.width === "number" ? el.width : 0;
+      const eh = typeof el.height === "number" ? el.height : 0;
+      if (ex < minX) minX = ex;
+      if (ey < minY) minY = ey;
+      if (ex + ew > maxX) maxX = ex + ew;
+      if (ey + eh > maxY) maxY = ey + eh;
+    });
+
+    const itemWidth = maxX > minX ? maxX - minX : 240;
+    const itemHeight = maxY > minY ? maxY - minY : 180;
+
+    // Toạ độ góc trên bên trái để hình nằm đúng trung tâm tầm mắt Thầy Cô
+    const targetX = Math.round(centerX - itemWidth / 2);
+    const targetY = Math.round(centerY - itemHeight / 2);
+    const deltaX = Number.isFinite(minX) ? targetX - minX : 100;
+    const deltaY = Number.isFinite(minY) ? targetY - minY : 100;
+
+    // Tạo một Group ID duy nhất gắn cho toàn bộ element của mẫu vẽ này
+    const stemGroupId = `stem_grp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const newElementIds: Record<string, boolean> = {};
+
+    const newElements = item.elements.map((el) => {
+      const newId = `${(el as any).type || "item"}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      newElementIds[newId] = true;
+      return {
+        ...el,
+        id: newId,
+        x: ((el as any).x || 0) + deltaX,
+        y: ((el as any).y || 0) + deltaY,
+        groupIds: [stemGroupId],
+      };
+    });
 
     const sanitizedNextElements = sanitizeExcalidrawElements([...currentElements, ...newElements]);
 
     excalidrawAPI.updateScene({
       elements: sanitizedNextElements,
+      appState: {
+        selectedElementIds: newElementIds,
+        selectedGroupIds: { [stemGroupId]: true },
+      },
     });
     latestDataRef.current.elements = sanitizedNextElements;
     performSave(sanitizedNextElements, latestDataRef.current.appState);
@@ -616,49 +682,115 @@ export default function WhiteboardEditor({
     performSave(nextCasioElements, latestDataRef.current.appState);
   };
 
+  // Chụp dán mô phỏng STEM lên Bảng: Tạo Thẻ thực hành chuẩn sư phạm, nhóm groupId, tự chọn
   const handleSnapshotFromLab = (lab: any) => {
     if (!excalidrawAPI || !lab) return;
     const currentElements = excalidrawAPI.getSceneElements() as any[];
-    let maxY = 100;
-    currentElements.forEach((el) => {
-      if (el && typeof el.y === "number" && typeof el.height === "number") {
-        const bottom = el.y + el.height;
-        if (bottom > maxY) maxY = bottom;
-      }
-    });
+    const appState = (excalidrawAPI as any).getAppState?.() || {};
+    const scrollX = typeof appState.scrollX === "number" ? appState.scrollX : 0;
+    const scrollY = typeof appState.scrollY === "number" ? appState.scrollY : 0;
+    const zoomVal = appState.zoom?.value || 1;
+    const vpWidth = appState.width || (typeof window !== "undefined" ? window.innerWidth : 1200);
+    const vpHeight = appState.height || (typeof window !== "undefined" ? window.innerHeight : 800);
 
-    const labBox: any = {
+    const centerX = -scrollX + (vpWidth / 2) / zoomVal;
+    const centerY = -scrollY + (vpHeight / 2) / zoomVal;
+
+    const cardWidth = 520;
+    const cardHeight = 220;
+    const startX = Math.round(centerX - cardWidth / 2);
+    const startY = Math.round(centerY - cardHeight / 2);
+
+    const labGroupId = `lab_grp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const isDark = currentTheme.isDark;
+
+    // Màu sắc theo bộ môn
+    const subjectColors: Record<string, { stroke: string; bg: string; text: string }> = {
+      phys: { stroke: "#4f46e5", bg: isDark ? "#1e1b4b66" : "#eef2ff", text: "#6366f1" },
+      chem: { stroke: "#059669", bg: isDark ? "#064e3b66" : "#ecfdf5", text: "#10b981" },
+      bio: { stroke: "#e11d48", bg: isDark ? "#4c051966" : "#fff1f2", text: "#f43f5e" },
+      geo: { stroke: "#d97706", bg: isDark ? "#451a0366" : "#fffbeb", text: "#f59e0b" },
+    };
+    const colors = subjectColors[lab.subject] || subjectColors.phys;
+
+    // 1. Khung thẻ chính
+    const cardBox: any = {
       id: `lab_box_${Date.now()}`,
       type: "rectangle",
-      x: 140,
-      y: currentElements.length === 0 ? 100 : maxY + 30,
-      width: 480,
-      height: 90,
-      strokeColor: "#059669",
-      backgroundColor: currentTheme.isDark ? "#064e3b33" : "#ecfdf5",
+      x: startX,
+      y: startY,
+      width: cardWidth,
+      height: cardHeight,
+      strokeColor: colors.stroke,
+      backgroundColor: colors.bg,
       fillStyle: "solid",
       strokeWidth: 2,
       roundness: { type: 3 },
+      groupIds: [labGroupId],
       isDeleted: false,
     };
 
-    const labText: any = {
-      id: `lab_txt_${Date.now()}`,
+    // 2. Tiêu đề Thí nghiệm & GDPT 2018
+    const cardTitle: any = {
+      id: `lab_title_${Date.now()}`,
       type: "text",
-      x: 160,
-      y: (currentElements.length === 0 ? 100 : maxY + 30) + 16,
-      text: `🧪 THÍ NGHIỆM STEM: ${lab.titleVi.toUpperCase()}\n${lab.gdpt || "Chương trình GDPT 2018"} • Thầy cô ghi chú số liệu tại đây`,
-      fontSize: 15,
+      x: startX + 20,
+      y: startY + 16,
+      text: `🧪 THÍ NGHIỆM STEM 3D: ${lab.titleVi.toUpperCase()}\n${lab.gdpt || "Chương trình GDPT 2018"}`,
+      fontSize: 16,
       fontFamily: 2,
       textAlign: "left",
       verticalAlign: "top",
-      strokeColor: currentTheme.isDark ? "#6ee7b7" : "#047857",
+      strokeColor: colors.text,
+      groupIds: [labGroupId],
       isDeleted: false,
     };
 
-    const nextLabElements = sanitizeExcalidrawElements([...currentElements, labBox, labText]);
+    // 3. Đường phân cách nét đứt
+    const sepLine: any = {
+      id: `lab_sep_${Date.now()}`,
+      type: "line",
+      x: startX + 20,
+      y: startY + 70,
+      width: cardWidth - 40,
+      height: 0,
+      points: [[0, 0], [cardWidth - 40, 0]],
+      strokeColor: colors.stroke,
+      strokeWidth: 1.2,
+      strokeStyle: "dashed",
+      groupIds: [labGroupId],
+      isDeleted: false,
+    };
+
+    // 4. Bảng ghi nhận kết quả & số liệu đo đạc
+    const obsBox: any = {
+      id: `lab_obs_${Date.now()}`,
+      type: "text",
+      x: startX + 20,
+      y: startY + 84,
+      text: `📋 BẢNG THU THẬP SỐ LIỆU & HIỆN TƯỢNG:\n• Lần đo 1: ....................................... | Hiện tượng: ....................\n• Lần đo 2: ....................................... | Hiện tượng: ....................\n• Nhận xét & Kết luận: ..............................................................`,
+      fontSize: 13,
+      fontFamily: 1,
+      textAlign: "left",
+      verticalAlign: "top",
+      strokeColor: isDark ? "#cbd5e1" : "#334155",
+      groupIds: [labGroupId],
+      isDeleted: false,
+    };
+
+    const newLabElements = [cardBox, cardTitle, sepLine, obsBox];
+    const newElementIds: Record<string, boolean> = {};
+    newLabElements.forEach((el) => {
+      newElementIds[el.id] = true;
+    });
+
+    const nextLabElements = sanitizeExcalidrawElements([...currentElements, ...newLabElements]);
     excalidrawAPI.updateScene({
       elements: nextLabElements,
+      appState: {
+        selectedElementIds: newElementIds,
+        selectedGroupIds: { [labGroupId]: true },
+      },
     });
     latestDataRef.current.elements = nextLabElements;
     performSave(nextLabElements, latestDataRef.current.appState);
@@ -667,15 +799,14 @@ export default function WhiteboardEditor({
   const handleTriggerAiGeometryDraw = (question: any) => {
     if (!excalidrawAPI || !question) return;
     const shapeId = detectStemShapeIdForQuestion(question.content);
-    if (!shapeId) return;
+    if (!shapeId) {
+      alert("Chưa phát hiện được hình vẽ phù hợp cho câu hỏi này. Thầy Cô có thể chọn trực tiếp từ danh mục Mẫu vẽ STEM!");
+      return;
+    }
 
     const matchedItem =
-      STEM_LIBRARY_ITEMS.find(
-        (item) =>
-          (item as any).id === shapeId ||
-          (item as any).name?.toLowerCase().includes("chóp") ||
-          (item as any).name?.toLowerCase().includes("mạch")
-      ) || STEM_LIBRARY_ITEMS[0];
+      STEM_LIBRARY_ITEMS.find((item) => (item as any).id === shapeId) ||
+      STEM_LIBRARY_ITEMS[0];
 
     if (matchedItem) {
       handleInsertStemItem(matchedItem);
@@ -1105,38 +1236,94 @@ export default function WhiteboardEditor({
 
             {/* Dropdown Menu */}
             {showStemMenu && (
-              <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl border border-border bg-card p-3 shadow-xl z-50 animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl border border-border bg-card p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95">
                 <div className="mb-2 flex items-center justify-between border-b pb-2">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
                     <Sparkles className="h-4 w-4 text-violet-600" />
-                    <span>Thư viện Giáo dục & Vật lý</span>
+                    <span>Thư viện Mẫu vẽ STEM ({STEM_LIBRARY_ITEMS.length})</span>
                   </div>
-                  {!isPro && (
+                  {!isPro ? (
                     <Link
                       href="/settings?tab=plan"
                       className="text-[11px] font-semibold text-primary hover:underline"
                     >
                       Nâng cấp Pro
                     </Link>
+                  ) : (
+                    <span className="text-[10px] font-bold text-violet-600 bg-violet-100 dark:bg-violet-950 px-2 py-0.5 rounded-full">
+                      GDPT 2018
+                    </span>
                   )}
                 </div>
 
-                <div className="space-y-1 max-h-64 overflow-y-auto">
-                  {STEM_LIBRARY_ITEMS.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => handleInsertStemItem(item)}
-                      className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs transition hover:bg-muted group"
-                    >
-                      <div>
-                        <p className="font-medium text-foreground">{item.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{item.category}</p>
-                      </div>
-                      <div className="opacity-0 group-hover:opacity-100 transition">
-                        <Plus className="h-4 w-4 text-primary" />
-                      </div>
-                    </button>
-                  ))}
+                {/* Thanh tìm kiếm & bộ lọc môn */}
+                <div className="space-y-2 mb-2">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={stemSearchQuery}
+                      onChange={(e) => setStemSearchQuery(e.target.value)}
+                      placeholder="Tìm mẫu (chóp, lăng trụ, thấu kính, lò xo, benzen...)"
+                      className="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[11px]">
+                    {[
+                      { key: "all", label: "Tất cả" },
+                      { key: "math", label: "📐 Toán & 3D" },
+                      { key: "physics", label: "⚡ Vật lý" },
+                      { key: "chemistry", label: "🧪 Hóa & Sinh" },
+                    ].map((tab) => (
+                      <button
+                        key={tab.key}
+                        onClick={() => setStemSubjectFilter(tab.key as any)}
+                        className={`px-2 py-0.5 rounded-md font-medium whitespace-nowrap transition ${
+                          stemSubjectFilter === tab.key
+                            ? "bg-violet-600 text-white font-bold"
+                            : "bg-muted text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1 max-h-72 overflow-y-auto pr-0.5">
+                  {filteredStemItems.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-muted-foreground">
+                      Không tìm thấy mẫu vẽ phù hợp
+                    </div>
+                  ) : (
+                    filteredStemItems.map((item: ExcalidrawLibraryItem) => (
+                      <button
+                        key={item.id}
+                        onClick={() => handleInsertStemItem(item)}
+                        className="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs transition hover:bg-muted group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span
+                            className={`w-1.5 h-6 rounded-full shrink-0 ${
+                              item.subjectGroup === "math"
+                                ? "bg-blue-500"
+                                : item.subjectGroup === "physics"
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
+                            }`}
+                          />
+                          <div className="truncate">
+                            <p className="font-semibold text-foreground truncate">{item.name}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{item.category}</p>
+                          </div>
+                        </div>
+                        <div className="opacity-0 group-hover:opacity-100 transition shrink-0 ml-2">
+                          <Plus className="h-4 w-4 text-violet-600" />
+                        </div>
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
             )}

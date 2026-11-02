@@ -290,28 +290,113 @@ export function convertQuestionToExcalidrawCard(
 
 /**
  * Tự động phát hiện dạng hình học hoặc mô phỏng từ nội dung câu hỏi
+ * Khớp trực tiếp với các ID trong STEM_LIBRARY_ITEMS
  */
 export function detectStemShapeIdForQuestion(content: string): string | null {
   if (!content) return null;
   const lower = content.toLowerCase();
 
-  if (lower.includes("hình chóp") || lower.includes("tứ diện") || lower.includes("s.abcd") || lower.includes("s.abc")) {
-    return "stem_geom_pyramid";
+  // 1. Hình không gian 3D (Toán 11, 12)
+  if (lower.includes("s.abcd") || lower.includes("chóp tứ giác") || lower.includes("đáy là hình vuông") || lower.includes("đáy là hình chữ nhật") || lower.includes("đáy là hình thoi") || lower.includes("đáy là hình bình hành")) {
+    return "stem-geom-pyramid-quad";
   }
-  if (lower.includes("lăng trụ") || lower.includes("hình hộp") || lower.includes("hình lập phương")) {
-    return "stem_geom_prism";
+  if (lower.includes("hình chóp") || lower.includes("tứ diện") || lower.includes("s.abc") || lower.includes("tam giác đều")) {
+    return "stem-geom-pyramid-triangle";
   }
-  if (lower.includes("nón") || lower.includes("trụ") || lower.includes("hình cầu") || lower.includes("mặt cầu")) {
-    return "stem_geom_cone";
+  if (lower.includes("hình hộp") || lower.includes("hình lập phương") || lower.includes("khối hộp")) {
+    return "stem-geom-box";
   }
-  if (lower.includes("mạch điện") || lower.includes("điện trở") || lower.includes("hiệu điện thế") || lower.includes("định luật ôm")) {
-    return "stem_phys_circuit";
+  if (lower.includes("lăng trụ") || lower.includes("lăng trụ đứng") || lower.includes("abc.a'b'c'")) {
+    return "stem-geom-prism";
   }
-  if (lower.includes("thấu kính") || lower.includes("tiêu cự") || lower.includes("quang học") || lower.includes("chiết suất")) {
-    return "stem_phys_optics";
+  if (lower.includes("hình nón") || lower.includes("khối nón") || lower.includes("đường sinh") || lower.includes("đỉnh nón")) {
+    return "stem-geom-cone";
   }
-  if (lower.includes("benzen") || lower.includes("este") || lower.includes("ancol") || lower.includes("cacbohiđrat")) {
-    return "stem_chem_benzene";
+  if (lower.includes("hình trụ") || lower.includes("khối trụ") || lower.includes("thiết diện qua trục")) {
+    return "stem-geom-cylinder";
   }
+  if (lower.includes("hình cầu") || lower.includes("mặt cầu") || lower.includes("khối cầu") || lower.includes("bán kính r")) {
+    return "stem-geom-sphere";
+  }
+
+  // 2. Đồ thị & Lượng giác (Toán 10, 11, 12)
+  if (lower.includes("oxyz") || lower.includes("không gian oxyz") || lower.includes("toạ độ trong không gian")) {
+    return "stem-coord-oxyz";
+  }
+  if (lower.includes("lượng giác") || lower.includes("vòng tròn lượng giác") || lower.includes("đường tròn lượng giác") || lower.includes("sin") && lower.includes("cos")) {
+    return "stem-trig-circle";
+  }
+  if (lower.includes("parabol") || lower.includes("bậc hai") || lower.includes("y = ax")) {
+    return "stem-parabola";
+  }
+  if (lower.includes("hệ trục") || lower.includes("toạ độ oxy") || lower.includes("đồ thị hàm số")) {
+    return "stem-coord-oxy";
+  }
+
+  // 3. Vật lý Cơ học (Lớp 10, 12)
+  if (lower.includes("lực") || lower.includes("niuton") || lower.includes("newton") || lower.includes("hợp lực") || lower.includes("hình bình hành lực")) {
+    return "stem-force-vector";
+  }
+  if (lower.includes("con lắc đơn") || lower.includes("dây treo") || lower.includes("góc lệch")) {
+    return "stem-pendulum";
+  }
+  if (lower.includes("lò xo nằm ngang") || lower.includes("mặt phẳng ngang")) {
+    return "stem-spring-horizontal";
+  }
+  if (lower.includes("lò xo") || lower.includes("độ cứng k") || lower.includes("con lắc lò xo")) {
+    return "stem-spring";
+  }
+
+  // 4. Vật lý Điện học (Lớp 11, 12)
+  if (lower.includes("song song") && (lower.includes("mạch điện") || lower.includes("điện trở") || lower.includes("r1") || lower.includes("r2"))) {
+    return "stem-circuit-parallel";
+  }
+  if (lower.includes("nối tiếp") && (lower.includes("mạch điện") || lower.includes("điện trở"))) {
+    return "stem-circuit-series";
+  }
+  if (lower.includes("mạch điện") || lower.includes("hiệu điện thế") || lower.includes("suất điện động") || lower.includes("định luật ôm")) {
+    return "stem-circuit-series";
+  }
+  if (lower.includes("nguồn điện") || lower.includes("pin") || lower.includes("ắc quy")) {
+    return "stem-battery";
+  }
+  if (lower.includes("điện trở")) {
+    return "stem-resistor";
+  }
+
+  // 5. Vật lý Quang học & Sóng (Lớp 11, 12)
+  if (lower.includes("thấu kính phân kì") || lower.includes("phân kì")) {
+    return "stem-lens-concave";
+  }
+  if (lower.includes("thấu kính") || lower.includes("hội tụ") || lower.includes("tiêu cự") || lower.includes("quang tâm")) {
+    return "stem-lens-convex";
+  }
+  if (lower.includes("phản xạ") || lower.includes("gương phẳng") || lower.includes("góc tới") || lower.includes("góc phản xạ")) {
+    return "stem-optics-reflection";
+  }
+  if (lower.includes("lăng kính") || lower.includes("tán sắc") || lower.includes("góc chiết quang")) {
+    return "stem-optics-prism";
+  }
+  if (lower.includes("sóng dừng") || lower.includes("bụng sóng") || lower.includes("nút sóng") || lower.includes("bước sóng")) {
+    return "stem-wave-standing";
+  }
+
+  // 6. Hóa học & Sinh học
+  if (lower.includes("benzen") || lower.includes("c6h6") || lower.includes("hiđrocacbon thơm") || lower.includes("toluen")) {
+    return "stem-chem-benzene";
+  }
+  if (lower.includes("chuẩn độ") || lower.includes("bình tam giác") || lower.includes("erlenmeyer") || lower.includes("buret")) {
+    return "stem-chem-erlenmeyer";
+  }
+  if (lower.includes("ống nghiệm") || lower.includes("kết tủa") || lower.includes("thí nghiệm hóa học")) {
+    return "stem-chem-testtube";
+  }
+  if (lower.includes("nước") || lower.includes("h2o") || lower.includes("liên kết hiđro")) {
+    return "stem-chem-water";
+  }
+  if (lower.includes("metan") || lower.includes("ch4") || lower.includes("tứ diện đều")) {
+    return "stem-chem-methane";
+  }
+
   return null;
 }
