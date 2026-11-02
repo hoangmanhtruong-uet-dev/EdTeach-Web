@@ -165,7 +165,7 @@ export default function TeacherVerificationPage() {
               </span>
             </h1>
             <p className="text-slate-300 text-sm leading-relaxed max-w-lg">
-              Hệ thống AI Vision tự động đối soát con dấu đỏ, mã số thẻ và thông tin đơn vị công tác của Thầy Cô trong 3 giây để kích hoạt ngay các đặc quyền tối thượng.
+              Hồ sơ xác thực được chuyển trực tiếp tới Ban Quản Trị qua email để đối soát và phê duyệt thủ công trong vòng 24h, bảo đảm tính chính chủ và uy tín tuyệt đối cho Thầy Cô.
             </p>
           </div>
 
@@ -366,12 +366,12 @@ export default function TeacherVerificationPage() {
                       className="w-full h-full object-contain"
                     />
 
-                    {/* AI Scanner Animation Beam */}
+                    {/* Scanner Animation Beam */}
                     {isAnalyzing && (
                       <div className="absolute inset-0 bg-gradient-to-b from-blue-500/20 via-primary/30 to-transparent animate-pulse flex items-center justify-center">
                         <div className="flex items-center gap-2 bg-slate-900/90 text-white px-4 py-2 rounded-full text-xs font-bold border border-primary/40 shadow-lg">
                           <ScanLine className="w-4 h-4 animate-spin text-primary" />
-                          <span>AI Vision đang quét đối soát con dấu & họ tên...</span>
+                          <span>Đang tải lên hồ sơ và thông báo Ban Quản Trị...</span>
                         </div>
                       </div>
                     )}
@@ -412,7 +412,7 @@ export default function TeacherVerificationPage() {
                   }`}
                 >
                   <Sparkles className="w-4 h-4" />
-                  <span>{isAnalyzing ? "AI đang thẩm định hồ sơ..." : "Xác thực Thẻ ngành ngay"}</span>
+                  <span>{isAnalyzing ? "Đang gửi hồ sơ..." : "Gửi Hồ Sơ Xác Thực Ngay"}</span>
                 </button>
 
                 <button

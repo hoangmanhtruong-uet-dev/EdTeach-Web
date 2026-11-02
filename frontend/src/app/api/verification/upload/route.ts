@@ -9,6 +9,7 @@ import {
   rewardVerifiedTeacher,
   TeacherVerificationRecord,
 } from "@/lib/verification/ocr-engine";
+import { notifyAdminNewVerification } from "@/lib/email/admin-notifier";
 
 export async function POST(req: NextRequest) {
   try {
@@ -180,15 +181,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Run Gemini Vision OCR
-    const ocr = await performTeacherCardOCR(teacherImg.base64, teacherImg.mimeType, userName || undefined);
-
-    // 2. Evaluate Auto-Approval criteria (isValidDocument && Confidence >= 0.85 && Name Matching)
-    const nameMatches = userName ? isNameMatching(ocr.fullName, userName) : true;
-    const isAutoApproved = ocr.isValidDocument && ocr.confidenceScore >= 0.85 && nameMatches;
+    // 1. Phân tích OCR trợ giúp đối soát (chỉ trích xuất thông tin, KHÔNG tự động duyệt)
+    let ocr: any = null;
+    try {
+      ocr = await performTeacherCardOCR(teacherImg.base64, teacherImg.mimeType, userName || undefined);
+    } catch (ocrErr) {
+      console.warn("OCR metadata extraction warning:", ocrErr);
+    }
 
     const recordId = crypto.randomUUID();
-    const recordStatus = isAutoApproved ? "approved" : "pending_review";
+    // Bỏ agent tự động duyệt - Mọi hồ sơ thẻ ngành đều chuyển sang 'pending_review' để Admin phê duyệt thủ công
+    const recordStatus = "pending_review";
 
     const verificationRecord: TeacherVerificationRecord = {
       id: recordId,
@@ -196,47 +199,40 @@ export async function POST(req: NextRequest) {
       documentType,
       imageUrl: `data:${teacherImg.mimeType};base64,${teacherImg.base64.slice(0, 100)}...`,
       status: recordStatus,
-      ocrExtractedName: ocr.fullName,
-      ocrExtractedSchool: ocr.schoolOrOrganization,
-      ocrExtractedCode: ocr.cardNumber,
-      ocrConfidence: ocr.confidenceScore,
+      ocrExtractedName: ocr?.fullName || userName,
+      ocrExtractedSchool: ocr?.schoolOrOrganization || "Đơn vị giáo dục",
+      ocrExtractedCode: ocr?.cardNumber || "",
+      ocrConfidence: ocr?.confidenceScore || 0,
       roleCategory: "teacher",
-      reviewedAt: isAutoApproved ? new Date().toISOString() : undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    // 3. Save to Store
+    // 2. Lưu hồ sơ vào cơ sở dữ liệu
     await saveVerificationRecord(verificationRecord);
 
-    // 4. If auto-approved, trigger perks (Tích Xanh + 10k Credits)
-    if (isAutoApproved) {
-      await rewardVerifiedTeacher({
+    // 3. Gửi email thông báo tới Ban Quản Trị (truongcri0101@gmail.com) để phê duyệt thủ công
+    try {
+      await notifyAdminNewVerification({
         userId,
-        schoolName: ocr.schoolOrOrganization || "Đơn vị giáo dục",
-        teacherCode: ocr.cardNumber,
-        roleCategory: "teacher",
+        userName: ocr?.fullName || userName || "Thầy Cô",
+        userEmail: user.email,
+        schoolName: ocr?.schoolOrOrganization || "Đơn vị giáo dục",
+        documentType,
         verificationId: recordId,
       });
-
-      return NextResponse.json({
-        success: true,
-        status: "approved",
-        isAutoApproved: true,
-        ocr,
-        record: verificationRecord,
-        message: `Chúc mừng Thầy/Cô! AI đã xác thực thành công thẻ ngành của ${ocr.fullName} (${ocr.schoolOrOrganization}). Tích Xanh chính chủ và +10.000 credits đã được kích hoạt!`,
-      });
+    } catch (mailErr) {
+      console.warn("Admin notification warning:", mailErr);
     }
 
-    // 5. If pending review
+    // 4. Trả về thông báo tiếp nhận thành công
     return NextResponse.json({
       success: true,
       status: "pending_review",
       isAutoApproved: false,
       ocr,
       record: verificationRecord,
-      message: `Hệ thống đã tiếp nhận hồ sơ thẻ ngành của Thầy/Cô (${ocr.fullName} - ${ocr.schoolOrOrganization}). Do ảnh chụp hoặc thông tin cần đối soát thêm, Admin sẽ phê duyệt hồ sơ trong vòng 24h.`,
+      message: `Hệ thống đã tiếp nhận hồ sơ thẻ ngành của Thầy/Cô thành công! Ban Quản Trị đã nhận được thông báo qua email và sẽ tiến hành đối soát, phê duyệt thủ công cho Thầy/Cô trong vòng 24 giờ.`,
     });
   } catch (error: any) {
     console.error("API /api/verification/upload error:", error);

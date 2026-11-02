@@ -66,34 +66,28 @@ export async function GET(request: Request) {
           }
         }
 
-        // Xác định vai trò (role) của người dùng:
-        // 1. Nếu user đã tồn tại trong DB, bảo lưu role hiện tại (tránh ghi đè giáo viên/gia sư thành học sinh)
-        // 2. Nếu đăng ký qua tab chọn Giáo viên / Gia sư, gán đúng role mục tiêu
-        // 3. Mặc định với người dùng mới đăng nhập Google thông thường: 'student'
+        // Xác định vai trò (role) và hướng điều hướng của người dùng:
+        // 1. Nếu user đã tồn tại trong DB: LUÔN bảo toàn role hiện tại (tránh ghi đè giáo viên/gia sư thành học sinh)
+        //    và tự động điều hướng về đúng không gian làm việc của role đó.
+        // 2. Nếu là user mới đăng ký lần đầu qua Google: gán đúng role mục tiêu từ cookie chọn vai trò.
         let assignedRole: "teacher" | "tutor" | "student" = "student";
-        if (existingUser?.role) {
-          assignedRole = existingUser.role;
-        } else if (targetRoleCookie === "teacher" || targetRoleCookie === "tutor") {
-          assignedRole = targetRoleCookie as "teacher" | "tutor";
+        if (existingUser) {
+          assignedRole = existingUser.role || "student";
+          // Tài khoản cũ đăng nhập lại: Luôn chuyển hướng về đúng portal theo role cũ, không bị ép sang role khác
+          safeNext = assignedRole === "student" ? "/student" : "/dashboard";
         } else {
-          assignedRole = "student";
-        }
-
-        // Điều hướng điểm đến:
-        // Nếu không có next URL chỉ định hoặc là next mặc định, chuyển hướng thông minh
-        if (!rawNext || rawNext === "/dashboard" || rawNext === "/student") {
-          if (!existingUser) {
-            // Tài khoản mới đăng ký qua Google:
-            if (assignedRole === "teacher") {
-              safeNext = "/verify/teacher";
-            } else if (assignedRole === "tutor") {
-              safeNext = "/verify/tutor";
-            } else {
-              safeNext = "/student";
-            }
+          // Tài khoản mới đăng ký lần đầu
+          if (targetRoleCookie === "teacher" || targetRoleCookie === "tutor") {
+            assignedRole = targetRoleCookie as "teacher" | "tutor";
           } else {
-            // Tài khoản cũ đăng nhập lại:
-            safeNext = assignedRole === "student" ? "/student" : "/dashboard";
+            assignedRole = "student";
+          }
+          if (assignedRole === "teacher") {
+            safeNext = "/verify/teacher";
+          } else if (assignedRole === "tutor") {
+            safeNext = "/verify/tutor";
+          } else {
+            safeNext = "/student";
           }
         }
 

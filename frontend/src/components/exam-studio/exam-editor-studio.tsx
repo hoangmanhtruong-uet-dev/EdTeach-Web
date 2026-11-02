@@ -85,6 +85,8 @@ import {
   TrendingUp,
   BarChart3,
   FileSpreadsheet,
+  User,
+  LogOut,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useAuth } from "@/context/auth-context";
@@ -105,6 +107,7 @@ import {
 import { FormulaEditorModal } from "./formula-editor-modal";
 import { FindReplaceModal } from "./find-replace-modal";
 import { ShuffleExamModal } from "./shuffle-exam-modal";
+import { ShareExamModal } from "./share-exam-modal";
 import { isProUser, isMaxUser, PricingPlan } from "@/lib/payment/plans";
 import { UpgradeTierModal } from "@/components/modals/upgrade-tier-modal";
 import { PaymentCheckoutModal } from "@/components/modals/payment-checkout-modal";
@@ -246,7 +249,7 @@ interface ExamStudioProps {
 
 export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
   const router = useRouter();
-  const { user, profile, wallet, refreshWallet } = useAuth();
+  const { user, profile, wallet, refreshWallet, signOut } = useAuth();
 
   // Document states
   const [examId, setExamId] = useState<string | null>(initialExamId || null);
@@ -458,12 +461,30 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
 
   // Daily Quota & Viral Referral states
   const [showQuotaModal, setShowQuotaModal] = useState(false);
+  const [showShareExamModal, setShowShareExamModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [showShuffleModal, setShowShuffleModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState<"pro" | "max" | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<PricingPlan | null>(null);
   const [dailyQuota, setDailyQuota] = useState(3);
   const [dailyUsed, setDailyUsed] = useState(0);
   const [userReferralCode, setUserReferralCode] = useState("EDUTEACH");
+
+  // Click outside to close user menu
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    if (showUserMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showUserMenu]);
 
   // Load referral code
   useEffect(() => {
@@ -2235,8 +2256,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
     navigator.clipboard.writeText(shareExamUrl);
     setShareToast(true);
     setTimeout(() => setShareToast(false), 3500);
-    showToast("Đã sao chép liên kết chia sẻ đề thi vào bộ nhớ tạm!", "success");
-    setShowQuotaModal(true);
+    setShowShareExamModal(true);
   };
 
   const scrollToQuestion = (idx: number) => {
@@ -2553,18 +2573,18 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
       {/* ============================================================== */}
       {/* 1. TOP HEADER (GOOGLE DOCS STYLE)                              */}
       {/* ============================================================== */}
-      <header className="flex h-14 w-full shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-4">
+      <header className="flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-4 gap-2">
         {/* Left: Document Icon & Title & File Menus */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <Link
             href="/exams"
             title="Quay lại danh sách đề thi"
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white shadow-sm hover:bg-slate-800"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white shadow-sm hover:bg-slate-800"
           >
             <FileText className="h-5 w-5" />
           </Link>
 
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -2581,34 +2601,34 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                     e.currentTarget.blur();
                   }
                 }}
-                className="max-w-[260px] truncate rounded px-1.5 py-0.5 text-base font-semibold text-slate-800 hover:bg-slate-100 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary md:max-w-md"
+                className="max-w-[150px] sm:max-w-[200px] md:max-w-[260px] lg:max-w-[320px] truncate rounded px-1.5 py-0.5 text-sm sm:text-base font-semibold text-slate-800 hover:bg-slate-100 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary"
               />
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="shrink-0 flex items-center gap-1.5 text-xs text-slate-500 font-medium whitespace-nowrap">
                 {savedStatus === "saved" && (
                   <>
-                    <Check className="h-3.5 w-3.5 text-green-600" />
-                    <span className="hidden sm:inline">Đã lưu vào tài khoản</span>
+                    <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    <span>Đã lưu vào tài khoản</span>
                   </>
                 )}
                 {savedStatus === "saving" && (
                   <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary shrink-0" />
                     <span>Đang lưu...</span>
                   </>
                 )}
                 {savedStatus === "unsaved" && (
-                  <span className="text-amber-600">Chưa lưu</span>
+                  <span className="text-amber-600 font-medium">Chưa lưu</span>
                 )}
               </span>
             </div>
 
             {/* Menu options: Tệp, Chỉnh sửa, Xem, Chèn, Định dạng, Công cụ */}
-            <div className="flex items-center gap-1 text-xs text-slate-600">
+            <div className="flex items-center gap-0.5 sm:gap-1 text-xs text-slate-600 pt-0.5">
               {/* 1. Tệp */}
               <div className="relative">
                 <button
                   onClick={() => setShowActiveMenu(showActiveMenu === "file" ? null : "file")}
-                  className={`rounded-lg px-2.5 py-1 min-h-[32px] text-xs font-semibold transition cursor-pointer ${showActiveMenu === "file" ? "bg-slate-200 font-medium" : "hover:bg-slate-100"}`}
+                  className={`rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer leading-normal ${showActiveMenu === "file" ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-700 hover:bg-slate-100"}`}
                 >
                   Tệp
                 </button>
@@ -2669,7 +2689,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               <div className="relative">
                 <button
                   onClick={() => setShowActiveMenu(showActiveMenu === "edit" ? null : "edit")}
-                  className={`rounded-lg px-2.5 py-1 min-h-[32px] text-xs font-semibold transition cursor-pointer ${showActiveMenu === "edit" ? "bg-slate-200 font-medium" : "hover:bg-slate-100"}`}
+                  className={`rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer leading-normal ${showActiveMenu === "edit" ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-700 hover:bg-slate-100"}`}
                 >
                   Chỉnh sửa
                 </button>
@@ -2780,7 +2800,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               <div className="relative">
                 <button
                   onClick={() => setShowActiveMenu(showActiveMenu === "view" ? null : "view")}
-                  className={`rounded-lg px-2.5 py-1 min-h-[32px] text-xs font-semibold transition cursor-pointer ${showActiveMenu === "view" ? "bg-slate-200 font-medium" : "hover:bg-slate-100"}`}
+                  className={`rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer leading-normal ${showActiveMenu === "view" ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-700 hover:bg-slate-100"}`}
                 >
                   Xem
                 </button>
@@ -2897,7 +2917,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               <div className="relative">
                 <button
                   onClick={() => setShowActiveMenu(showActiveMenu === "insert" ? null : "insert")}
-                  className={`rounded-lg px-2.5 py-1 min-h-[32px] text-xs font-semibold transition cursor-pointer ${showActiveMenu === "insert" ? "bg-slate-200 font-medium" : "hover:bg-slate-100"}`}
+                  className={`rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer leading-normal ${showActiveMenu === "insert" ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-700 hover:bg-slate-100"}`}
                 >
                   Chèn
                 </button>
@@ -3405,7 +3425,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               <div className="relative">
                 <button
                   onClick={() => setShowActiveMenu(showActiveMenu === "format" ? null : "format")}
-                  className={`rounded-lg px-2.5 py-1 min-h-[32px] text-xs font-semibold transition cursor-pointer ${showActiveMenu === "format" ? "bg-slate-200 font-medium" : "hover:bg-slate-100"}`}
+                  className={`rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer leading-normal ${showActiveMenu === "format" ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-700 hover:bg-slate-100"}`}
                 >
                   Định dạng
                 </button>
@@ -4198,7 +4218,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               <div className="relative">
                 <button
                   onClick={() => setShowActiveMenu(showActiveMenu === "tools" ? null : "tools")}
-                  className={`rounded-lg px-2.5 py-1 min-h-[32px] text-xs font-semibold transition cursor-pointer ${showActiveMenu === "tools" ? "bg-slate-200 font-medium" : "hover:bg-slate-100"}`}
+                  className={`rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer leading-normal ${showActiveMenu === "tools" ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-700 hover:bg-slate-100"}`}
                 >
                   Công cụ
                 </button>
@@ -4323,19 +4343,107 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
             Hỏi AI
           </button>
 
-          {/* User Badge: Avatar + Name + Daily Quota */}
-          <div className="flex items-center gap-2 pl-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 font-bold text-white shadow-sm">
-              {userInitial}
-            </div>
-            <div className="hidden text-left xl:block">
-              <p className="text-xs font-semibold leading-tight text-slate-800">
-                {userDisplayName}
-              </p>
-              <p className="text-[11px] font-medium text-emerald-600">
-                ⚡ {userCredits.toLocaleString()} credits
-              </p>
-            </div>
+          {/* User Badge: Interactive Avatar with Profile Dropdown */}
+          <div className="relative pl-1 sm:pl-2" ref={userMenuRef}>
+            <button
+              type="button"
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              aria-label="Menu thông tin tài khoản"
+              className="flex items-center gap-2 rounded-full p-1 hover:bg-slate-100 transition cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 font-bold text-white shadow-sm ring-2 ring-white">
+                {userInitial}
+              </div>
+              <div className="hidden text-left xl:block">
+                <p className="text-xs font-semibold leading-tight text-slate-800">
+                  {userDisplayName}
+                </p>
+                <p className="text-[11px] font-medium text-emerald-600">
+                  ⚡ {userCredits.toLocaleString()} credits
+                </p>
+              </div>
+              <ChevronDown className="hidden xl:block h-3 w-3 text-slate-400" />
+            </button>
+
+            {/* Profile Dropdown Menu */}
+            {showUserMenu && (
+              <div className="absolute right-0 top-full z-50 mt-1.5 w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl text-slate-700 animate-in fade-in slide-in-from-top-1 duration-150">
+                {/* User Summary Header */}
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 font-black text-white text-sm shadow-xs shrink-0">
+                      {userInitial}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-900 truncate">{userDisplayName}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{user?.email || "Chưa cập nhật email"}</p>
+                    </div>
+                  </div>
+                  <div className="mt-2.5 flex items-center justify-between border-t border-slate-200/60 pt-2 text-[11px]">
+                    <span className="font-semibold text-slate-600">
+                      {profile?.role === "teacher" ? "👨‍🏫 Giáo viên" : profile?.role === "tutor" ? "🎓 Gia sư" : "🎒 Học sinh"}
+                    </span>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-700">
+                      ⚡ {userCredits.toLocaleString()} cr
+                    </span>
+                  </div>
+                </div>
+
+                {/* Navigation Links */}
+                <div className="mt-1.5 space-y-0.5 text-xs">
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-slate-700 hover:bg-slate-100 transition"
+                  >
+                    <BookOpen className="h-4 w-4 text-slate-500" />
+                    <span>Trang chủ Dashboard</span>
+                  </Link>
+                  <Link
+                    href="/exams"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-slate-700 hover:bg-slate-100 transition"
+                  >
+                    <FolderOpen className="h-4 w-4 text-slate-500" />
+                    <span>Đề thi của tôi</span>
+                  </Link>
+                  <Link
+                    href="/pricing"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-slate-700 hover:bg-slate-100 transition font-semibold text-blue-600"
+                  >
+                    <Crown className="h-4 w-4 text-amber-500" />
+                    <span>Gói cước PRO & Nạp điểm</span>
+                  </Link>
+                  <Link
+                    href="/settings"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-slate-700 hover:bg-slate-100 transition"
+                  >
+                    <User className="h-4 w-4 text-slate-500" />
+                    <span>Cài đặt tài khoản</span>
+                  </Link>
+                </div>
+
+                <div className="my-1 border-t border-slate-100" />
+
+                {/* Logout Button */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setShowUserMenu(false);
+                    if (signOut) {
+                      await signOut();
+                      router.push("/login");
+                    }
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer"
+                >
+                  <LogOut className="h-4 w-4 text-red-500" />
+                  <span>Đăng xuất</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -4656,15 +4764,6 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
             <span className="hidden md:inline">{teacherMode ? "Hiện đáp án" : "Ẩn đáp án"}</span>
           </button>
 
-          {/* Quick Shuffle Multi-version Modal */}
-          <button
-            onClick={() => setShowShuffleModal(true)}
-            className="ml-2 hidden sm:flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100 shadow-2xs transition cursor-pointer"
-            title="Trộn đề thành các mã đề 101, 102, 103, 104 kèm ma trận đáp án"
-          >
-            <Shuffle className="h-3.5 w-3.5 text-blue-600" />
-            <span>Trộn 4 mã đề (.docx)</span>
-          </button>
 
           {/* Quick Presentation / Teach Mode */}
           {examId && (
@@ -6333,6 +6432,15 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
         originalQuestions={questions}
         isPro={isProUser(profile) || isProUser(user)}
         isMax={isMaxUser(profile) || isMaxUser(user)}
+      />
+
+      {/* Share Exam Modal */}
+      <ShareExamModal
+        isOpen={showShareExamModal}
+        onClose={() => setShowShareExamModal(false)}
+        examId={examId}
+        examTitle={title}
+        questionCount={questions.length}
       />
 
       {/* Upgrade Tier Modal */}

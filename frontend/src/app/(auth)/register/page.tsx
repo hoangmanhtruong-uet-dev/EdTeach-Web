@@ -128,9 +128,34 @@ export default function RegisterPage() {
           ? "/verify/teacher"
           : "/verify/tutor";
 
+      // 0. Kiểm tra xem email này đã tồn tại trong hệ thống chưa (tránh ghi đè vai trò cũ)
+      const cleanEmail = email.trim().toLowerCase();
+      try {
+        const { data: existingUser } = await (supabase.from("users") as any)
+          .select("id, role, name")
+          .eq("email", cleanEmail)
+          .maybeSingle();
+
+        if (existingUser) {
+          const roleLabel =
+            existingUser.role === "teacher"
+              ? "Giáo viên"
+              : existingUser.role === "tutor"
+              ? "Gia sư"
+              : "Học sinh";
+          setErrorMessage(
+            `Email "${cleanEmail}" đã được đăng ký tài khoản với vai trò ${roleLabel}. Vui lòng đăng nhập bằng tài khoản này để tiếp tục.`
+          );
+          setIsLoading(false);
+          return;
+        }
+      } catch (checkErr) {
+        console.warn("Email pre-check note:", checkErr);
+      }
+
       // 1. Sign up user
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
+        email: cleanEmail,
         password,
         options: {
           data: {
@@ -145,7 +170,11 @@ export default function RegisterPage() {
       });
 
       if (authError) {
-        setErrorMessage(authError.message);
+        if (authError.message?.toLowerCase().includes("already registered") || authError.message?.toLowerCase().includes("user already")) {
+          setErrorMessage("Email này đã được đăng ký tài khoản trong hệ thống. Vui lòng bấm Đăng nhập bên dưới.");
+        } else {
+          setErrorMessage(authError.message);
+        }
         setIsLoading(false);
         return;
       }
