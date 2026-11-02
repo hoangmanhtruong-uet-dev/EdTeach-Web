@@ -6,7 +6,7 @@ const gradingRateLimits = new Map<string, { count: number; resetTime: number }>(
 
 function checkGradingRateLimit(identifier: string): boolean {
   const now = Date.now();
-  const windowMs = 60 * 1000; // 1 phút
+  const windowMs = process.env.NODE_ENV !== "production" ? 5000 : 60 * 1000;
   const record = gradingRateLimits.get(identifier);
 
   if (!record || now > record.resetTime) {
@@ -34,15 +34,42 @@ export async function POST(req: NextRequest) {
       req.headers.get("x-real-ip") ||
       "anonymous";
 
+    const body = await req.json();
+    const { mode, question, rubric, studentAnswer, answerKey, studentAnswers } = body;
+
+    // Validate mode
+    if (!mode || (mode !== "mcq" && mode !== "essay")) {
+      return NextResponse.json({ error: "Chế độ chấm không hợp lệ." }, { status: 400 });
+    }
+
+    // Input validation for MCQ
+    if (mode === "mcq") {
+      if (!answerKey || !studentAnswers) {
+        return NextResponse.json(
+          { error: "Vui lòng cung cấp đáp án chuẩn và bài làm của học sinh." },
+          { status: 400 }
+        );
+      }
+
+      const questionsCount = Object.keys(answerKey).length;
+      if (questionsCount === 0) {
+        return NextResponse.json({ error: "Đáp án mẫu không có câu hỏi nào." }, { status: 400 });
+      }
+    }
+
+    if (mode === "essay" && !user) {
+      return NextResponse.json(
+        { error: "Vui lòng đăng nhập để sử dụng tính năng Chấm tự luận bằng AI." },
+        { status: 401 }
+      );
+    }
+
     if (!checkGradingRateLimit(user?.id || clientIp)) {
       return NextResponse.json(
         { error: "Thao tác quá nhanh. Vui lòng chờ 1 phút trước khi tiếp tục chấm bài." },
         { status: 429 }
       );
     }
-
-    const body = await req.json();
-    const { mode, question, rubric, studentAnswer, answerKey, studentAnswers } = body;
 
     // Hỗ trợ riêng API Key trả phí (Pay-as-you-go) cho chấm thi AI để không bị nghẽn quota free
     const geminiKey =
@@ -54,19 +81,7 @@ export async function POST(req: NextRequest) {
     // 1. CHẾ ĐỘ: CHẤM TRẮC NGHIỆM (MCQ)
     // ==========================================
     if (mode === "mcq") {
-      if (!answerKey || !studentAnswers) {
-        return NextResponse.json(
-          { error: "Vui lòng cung cấp đáp án chuẩn và bài làm của học sinh." },
-          { status: 400 }
-        );
-      }
-
-      // answerKey: Record<number, string> hoặc mảng [{ questionNumber: 1, correct: 'A' }]
-      // studentAnswers: Record<number, string> hoặc mảng [{ questionNumber: 1, answer: 'A' }]
       const questionsCount = Object.keys(answerKey).length;
-      if (questionsCount === 0) {
-        return NextResponse.json({ error: "Đáp án mẫu không có câu hỏi nào." }, { status: 400 });
-      }
 
       let correctCount = 0;
       let incorrectCount = 0;

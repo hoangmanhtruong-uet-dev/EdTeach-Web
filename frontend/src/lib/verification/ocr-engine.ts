@@ -12,6 +12,26 @@ export interface OCRResult {
   confidenceReason: string;
 }
 
+export interface TutorDualOCRResult {
+  isValidDocument: boolean;
+  studentCard: {
+    fullName: string;
+    studentCode: string;
+    university: string;
+    confidence: number;
+  };
+  cccdCard: {
+    fullName: string;
+    cccdNumber: string;
+    dateOfBirth?: string;
+    confidence: number;
+  };
+  isNameCrossMatched: boolean;
+  isAccountNameMatched: boolean;
+  finalConfidence: number;
+  reason: string;
+}
+
 export interface TeacherVerificationRecord {
   id: string;
   userId: string;
@@ -28,6 +48,9 @@ export interface TeacherVerificationRecord {
   reviewedAt?: string;
   createdAt: string;
   updatedAt: string;
+  cccdImageUrl?: string;
+  cccdNumber?: string;
+  isCrossMatched?: boolean;
 }
 
 // In-memory fallback store
@@ -100,18 +123,18 @@ export function simulateHeuristicOCR(params: {
   userName?: string;
   schoolName?: string;
 }): OCRResult {
-  const name = params.userName || "Nguyễn Hoàng Mạnh";
-  const school = params.schoolName || "Trường THPT Chuyên Hà Nội - Amsterdam";
+  const name = params.userName || "";
+  const school = params.schoolName || "";
 
   return {
-    isValidDocument: true,
-    documentType: "teacher_card",
+    isValidDocument: false,
+    documentType: "unknown",
     fullName: name,
     schoolOrOrganization: school,
-    cardNumber: "GV-" + Math.floor(100000 + Math.random() * 900000),
+    cardNumber: "",
     roleCategory: "teacher",
-    confidenceScore: 0.95,
-    confidenceReason: "Nhận diện rõ quốc hiệu, con dấu đỏ và thẻ viên chức ngành giáo dục.",
+    confidenceScore: 0.35,
+    confidenceReason: "Chế độ dự phòng: Gemini Vision AI không khả dụng. Hồ sơ cần được chuyển sang ban quản trị phê duyệt thủ công.",
   };
 }
 
@@ -222,6 +245,179 @@ Ghi chú phân loại:
   }
 
   return simulateHeuristicOCR({ userName });
+}
+
+/**
+ * Heuristic fallback for Tutor Dual OCR (Thẻ SV + CCCD)
+ */
+export function simulateTutorDualOCR(params: {
+  userName?: string;
+  university?: string;
+}): TutorDualOCRResult {
+  const name = params.userName || "";
+  return {
+    isValidDocument: false,
+    studentCard: {
+      fullName: name,
+      studentCode: "",
+      university: params.university || "",
+      confidence: 0.35,
+    },
+    cccdCard: {
+      fullName: name,
+      cccdNumber: "",
+      confidence: 0.35,
+    },
+    isNameCrossMatched: false,
+    isAccountNameMatched: false,
+    finalConfidence: 0.35,
+    reason: "Chế độ dự phòng: Gemini Vision AI không khả dụng. Hồ sơ gia sư cần được đối soát thủ công bởi Admin.",
+  };
+}
+
+/**
+ * Multimodal Gemini Vision OCR for Tutor Dual Card (Thẻ Sinh viên + CCCD)
+ */
+export async function performTutorDualCardOCR(
+  studentCardBase64: string,
+  studentCardMime: string = "image/jpeg",
+  cccdBase64: string,
+  cccdMime: string = "image/jpeg",
+  userName?: string
+): Promise<TutorDualOCRResult> {
+  const geminiKey = getGeminiApiKey();
+
+  if (!geminiKey) {
+    return simulateTutorDualOCR({ userName });
+  }
+
+  const prompt = `
+Bạn là Hệ thống AI Chuyên gia Giám định Hồ sơ Xác thực Gia sư & Sinh viên Sư phạm Việt Nam.
+Nhiệm vụ: Phân tích 2 ảnh được cung cấp:
+- Ảnh 1: Thẻ sinh viên (hoặc Bằng đại học, Chứng chỉ nghiệp vụ sư phạm).
+- Ảnh 2: Mặt trước Thẻ Căn cước công dân (CCCD hoặc CMND).
+
+Trích xuất các thông tin sau và đối soát chéo họ tên:
+1. Thẻ sinh viên:
+   - Họ và tên sinh viên
+   - Mã sinh viên / Mã số học viên
+   - Tên trường Đại học / Cao đẳng / Học viện
+2. Căn cước công dân:
+   - Họ và tên trên CCCD
+   - Số CCCD (12 chữ số)
+   - Ngày tháng năm sinh
+3. Đối soát:
+   - Họ tên trên Thẻ sinh viên và họ tên trên CCCD có phải cùng một người không? (Khớp nhau dù viết hoa/thường hay không dấu).
+
+Trả về DUY NHẤT một chuỗi JSON hợp lệ với cấu trúc sau:
+{
+  "is_valid_document": true,
+  "student_card": {
+    "full_name": "Nguyễn Văn A",
+    "student_code": "20020101",
+    "university": "Trường Đại học Sư phạm Hà Nội",
+    "confidence": 0.95
+  },
+  "cccd_card": {
+    "full_name": "NGUYỄN VĂN A",
+    "cccd_number": "001202001234",
+    "date_of_birth": "2002-05-15",
+    "confidence": 0.96
+  },
+  "is_name_cross_matched": true,
+  "final_confidence": 0.95,
+  "reason": "Thẻ sinh viên và CCCD hợp lệ, họ tên đối soát hoàn toàn khớp nhau."
+}
+`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    const cleanStudentBase64 = studentCardBase64.replace(/^data:image\/[a-z]+;base64,/, "");
+    const cleanCccdBase64 = cccdBase64.replace(/^data:image\/[a-z]+;base64,/, "");
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType: studentCardMime || "image/jpeg",
+                    data: cleanStudentBase64,
+                  },
+                },
+                {
+                  inlineData: {
+                    mimeType: cccdMime || "image/jpeg",
+                    data: cleanCccdBase64,
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: "application/json",
+          },
+        }),
+      }
+    );
+
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        let parsed: any;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          const clean = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+          parsed = JSON.parse(clean);
+        }
+
+        const studentCardName = parsed.student_card?.full_name || "";
+        const cccdName = parsed.cccd_card?.full_name || "";
+        const isCrossMatched = Boolean(parsed.is_name_cross_matched) || isNameMatching(studentCardName, cccdName);
+        const isAccountMatched = userName
+          ? (isNameMatching(studentCardName, userName) || isNameMatching(cccdName, userName))
+          : true;
+
+        return {
+          isValidDocument: Boolean(parsed.is_valid_document),
+          studentCard: {
+            fullName: studentCardName,
+            studentCode: parsed.student_card?.student_code || "",
+            university: parsed.student_card?.university || "Trường Đại học",
+            confidence: Number(parsed.student_card?.confidence) || 0.9,
+          },
+          cccdCard: {
+            fullName: cccdName,
+            cccdNumber: parsed.cccd_card?.cccd_number || "",
+            dateOfBirth: parsed.cccd_card?.date_of_birth || "",
+            confidence: Number(parsed.cccd_card?.confidence) || 0.9,
+          },
+          isNameCrossMatched: isCrossMatched,
+          isAccountNameMatched: isAccountMatched,
+          finalConfidence: Number(parsed.final_confidence) || (isCrossMatched ? 0.92 : 0.6),
+          reason: parsed.reason || "Đã đối soát Thẻ sinh viên và CCCD qua Gemini Vision AI.",
+        };
+      }
+    }
+  } catch (err: any) {
+    console.warn("Gemini Vision Tutor Dual OCR error, falling back to heuristic:", err?.message);
+  }
+
+  return simulateTutorDualOCR({ userName });
 }
 
 /**
@@ -392,45 +588,79 @@ export async function rewardVerifiedTeacher(params: {
   schoolName: string;
   teacherCode?: string;
   roleCategory?: string;
-}): Promise<void> {
-  const { userId, schoolName, teacherCode, roleCategory = "teacher" } = params;
+  verificationId?: string;
+  adminId?: string;
+}): Promise<{ success: boolean; alreadyRewarded?: boolean; message?: string }> {
+  const { userId, schoolName, teacherCode, roleCategory = "teacher", verificationId, adminId } = params;
 
   try {
     const supabase = createAdminClient();
-    if (supabase) {
-      // 1. Update user profile
-      const { error: userError } = await (supabase.from("users") as any)
+    if (!supabase) return { success: false, message: "Không thể kết nối Supabase Admin." };
+
+    // Gọi atomic RPC claim_ekyc_reward_atomic để khóa chống nhận thưởng lặp
+    const { data: result, error: rpcError } = await (supabase.rpc as any)("claim_ekyc_reward_atomic", {
+      p_user_id: userId,
+      p_admin_id: adminId || null,
+      p_verification_id: verificationId || null,
+      p_school_name: schoolName,
+      p_teacher_code: teacherCode || null,
+      p_role_category: roleCategory,
+    });
+
+    if (rpcError) {
+      console.warn("claim_ekyc_reward_atomic RPC fallback to direct check:", rpcError.message);
+      // Fallback: Kiểm tra ekyc_rewarded_at trực tiếp trên bảng users
+      const { data: userProfile } = await (supabase.from("users") as any)
+        .select("ekyc_rewarded_at, is_verified_teacher")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (userProfile?.ekyc_rewarded_at) {
+        return { success: true, alreadyRewarded: true, message: "Tài khoản đã nhận thưởng eKYC trước đó." };
+      }
+
+      await (supabase.from("users") as any)
         .update({
           is_verified_teacher: true,
           verified_school: schoolName,
           verified_teacher_code: teacherCode || `VERIFIED-${Date.now().toString().slice(-6)}`,
           verified_at: new Date().toISOString(),
+          ekyc_rewarded_at: new Date().toISOString(),
           organization_name: schoolName,
+          role: roleCategory === "tutor" ? "tutor" : "teacher",
         })
         .eq("id", userId);
 
-      if (userError) {
-        console.warn("Failed to update user verified status:", userError.message);
-      }
-
-      // 2. Add +10,000 credits to user wallet
       const { data: wallet } = await (supabase.from("wallets") as any)
-        .select("id, balance")
+        .select("id, balance, promotional_balance")
         .eq("user_id", userId)
         .maybeSingle();
 
       if (wallet) {
-        const newBalance = (wallet.balance || 0) + 10000;
+        const promoBal = Number(wallet.promotional_balance || 0) + 10000;
         await (supabase.from("wallets") as any)
           .update({
-            balance: newBalance,
+            promotional_balance: promoBal,
+            balance: (wallet.balance || 0) + 10000,
             updated_at: new Date().toISOString(),
           })
           .eq("id", wallet.id);
+
+        await (supabase.from("wallet_txns") as any).insert({
+          wallet_id: wallet.id,
+          amount: 10000,
+          type: "ekyc_bonus",
+          description: "Thưởng hoàn tất xác thực danh tính giáo viên chính chủ (Tích Xanh eKYC) (+10.000 credits)",
+          metadata: { verification_id: verificationId, role_category: roleCategory },
+        });
       }
+      return { success: true, alreadyRewarded: false };
     }
+
+    return result as any;
   } catch (err: any) {
     console.warn("rewardVerifiedTeacher caught:", err?.message);
+    return { success: false, message: err?.message };
   }
 }
 
@@ -480,6 +710,10 @@ export async function reviewVerificationRecord(params: {
     throw new Error("Không tìm thấy hồ sơ xác thực.");
   }
 
+  if (record.status === "approved" && action === "approved") {
+    throw new Error("Hồ sơ này đã được phê duyệt trước đó.");
+  }
+
   record.status = action;
   record.adminReviewedBy = adminUserId;
   record.reviewedAt = new Date().toISOString();
@@ -496,6 +730,8 @@ export async function reviewVerificationRecord(params: {
       schoolName: record.ocrExtractedSchool || "Đơn vị giáo dục",
       teacherCode: record.ocrExtractedCode,
       roleCategory: record.roleCategory,
+      verificationId: record.id,
+      adminId: adminUserId,
     });
   }
 

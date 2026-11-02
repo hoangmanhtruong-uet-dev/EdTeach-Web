@@ -5,6 +5,7 @@ import {
   getStudentSubmissionLinksBySession,
   getStudentSubmissionsBySession,
 } from "@/lib/grading/student-submission-store";
+import { getBaseUrl } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const link = createStudentSubmissionLink({
+    const link = await createStudentSubmissionLink({
       userId: user.id,
       sessionId,
       sessionName,
@@ -54,9 +55,8 @@ export async function POST(req: NextRequest) {
       answerKey,
     });
 
-    const host = req.headers.get("host") || "localhost:3000";
-    const protocol = req.headers.get("x-forwarded-proto") || "http";
-    const linkUrl = `${protocol}://${host}/grading/submit/${link.token}`;
+    const baseUrl = getBaseUrl(req);
+    const linkUrl = `${baseUrl}/grading/submit/${link.token}`;
 
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&margin=10&data=${encodeURIComponent(
       linkUrl
@@ -105,14 +105,13 @@ export async function GET(req: NextRequest) {
     }
 
     // BẢO MẬT: Chỉ trả về link và bài làm thuộc về giáo viên đang đăng nhập
-    const links = getStudentSubmissionLinksBySession(sessionId, user.id);
-    const submissions = getStudentSubmissionsBySession(sessionId);
+    const links = await getStudentSubmissionLinksBySession(sessionId, user.id);
+    const submissions = await getStudentSubmissionsBySession(sessionId);
 
-    const host = req.headers.get("host") || "localhost:3000";
-    const protocol = req.headers.get("x-forwarded-proto") || "http";
+    const baseUrl = getBaseUrl(req);
 
-    const formattedLinks = links.map((l) => {
-      const linkUrl = `${protocol}://${host}/grading/submit/${l.token}`;
+    const formattedLinks = links.map((l: any) => {
+      const linkUrl = `${baseUrl}/grading/submit/${l.token}`;
       return {
         ...l,
         linkUrl,

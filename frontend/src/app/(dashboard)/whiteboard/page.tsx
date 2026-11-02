@@ -172,7 +172,7 @@ export default function WhiteboardDashboardPage() {
 
   // Quick stats calculation
   const totalElements = whiteboards.reduce(
-    (acc, b) => acc + ((b.elements as any[])?.length || 0),
+    (acc, b) => acc + (Array.isArray(b.elements) ? b.elements.length : 0),
     0
   );
   const latestUpdatedBoard = whiteboards.length > 0 ? whiteboards[0] : null;
@@ -231,14 +231,16 @@ export default function WhiteboardDashboardPage() {
 
         <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-2xs hover:border-primary/40 transition">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-semibold uppercase tracking-wider">Tổng Nét Vẽ</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Đồng Bộ & Lưu Trữ</span>
             <PenTool className="h-4 w-4 text-indigo-600" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black text-foreground">{totalElements.toLocaleString("vi-VN")}</span>
-            <span className="text-xs text-muted-foreground">vectors</span>
+            <span className="text-2xl sm:text-3xl font-black text-foreground">
+              {totalElements > 0 ? totalElements.toLocaleString("vi-VN") : "Đám mây"}
+            </span>
+            <span className="text-xs text-muted-foreground">{totalElements > 0 ? "vectors" : "Realtime"}</span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">Tự động nén & render</p>
+          <p className="mt-1 text-xs text-muted-foreground">Tối ưu hoá tải siêu tốc</p>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-2xs hover:border-primary/40 transition">
@@ -521,7 +523,7 @@ export default function WhiteboardDashboardPage() {
 
           {/* Existing Boards Cards with Real Thumbnails */}
           {filteredBoards.map((b) => {
-            const elementCount = (b.elements as any[])?.length || 0;
+            const elementCount = Array.isArray(b.elements) ? b.elements.length : 0;
             return (
               <div
                 key={b.id}
@@ -541,15 +543,17 @@ export default function WhiteboardDashboardPage() {
                     <div className="flex flex-col items-center justify-center text-muted-foreground/50 space-y-1">
                       <Presentation className="h-10 w-10 group-hover:scale-110 group-hover:text-primary transition duration-300" />
                       <span className="text-[11px] font-medium text-muted-foreground">
-                        {elementCount === 0 ? "Bảng trắng trống" : "Bảng vẽ Excalidraw"}
+                        {elementCount === 0 && !b.elements ? "Bảng vẽ đám mây" : elementCount === 0 ? "Bảng trắng trống" : "Bảng vẽ Excalidraw"}
                       </span>
                     </div>
                   )}
 
-                  {/* Element count tag */}
-                  <div className="absolute bottom-2.5 left-2.5 rounded-lg bg-black/60 backdrop-blur-md px-2.5 py-0.5 text-xs font-semibold text-white border border-white/10 shadow-2xs">
-                    {elementCount} nét vẽ
-                  </div>
+                  {/* Element count tag (chỉ hiển thị nếu mảng elements được nạp) */}
+                  {b.elements && elementCount > 0 && (
+                    <div className="absolute bottom-2.5 left-2.5 rounded-lg bg-black/60 backdrop-blur-md px-2.5 py-0.5 text-xs font-semibold text-white border border-white/10 shadow-2xs">
+                      {elementCount} nét vẽ
+                    </div>
+                  )}
 
                   {/* Favorite Star Badge (Luôn hiện trên thẻ) */}
                   <button
@@ -609,7 +613,7 @@ export default function WhiteboardDashboardPage() {
         /* List View Mode */
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xs divide-y divide-border">
           {filteredBoards.map((b) => {
-            const elementCount = (b.elements as any[])?.length || 0;
+            const elementCount = Array.isArray(b.elements) ? b.elements.length : 0;
             return (
               <div
                 key={b.id}
@@ -629,8 +633,12 @@ export default function WhiteboardDashboardPage() {
                       {b.title}
                     </h4>
                     <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                      <span>{elementCount} nét vẽ</span>
-                      <span>•</span>
+                      {b.elements && elementCount > 0 && (
+                        <>
+                          <span>{elementCount} nét vẽ</span>
+                          <span>•</span>
+                        </>
+                      )}
                       <span>Cập nhật: {new Date(b.updated_at).toLocaleDateString("vi-VN")}</span>
                     </p>
                   </div>

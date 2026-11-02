@@ -190,31 +190,35 @@ export default function DashboardPage() {
         </div>
       </div>
 
-            {/* Sprint 3: Teacher eKYC Verification Banner */}
+      {/* Verification Re-engagement Banner */}
       {!profile?.is_verified_teacher && (
-        <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/90 via-teal-50/60 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 dark:border-emerald-900/50 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+        <div className="rounded-2xl border border-blue-200 dark:border-blue-900/50 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <h3 className="font-bold text-sm text-neutral-900 dark:text-white">
-                  Kích hoạt Tích Xanh Giáo Viên Chính Chủ & Nhận +10.000 Credits
+                  {profile?.role === "tutor"
+                    ? "Kích hoạt Huy hiệu Gia Sư Uy Tín & Nhận +10.000 Credits"
+                    : "Kích hoạt Tích Xanh Giáo Viên Chính Chủ & Nhận +10.000 Credits"}
                 </h3>
-                <span className="text-[10px] font-black uppercase px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 rounded">
-                  Sprint 3
+                <span className="text-[10px] font-bold uppercase px-2 py-0.5 bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 rounded-full">
+                  Xác thực eKYC
                 </span>
               </div>
               <p className="text-xs text-neutral-600 dark:text-slate-300 mt-0.5">
-                Xác thực thẻ ngành / thẻ sinh viên sư phạm để bảo chứng uy tín trên báo cáo Zalo gửi phụ huynh và nâng hạn mức 10 đề/ngày.
+                {profile?.role === "tutor"
+                  ? "Xác thực 2 lớp Thẻ sinh viên và CCCD để AI đối soát danh tính 1:1, mở khóa toàn bộ quyền lợi gia sư chuyên nghiệp."
+                  : "Xác thực thẻ ngành giáo viên để bảo chứng uy tín trên đề thi, báo cáo học sinh và nhận ngay +10.000 Credits."}
               </p>
             </div>
           </div>
 
           <Link
-            href="/settings?tab=verification"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition shrink-0 self-start sm:self-center"
+            href={profile?.role === "tutor" ? "/verify/tutor" : "/verify/teacher"}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition shrink-0 self-start sm:self-center"
           >
             <span>Xác thực ngay</span>
             <ArrowRight className="w-3.5 h-3.5" />

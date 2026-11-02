@@ -129,7 +129,7 @@ export function UpgradeTierModal({
             <ul className="text-xs space-y-1.5 text-neutral-700 dark:text-neutral-300">
               <li className="flex items-center gap-1.5 font-medium">
                 <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>+100.000 Credits AI DeepSeek-R1</span>
+                <span>+100.000 Credits AI Gemini 2.0 Thinking</span>
               </li>
               <li className="flex items-center gap-1.5 font-medium">
                 <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />

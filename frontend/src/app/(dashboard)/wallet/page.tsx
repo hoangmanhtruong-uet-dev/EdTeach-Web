@@ -20,6 +20,10 @@ import {
   Cpu,
   Layers,
   Share2,
+  Coins,
+  Gift,
+  Building2,
+  Lock,
 } from "lucide-react";
 import { getUserWallet, getWalletTransactions, Wallet, WalletTxn } from "@/lib/api/wallet";
 import { PaymentCheckoutModal } from "@/components/modals/payment-checkout-modal";
@@ -110,6 +114,10 @@ function WalletContent() {
   }
 
   const balance = wallet?.balance ?? 0;
+  const promoBal = wallet?.promotional_balance ?? 0;
+  const purchasedBal = wallet?.purchased_balance ?? 0;
+  const withdrawableVnd = wallet?.withdrawable_revenue_vnd ?? 0;
+  const escrowVnd = wallet?.escrow_balance_vnd ?? 0;
 
   return (
     <div className="space-y-8">
@@ -254,6 +262,82 @@ function WalletContent() {
               <p className="text-xs font-semibold text-muted-foreground">Cổng thanh toán tự động</p>
               <p className="text-2xl font-black text-emerald-600">VietQR 24/7</p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3-Bucket Wallet Breakdown */}
+      <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-4">
+          <div>
+            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+              <Layers className="w-5 h-5 text-primary" />
+              Chi tiết cấu trúc Ví 3 Ngăn (3-Bucket Economics)
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Phân định minh bạch giữa Credits tiêu dùng (Mua vs Thưởng), Tiền mặt rút về ngân hàng và Quỹ ký quỹ Escrow bảo đảm.
+            </p>
+          </div>
+          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary self-start sm:self-auto">
+            Chuẩn Kinh tế Minh bạch 2026
+          </span>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Bucket 1: Purchased Balance */}
+          <div className="rounded-2xl border border-blue-100 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-950/10 p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">Credits Nạp / Mua</span>
+              <Coins className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <p className="text-xl font-black text-blue-900 dark:text-blue-100">
+              {purchasedBal.toLocaleString()} <span className="text-xs font-medium">credits</span>
+            </p>
+            <p className="text-[11px] text-blue-700/80 dark:text-blue-300/80 leading-snug">
+              Dùng để sinh đề AI & mua tài liệu tác quyền trên Marketplace.
+            </p>
+          </div>
+
+          {/* Bucket 2: Promotional Balance */}
+          <div className="rounded-2xl border border-purple-100 bg-purple-50/50 dark:border-purple-900/30 dark:bg-purple-950/10 p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">Credits Thưởng / Promo</span>
+              <Gift className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            </div>
+            <p className="text-xl font-black text-purple-900 dark:text-purple-100">
+              {promoBal.toLocaleString()} <span className="text-xs font-medium">credits</span>
+            </p>
+            <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80 leading-snug">
+              Thưởng eKYC & Giới thiệu. Ưu tiên tự động cấn trừ trước khi tạo đề.
+            </p>
+          </div>
+
+          {/* Bucket 3: Withdrawable Cash */}
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 dark:border-emerald-900/30 dark:bg-emerald-950/10 p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Doanh thu Rút tiền</span>
+              <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <p className="text-xl font-black text-emerald-900 dark:text-emerald-100">
+              {withdrawableVnd.toLocaleString("vi-VN")} <span className="text-xs font-medium">VNĐ</span>
+            </p>
+            <p className="text-[11px] text-emerald-700/80 dark:text-emerald-300/80 leading-snug">
+              Hoa hồng & bán đề đã giải tỏa. Rút về ngân hàng (Sàn tối thiểu 200.000đ).
+            </p>
+          </div>
+
+          {/* Bucket 4: Escrow Hold */}
+          <div className="rounded-2xl border border-amber-100 bg-amber-50/50 dark:border-amber-900/30 dark:bg-amber-950/10 p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">Ký quỹ Escrow (Tạm giữ)</span>
+              <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <p className="text-xl font-black text-amber-900 dark:text-amber-100">
+              {escrowVnd.toLocaleString("vi-VN")} <span className="text-xs font-medium">VNĐ</span>
+            </p>
+            <p className="text-[11px] text-amber-700/80 dark:text-amber-300/80 leading-snug">
+              Tạm giữ 14 ngày bảo đảm bản quyền. Tự động chuyển sang khả dụng sau 14 ngày.
+            </p>
           </div>
         </div>
       </div>

@@ -4,21 +4,19 @@ import { getStudentDashboard } from "@/lib/student/student-store";
 
 export async function GET(req: NextRequest) {
   try {
-    let studentId = "demo-student-id";
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    try {
-      const supabase = await createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        studentId = user.id;
-      }
-    } catch {
-      // Continue with demo student
+    if (!user) {
+      return NextResponse.json(
+        { error: "Vui lòng đăng nhập để truy cập Cổng Học Sinh." },
+        { status: 401 }
+      );
     }
 
-    const stats = await getStudentDashboard(studentId);
+    const stats = await getStudentDashboard(user.id);
 
     return NextResponse.json({
       success: true,

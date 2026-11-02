@@ -20,6 +20,33 @@ function cleanMathSymbols(text: string): string {
   return text.replace(/\$\$/g, " ").replace(/\$/g, " ");
 }
 
+function normalizeQuestionOptions(options: any): Array<{ key: string; text: string }> {
+  if (!options) return [];
+  if (Array.isArray(options)) {
+    return options.map((opt: any, idx: number) => {
+      const fallbackKey = String.fromCharCode(65 + idx);
+      if (typeof opt === "string") {
+        const match = opt.match(/^([A-D])\s*[\.:]\s*(.*)$/i);
+        return {
+          key: match ? match[1].toUpperCase() : fallbackKey,
+          text: match ? match[2].trim() : opt.trim(),
+        };
+      }
+      return {
+        key: (opt.key || fallbackKey).toString().trim().toUpperCase(),
+        text: (opt.text || "").toString().trim(),
+      };
+    });
+  }
+  if (typeof options === "object") {
+    return Object.entries(options).map(([k, v]) => ({
+      key: k.trim().toUpperCase(),
+      text: typeof v === "string" ? v.trim() : String(v ?? "").trim(),
+    }));
+  }
+  return [];
+}
+
 export interface ExportDocxOptions {
   isTeachingStudentVersion?: boolean;
   isTeachingTeacherVersion?: boolean;
@@ -319,9 +346,10 @@ export async function exportExamToDocx(
     );
 
     // Options for Multiple Choice
-    if (q.type === "multiple_choice" && q.options && Array.isArray(q.options)) {
-      q.options.forEach((opt: any) => {
-        const optLabel = typeof opt === "string" ? opt : `${opt.key || ""}. ${opt.text || ""}`;
+    const normalizedMcq = normalizeQuestionOptions(q.options);
+    if ((q.type === "multiple_choice" || (!q.type && normalizedMcq.length > 0)) && normalizedMcq.length > 0) {
+      normalizedMcq.forEach((opt: any) => {
+        const optLabel = `${opt.key}. ${opt.text}`;
         children.push(
           new Paragraph({
             indent: { left: 400 },
@@ -747,9 +775,10 @@ export async function exportShuffledExamsToDocx(
       );
 
       // Options
-      if (q.options && Array.isArray(q.options)) {
-        q.options.forEach((opt: any) => {
-          const optLabel = typeof opt === "string" ? opt : `${opt.key || ""}. ${opt.text || ""}`;
+      const normalizedOpts = normalizeQuestionOptions(q.options);
+      if (normalizedOpts.length > 0) {
+        normalizedOpts.forEach((opt: any) => {
+          const optLabel = `${opt.key}. ${opt.text}`;
           children.push(
             new Paragraph({
               indent: { left: 400 },

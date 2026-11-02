@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import Link from "next/link";
 import { Sparkles, ShieldCheck, ArrowRight, BookOpen, Gift } from "lucide-react";
+import { REFERRAL_BONUS_CREDITS } from "@/lib/constants";
 
 interface PedagogicalViralFooterProps {
   teacherName?: string;
@@ -81,7 +82,7 @@ export function PedagogicalViralFooter({
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-linear-to-r from-indigo-600 via-indigo-700 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/25 hover:shadow-indigo-600/35 transition-all hover:scale-[1.02] active:scale-[0.98] group text-center"
             >
               <Gift className="w-4 h-4 text-amber-300 group-hover:rotate-12 transition-transform" />
-              <span>Dành cho Đồng Nghiệp: Nhận 10.000 Credits</span>
+              <span>Dành cho Đồng Nghiệp: Nhận {REFERRAL_BONUS_CREDITS.toLocaleString("vi-VN")} Credits</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
 

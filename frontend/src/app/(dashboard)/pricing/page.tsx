@@ -139,7 +139,7 @@ export default function PricingPage() {
             >
               <span>Theo Học Kỳ (5 Tháng)</span>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800">
-                Tiết kiệm 25%
+                Tiết kiệm đến 20%
               </span>
             </button>
           </div>
@@ -302,7 +302,7 @@ export default function PricingPage() {
                 <span className="text-xs text-slate-500 dark:text-slate-400">{maxPeriod}</span>
               </div>
               <p className="text-xs text-pink-600 dark:text-pink-400 font-semibold mt-1">
-                Cộng ngay <strong>+{maxCredits.toLocaleString()} Credits</strong> (Ưu tiên DeepSeek-R1)
+                Cộng ngay <strong>+{maxCredits.toLocaleString()} Credits</strong> (Gemini 2.0 Thinking & Deep Reasoning)
               </p>
             </div>
 

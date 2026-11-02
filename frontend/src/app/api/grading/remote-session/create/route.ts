@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRemoteSession } from "@/lib/grading/remote-cam-store";
 import { createClient } from "@/lib/supabase/server";
+import { getBaseUrl } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const session = createRemoteSession({
+    const session = await createRemoteSession({
       sessionId,
       userId: user?.id || "guest_teacher",
       sessionName: sessionName || "Kỳ thi trắc nghiệm",
@@ -38,9 +39,8 @@ export async function POST(req: NextRequest) {
       sheetType,
     });
 
-    const host = req.headers.get("host") || "localhost:3000";
-    const protocol = req.headers.get("x-forwarded-proto") || "http";
-    const directUrl = `${protocol}://${host}/grading/mobile-scanner?token=${session.token}`;
+    const baseUrl = getBaseUrl(req);
+    const directUrl = `${baseUrl}/grading/mobile-scanner?token=${session.token}`;
 
     // Sinh mã QR dẫn tới link mobile scanner
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(

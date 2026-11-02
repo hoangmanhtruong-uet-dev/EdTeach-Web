@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import {
   getAllVerifications,
   reviewVerificationRecord,
 } from "@/lib/verification/ocr-engine";
+import { isAdmin } from "@/lib/auth/admin";
 
 export async function GET(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user || !(await isAdmin(supabase, user))) {
+      return NextResponse.json(
+        { error: "Bạn không có quyền truy cập danh sách hồ sơ xác thực." },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const statusFilter = searchParams.get("status") || "all";
 
@@ -27,8 +41,20 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user || !(await isAdmin(supabase, user))) {
+      return NextResponse.json(
+        { error: "Bạn không có quyền phê duyệt hồ sơ xác thực." },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
-    const { recordId, adminUserId = "admin_super", action, reason } = body;
+    const { recordId, action, reason } = body;
 
     if (!recordId || !action || !["approved", "rejected"].includes(action)) {
       return NextResponse.json(
@@ -37,9 +63,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Force adminUserId to be the authenticated admin user's ID
     const updatedRecord = await reviewVerificationRecord({
       recordId,
-      adminUserId,
+      adminUserId: user.id,
       action,
       rejectionReason: reason,
     });

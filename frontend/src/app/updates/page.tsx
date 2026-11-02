@@ -259,7 +259,7 @@ const FIXES_LIST = [
   {
     title: "Tốc Độ Sinh Đề AI Dual-Agent",
     v1: "Thời gian xử lý trung bình 30 - 45 giây/đề; đôi khi học sinh/giáo viên phải chờ đợi lâu.",
-    v2: "Công nghệ Turbo Streaming < 8 giây; tối ưu mô hình Gemini 2.5 Flash & DeepSeek V3 với độ chính xác học thuật 99.8%.",
+    v2: "Công nghệ Turbo Streaming < 8 giây; tối ưu mô hình Gemini 2.0 Flash & Gemini 2.0 Thinking với độ chính xác học thuật cao.",
     icon: Zap,
   },
   {

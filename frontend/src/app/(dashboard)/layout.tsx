@@ -6,7 +6,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BookOpen,
-  GraduationCap,
   LayoutDashboard,
   FilePlus,
   FolderOpen,
@@ -35,7 +34,6 @@ import { CommandPalette } from "@/components/navigation/command-palette";
 
 const sidebarLinks = [
   { href: "/dashboard", label: "Trang chủ", icon: LayoutDashboard },
-  { href: "/student", label: "Cổng Học Sinh", icon: GraduationCap },
   { href: "/exams/create", label: "Soạn đề", icon: FilePlus },
   { href: "/exams", label: "Đề thi của tôi", icon: FolderOpen },
   { href: "/grading", label: "Chấm trắc nghiệm", icon: ScanLine },
@@ -322,16 +320,6 @@ function DashboardLayoutInner({
           </button>
 
           <div className="flex-1" />
-
-          {/* Student Portal Preview Link */}
-          <Link
-            href="/student"
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 min-h-[36px] text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition shadow-2xs mr-1"
-            title="Xem trước Cổng Học Sinh"
-          >
-            <GraduationCap className="h-4 w-4" />
-            <span>Cổng Học Sinh</span>
-          </Link>
 
           {/* Command Palette Quick Launcher */}
           <button

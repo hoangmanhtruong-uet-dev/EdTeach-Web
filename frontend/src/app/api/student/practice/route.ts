@@ -4,21 +4,19 @@ import { getStudentPractice } from "@/lib/student/student-store";
 
 export async function GET(req: NextRequest) {
   try {
-    let studentId = "demo-student-id";
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    try {
-      const supabase = await createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        studentId = user.id;
-      }
-    } catch {
-      // fallback
+    if (!user) {
+      return NextResponse.json(
+        { error: "Vui lòng đăng nhập để xem bài tập luyện bù." },
+        { status: 401 }
+      );
     }
 
-    const sheets = await getStudentPractice(studentId);
+    const sheets = await getStudentPractice(user.id);
 
     return NextResponse.json({
       success: true,

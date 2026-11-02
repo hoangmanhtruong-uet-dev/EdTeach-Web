@@ -4,18 +4,16 @@ import { claimReportForStudent } from "@/lib/student/student-store";
 
 export async function POST(req: NextRequest) {
   try {
-    let studentId = "demo-student-id";
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    try {
-      const supabase = await createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        studentId = user.id;
-      }
-    } catch {
-      // fallback
+    if (!user) {
+      return NextResponse.json(
+        { error: "Vui lòng đăng nhập để liên kết báo cáo." },
+        { status: 401 }
+      );
     }
 
     const body = await req.json();
@@ -28,7 +26,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await claimReportForStudent(studentId, token);
+    const result = await claimReportForStudent(user.id, token);
 
     if (!result.success) {
       return NextResponse.json(

@@ -4,21 +4,19 @@ import { getStudentProgress } from "@/lib/student/student-store";
 
 export async function GET(req: NextRequest) {
   try {
-    let studentId = "demo-student-id";
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    try {
-      const supabase = await createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        studentId = user.id;
-      }
-    } catch {
-      // fallback
+    if (!user) {
+      return NextResponse.json(
+        { error: "Vui lòng đăng nhập để xem hồ sơ năng lực." },
+        { status: 401 }
+      );
     }
 
-    const progress = await getStudentProgress(studentId);
+    const progress = await getStudentProgress(user.id);
 
     return NextResponse.json({
       success: true,

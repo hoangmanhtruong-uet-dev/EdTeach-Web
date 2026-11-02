@@ -41,6 +41,7 @@ import {
 } from "@/lib/preferences";
 import { isProUser, isMaxUser, getTierName } from "@/lib/payment/plans";
 import { TeacherVerificationCard } from "@/components/verification/teacher-verification-card";
+import { APP_URL, SUPPORT_EMAIL, REFERRAL_BONUS_CREDITS } from "@/lib/constants";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
@@ -82,7 +83,7 @@ export default function SettingsPage() {
   const [docxWatermarkText, setDocxWatermarkText] = useState("");
 
   const [defaultGradingSheet, setDefaultGradingSheet] = useState<"gdpt_2025" | "sheet_40" | "sheet_50" | "sheet_20">("gdpt_2025");
-  const [preferredAiModel, setPreferredAiModel] = useState<"deepseek" | "gemini">("deepseek");
+  const [preferredAiModel, setPreferredAiModel] = useState<"thinking" | "gemini">("thinking");
 
   const [savingTeaching, setSavingTeaching] = useState(false);
   const [teachingMessage, setTeachingMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -130,7 +131,8 @@ export default function SettingsPage() {
     setDocxWatermarkText(prefs.export.docxWatermarkText || "");
 
     setDefaultGradingSheet(prefs.gradingAndAi.defaultGradingSheet || "gdpt_2025");
-    setPreferredAiModel(prefs.gradingAndAi.preferredAiModel || "deepseek");
+    const savedModel = prefs.gradingAndAi.preferredAiModel;
+    setPreferredAiModel(savedModel === "gemini" ? "gemini" : "thinking");
 
     setEmailExamCompleted(prefs.notifications.emailExamCompleted ?? true);
     setEmailStudentSubmitted(prefs.notifications.emailStudentSubmitted ?? true);
@@ -465,7 +467,7 @@ export default function SettingsPage() {
   const referralLink =
     typeof window !== "undefined"
       ? `${window.location.origin}/register?ref=${referralCode}`
-      : `https://eduteast.vn/register?ref=${referralCode}`;
+      : `${APP_URL}/register?ref=${referralCode}`;
 
   const copyReferralLink = () => {
     navigator.clipboard.writeText(referralLink);
@@ -704,8 +706,8 @@ export default function SettingsPage() {
                       <span>Chương trình giới thiệu đồng nghiệp & Nhận Credits</span>
                     </div>
                     <p className="text-xs text-blue-800/80 dark:text-blue-300/80 max-w-xl">
-                      Mỗi khi một giáo viên đăng ký tài khoản qua liên kết của bạn, cả hai thầy cô đều nhận ngay{" "}
-                      <strong>+5,000 Credits</strong> vào ví để thoải mái trải nghiệm AI soạn đề thi và chấm điểm.
+                      Mỗi khi một giáo viên đăng ký tài khoản qua liên kết của bạn và hoàn thành tạo đề thi đầu tiên, cả hai thầy cô đều nhận ngay{" "}
+                      <strong>+{REFERRAL_BONUS_CREDITS.toLocaleString("vi-VN")} Credits</strong> vào ví để thoải mái trải nghiệm AI soạn đề thi và chấm điểm.
                     </p>
                   </div>
 
@@ -1035,13 +1037,13 @@ export default function SettingsPage() {
                     <div className="space-y-2">
                       {[
                         {
-                          id: "deepseek" as const,
-                          label: "DeepSeek R1 / V3 (Tư duy chuỗi sâu)",
-                          desc: "Tối ưu hóa các bài toán khó (Vận dụng cao), tự kiểm chứng lời giải 2 vòng độc lập Dual-Agent.",
+                          id: "thinking" as const,
+                          label: "Mô hình AI Suy luận Đa tác tử (Gemini 2.0 Thinking & Deep Reasoning)",
+                          desc: "Tối ưu hóa các bài toán khó (Vận dụng cao), chuỗi suy luận sâu (Thinking Mode) tự kiểm chứng bước giải.",
                         },
                         {
                           id: "gemini" as const,
-                          label: "Google Gemini 2.5 Flash (Siêu tốc độ)",
+                          label: "Google Gemini 2.0 Flash (Siêu tốc độ)",
                           desc: "Phản hồi tức thì trong 2-3 giây, phù hợp tạo nhanh ngân hàng đề trắc nghiệm cơ bản và nhận biết.",
                         },
                       ].map((ai) => (
@@ -1068,7 +1070,7 @@ export default function SettingsPage() {
                     <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-xs text-blue-800 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-300 flex items-start gap-2">
                       <Info className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
                       <span>
-                        Hệ thống tự động sử dụng máy chủ AI phân tán kết hợp Dual-Agent Verification để bảo đảm tính chuẩn xác học thuật 99.8%.
+                        Hệ thống tự động sử dụng máy chủ AI phân tán kết hợp Gemini 2.0 Thinking & Dual-Agent Verification để bảo đảm tính chuẩn xác học thuật.
                       </span>
                     </div>
                   </div>
@@ -1393,7 +1395,7 @@ export default function SettingsPage() {
             <div className="rounded-xl bg-neutral-50 dark:bg-muted/40 p-3.5 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-700 dark:text-neutral-300 space-y-1.5 mb-5">
               <p className="font-semibold text-neutral-900 dark:text-neutral-100">Quy trình xóa tài khoản an toàn:</p>
               <p>• Vui lòng gửi email từ địa chỉ <strong>{user?.email}</strong> đến hòm thư hỗ trợ:</p>
-              <p className="font-mono text-primary font-bold">lienhe@soandethi.com</p>
+              <p className="font-mono text-primary font-bold">{SUPPORT_EMAIL}</p>
               <p>• Ban quản trị sẽ tiến hành xóa sạch tài khoản và dữ liệu liên quan trong vòng 24 giờ làm việc.</p>
             </div>
 

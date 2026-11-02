@@ -5,6 +5,7 @@ import {
   saveRemediationSheet,
   RemediationSheetData,
 } from "@/lib/remediation/remediation-store";
+import { getBaseUrl } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
   try {
@@ -74,9 +75,7 @@ export async function POST(req: NextRequest) {
     await saveRemediationSheet(sheetData);
 
     // 4. Compute absolute URL for practice
-    const host = req.headers.get("host") || "localhost:3001";
-    const proto = req.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
-    const baseUrl = `${proto}://${host}`;
+    const baseUrl = getBaseUrl(req);
     const practiceUrl = `${baseUrl}/practice/${token}`;
 
     return NextResponse.json({

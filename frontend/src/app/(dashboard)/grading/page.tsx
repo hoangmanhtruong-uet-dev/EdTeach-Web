@@ -46,6 +46,7 @@ import { SessionDetailView } from "@/components/grading/session-detail-view";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { getUserPreferences } from "@/lib/preferences";
+import { PLATFORM_NAME, SUPPORT_EMAIL } from "@/lib/constants";
 
 interface ExamSession {
   id: string;
@@ -2998,7 +2999,7 @@ function GradingPageInner() {
                 ED
               </span>
               <span className="font-bold text-base text-neutral-900 dark:text-white tracking-tight">
-                soandethi.com
+                {PLATFORM_NAME}
               </span>
             </div>
             <p className="text-xs leading-relaxed text-neutral-500 dark:text-slate-400 max-w-sm">
@@ -3058,7 +3059,7 @@ function GradingPageInner() {
           <div className="md:col-span-3 space-y-2.5 text-xs">
             <div className="font-bold text-neutral-900 dark:text-white">Liên hệ</div>
             <ul className="space-y-2 text-neutral-500 dark:text-slate-400">
-              <li className="font-mono text-neutral-600">lienhe@soandethi.com</li>
+              <li className="font-mono text-neutral-600">{SUPPORT_EMAIL}</li>
               <li>
                 <span className="hover:text-neutral-900 cursor-pointer transition">
                   Nhóm Zalo hỗ trợ giáo viên

@@ -1,40 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectRemoteSession } from "@/lib/grading/remote-cam-store";
-
-// BẢO MẬT: Chống Brute-force mã PIN 4 số của máy quét camera
-const pinAttemptStore = new Map<string, { attempts: number; lockedUntil: number }>();
-
-function checkPinRateLimit(ip: string): { allowed: boolean; waitSeconds?: number } {
-  const now = Date.now();
-  const record = pinAttemptStore.get(ip);
-  if (!record) return { allowed: true };
-
-  if (now < record.lockedUntil) {
-    const waitSeconds = Math.ceil((record.lockedUntil - now) / 1000);
-    return { allowed: false, waitSeconds };
-  }
-
-  if (now >= record.lockedUntil && record.attempts >= 5) {
-    pinAttemptStore.delete(ip);
-    return { allowed: true };
-  }
-
-  return { allowed: true };
-}
-
-function recordPinFailure(ip: string): void {
-  const now = Date.now();
-  const record = pinAttemptStore.get(ip) || { attempts: 0, lockedUntil: 0 };
-  record.attempts += 1;
-  if (record.attempts >= 5) {
-    record.lockedUntil = now + 10 * 60 * 1000; // Khóa 10 phút sau 5 lần sai
-  }
-  pinAttemptStore.set(ip, record);
-}
-
-function resetPinAttempts(ip: string): void {
-  pinAttemptStore.delete(ip);
-}
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,16 +8,6 @@ export async function POST(req: NextRequest) {
       req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
       req.headers.get("x-real-ip") ||
       "ip_unknown";
-
-    const rateCheck = checkPinRateLimit(clientIp);
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        {
-          error: `Bạn đã nhập sai mã kết nối quá nhiều lần. Vui lòng thử lại sau ${rateCheck.waitSeconds} giây.`,
-        },
-        { status: 429 }
-      );
-    }
 
     const body = await req.json();
     const { token, pin } = body;
@@ -64,16 +20,40 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const session = connectRemoteSession(identifier);
+    const admin = createAdminClient();
+
+    // Persistent PostgreSQL rate limit check
+    if (admin) {
+      const { data: rateData } = await (admin.rpc as any)("check_and_record_remote_pin_attempt", {
+        p_ip: clientIp,
+        p_is_success: false,
+      });
+
+      if (rateData && !rateData.allowed) {
+        return NextResponse.json(
+          {
+            error: `Bạn đã nhập sai mã kết nối quá nhiều lần. Vui lòng thử lại sau ${rateData.wait_seconds} giây.`,
+          },
+          { status: 429 }
+        );
+      }
+    }
+
+    const session = await connectRemoteSession(identifier);
     if (!session) {
-      recordPinFailure(clientIp);
       return NextResponse.json(
         { error: "Mã kết nối không hợp lệ hoặc phiên đã hết hạn." },
         { status: 404 }
       );
     }
 
-    resetPinAttempts(clientIp);
+    // Reset attempt counter on successful pairing
+    if (admin) {
+      await (admin.rpc as any)("check_and_record_remote_pin_attempt", {
+        p_ip: clientIp,
+        p_is_success: true,
+      });
+    }
 
     return NextResponse.json({
       success: true,

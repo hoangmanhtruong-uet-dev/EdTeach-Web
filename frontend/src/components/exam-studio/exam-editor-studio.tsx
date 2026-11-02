@@ -108,6 +108,7 @@ import { ShuffleExamModal } from "./shuffle-exam-modal";
 import { isProUser, isMaxUser, PricingPlan } from "@/lib/payment/plans";
 import { UpgradeTierModal } from "@/components/modals/upgrade-tier-modal";
 import { PaymentCheckoutModal } from "@/components/modals/payment-checkout-modal";
+import { APP_URL } from "@/lib/constants";
 import {
   VariationTableModal,
   VariationTableRenderer,
@@ -129,6 +130,8 @@ import {
   GeometrySvgRenderer,
   GeometryConfigData,
 } from "./geometry-editor-modal";
+import { parseDocumentFile } from "@/lib/utils/document-parser";
+import { saveToOfflineStore } from "@/lib/storage/indexed-db";
 
 export interface DocItem {
   id: string;
@@ -243,7 +246,7 @@ interface ExamStudioProps {
 
 export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
   const router = useRouter();
-  const { user, profile, wallet } = useAuth();
+  const { user, profile, wallet, refreshWallet } = useAuth();
 
   // Document states
   const [examId, setExamId] = useState<string | null>(initialExamId || null);
@@ -327,6 +330,18 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
 
   // Standard Header Visibility (default false for fresh blank canvas)
   const [showStandardHeader, setShowStandardHeader] = useState(false);
+
+  // Responsive sidebar defaults for tablet & mobile (CRT-16)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (window.innerWidth < 1024) {
+        setLeftSidebarOpen(false);
+      }
+      if (window.innerWidth < 768) {
+        setAiSidebarOpen(false);
+      }
+    }
+  }, []);
 
   // Dropdown states for menus
   const [showZoomMenu, setShowZoomMenu] = useState(false);
@@ -498,9 +513,13 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
     if (questions.length > 0 || historyIndex >= 0) {
       setHistory((prev) => {
         const upToCurrent = prev.slice(0, historyIndex + 1);
-        return [...upToCurrent, questions];
+        const newHist = [...upToCurrent, questions];
+        if (newHist.length > 25) {
+          return newHist.slice(-25);
+        }
+        return newHist;
       });
-      setHistoryIndex((prev) => prev + 1);
+      setHistoryIndex((prev) => Math.min(prev + 1, 24));
     }
   }, [questions]);
 
@@ -734,11 +753,15 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
         try {
           const data: any = await getExamById(idToLoad);
           if (data) {
-            setTitle(data.name || "Đề thi mới");
+            setTitle(data.name || data.title || "Đề thi mới");
             setSubject(data.subject || "Toán");
             setGrade(data.grade || "4");
-            if (data.questions) {
-              setQuestions(data.questions as Question[]);
+            const qs =
+              data.questions && data.questions.length > 0
+                ? data.questions
+                : (data.config as any)?.questions || [];
+            if (qs.length > 0) {
+              setQuestions(qs as Question[]);
             }
           }
         } catch (e) {
@@ -753,8 +776,142 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
       if (prefs.teaching.defaultGrade) setGrade(prefs.teaching.defaultGrade);
       if (prefs.teaching.defaultDuration) setDuration(String(prefs.teaching.defaultDuration));
       if (prefs.export.docxFont) setFontFamily(prefs.export.docxFont);
+
+      // CRT-03: Khôi phục bản nháp chưa lưu gần nhất từ localStorage
+      try {
+        const localDraft = localStorage.getItem("edutest_exam_draft");
+        if (localDraft) {
+          const parsed = JSON.parse(localDraft);
+          if (
+            parsed &&
+            parsed.questions &&
+            parsed.questions.length > 0 &&
+            Date.now() - (parsed.updatedAt || 0) < 7 * 86400000
+          ) {
+            setTitle(parsed.title || "Đề thi mới");
+            if (parsed.subject) setSubject(parsed.subject);
+            if (parsed.grade) setGrade(parsed.grade);
+            if (parsed.duration) setDuration(String(parsed.duration));
+            setQuestions(parsed.questions);
+            if (parsed.examId && !parsed.examId.startsWith("temp")) {
+              setExamId(parsed.examId);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not restore local draft:", err);
+      }
     }
   }, [initialExamId, profile]);
+
+  // CRT-03: Cơ chế Autosave thực sự xuống Supabase & LocalStorage
+  const saveCurrentExam = useCallback(async () => {
+    // 1. Sao lưu tức thì vào localStorage
+    try {
+      localStorage.setItem(
+        "edutest_exam_draft",
+        JSON.stringify({
+          examId,
+          title,
+          subject,
+          grade,
+          duration,
+          questions,
+          updatedAt: Date.now(),
+        })
+      );
+    } catch (e) {
+      console.warn("Could not save draft to localStorage:", e);
+    }
+
+    if (questions.length === 0 && (!title || title === "Đề thi mới")) {
+      setSavedStatus("saved");
+      return;
+    }
+
+    if (!user?.id) {
+      setSavedStatus("saved");
+      return;
+    }
+
+    setSavedStatus("saving");
+    // Backup offline to IndexedDB immediately before network dispatch (CRT-03)
+    saveToOfflineStore(
+      `exam_studio_${examId || "draft"}`,
+      { title, subject, grade, duration, questions },
+      1
+    ).catch(() => {});
+
+    try {
+      if (examId && !examId.startsWith("seed-") && !examId.startsWith("temp")) {
+        await updateExam(examId, {
+          name: title,
+          title,
+          subject,
+          grade,
+          question_count: questions.length,
+          config: { questions, duration } as any,
+          updated_at: new Date().toISOString(),
+        });
+      } else {
+        const created = await createExam({
+          user_id: user.id,
+          name: title,
+          title,
+          subject,
+          grade,
+          chapter: "",
+          question_count: questions.length,
+          status: "draft",
+          credit_cost: 0,
+          config: { questions, duration } as any,
+        });
+        if (created?.id) {
+          setExamId(created.id);
+          if (typeof window !== "undefined") {
+            window.history.replaceState(null, "", `/exams/create?initialExamId=${created.id}`);
+          }
+        }
+      }
+      setSavedStatus("saved");
+    } catch (err) {
+      console.error("Autosave to DB failed:", err);
+      setSavedStatus("unsaved");
+    }
+  }, [user?.id, examId, title, subject, grade, duration, questions]);
+
+  // Debounced Autosave 3 giây khi có thay đổi chưa lưu
+  useEffect(() => {
+    if (savedStatus !== "unsaved") return;
+    const timer = setTimeout(() => {
+      saveCurrentExam();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [savedStatus, saveCurrentExam]);
+
+  // Tự động đồng bộ khi có kết nối mạng internet trở lại
+  useEffect(() => {
+    const handleOnline = () => {
+      if (savedStatus === "unsaved") {
+        saveCurrentExam();
+      }
+    };
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [savedStatus, saveCurrentExam]);
+
+  // Phím tắt Ctrl+S / Cmd+S để lưu ngay và chặn hộp thoại lưu trang web của trình duyệt
+  useEffect(() => {
+    const handleSaveShortcut = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        saveCurrentExam();
+        showToast("Đã lưu đề thi thành công!", "success");
+      }
+    };
+    window.addEventListener("keydown", handleSaveShortcut);
+    return () => window.removeEventListener("keydown", handleSaveShortcut);
+  }, [saveCurrentExam]);
 
   // Handle suggestion click from right AI sidebar
   const handleSelectSuggestion = (promptText: string) => {
@@ -943,6 +1100,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
       setTimeout(() => setAiStatusMessage(null), 6000);
     } finally {
       setIsGenerating(false);
+      refreshWallet?.().catch(() => {});
     }
   };
 
@@ -2008,7 +2166,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
       updated_at: new Date().toISOString(),
       questions: questions as any,
     };
-    const isPro = (profile as any)?.tier === "pro" || (profile as any)?.tier === "school";
+    const isPro = isProUser(profile) || isProUser(user);
     await exportExamToDocx(examData, teacherMode, isPro, fontFamily);
   };
 
@@ -2039,12 +2197,45 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
   };
 
   // Share
-  const handleShare = () => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://edutest.ai";
-    const shareExamUrl = `${origin}/exams/${examId || "create"}?ref=${userReferralCode}`;
+  const handleShare = async () => {
+    let currentId = examId;
+    if (!currentId || currentId.startsWith("temp") || currentId.startsWith("seed-")) {
+      setSavedStatus("saving");
+      try {
+        if (user?.id) {
+          const created = await createExam({
+            user_id: user.id,
+            name: title,
+            title,
+            subject,
+            grade,
+            chapter: "",
+            question_count: questions.length,
+            status: "draft",
+            credit_cost: 0,
+            config: { questions, duration } as any,
+          });
+          if (created?.id) {
+            currentId = created.id;
+            setExamId(created.id);
+            if (typeof window !== "undefined") {
+              window.history.replaceState(null, "", `/exams/create?initialExamId=${created.id}`);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Share auto-save warning:", e);
+      }
+    }
+
+    const origin = typeof window !== "undefined" ? window.location.origin : APP_URL;
+    const shareExamUrl = currentId
+      ? `${origin}/exams/${currentId}?ref=${userReferralCode}`
+      : `${origin}/exams/create?ref=${userReferralCode}`;
     navigator.clipboard.writeText(shareExamUrl);
     setShareToast(true);
     setTimeout(() => setShareToast(false), 3500);
+    showToast("Đã sao chép liên kết chia sẻ đề thi vào bộ nhớ tạm!", "success");
     setShowQuotaModal(true);
   };
 
@@ -2059,7 +2250,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
 
   const userInitial = profile?.name ? profile.name[0].toUpperCase() : user?.email ? user.email[0].toUpperCase() : "T";
   const userDisplayName = profile?.name || user?.email?.split("@")[0] || "Trường Hoà...";
-  const userCredits = wallet?.balance !== undefined ? wallet.balance : 7095;
+  const userCredits = wallet?.balance !== undefined ? wallet.balance : 0;
 
   // Helper to render question type switcher dropdown badge
   const renderQuestionTypeBadge = (q: DocItem) => {
@@ -2382,7 +2573,14 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                   setTitle(e.target.value);
                   setSavedStatus("unsaved");
                 }}
-                onBlur={() => setSavedStatus("saved")}
+                onBlur={() => {
+                  saveCurrentExam();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.blur();
+                  }
+                }}
                 className="max-w-[260px] truncate rounded px-1.5 py-0.5 text-base font-semibold text-slate-800 hover:bg-slate-100 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary md:max-w-md"
               />
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -4513,8 +4711,18 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
         {/* ============================================================ */}
         {/* LEFT COLUMN: TÀI LIỆU (MỤC LỤC & MẪU ĐỀ THI)                */}
         {/* ============================================================ */}
+        {/* Responsive backdrop for tablet & mobile (CRT-16) */}
+        {leftSidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-slate-900/40 lg:hidden"
+            onClick={() => setLeftSidebarOpen(false)}
+          />
+        )}
         {leftSidebarOpen ? (
-          <aside style={{ width: `${leftWidth}px` }} className="flex shrink-0 flex-col border-r border-slate-200 bg-white">
+          <aside
+            style={{ width: `${leftWidth}px` }}
+            className="fixed inset-y-0 left-0 z-50 flex shrink-0 flex-col border-r border-slate-200 bg-white shadow-2xl lg:static lg:z-auto lg:shadow-none"
+          >
             <div className="flex h-12 items-center justify-between border-b border-slate-100 px-4">
               <span className="text-sm font-semibold text-slate-700">Tài liệu</span>
               <button
@@ -4564,11 +4772,12 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                         Cấu trúc GDPT 2025
                       </span>
                       <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-black text-white tabular-nums">
-                        {Math.min(10.0, Number((
+                        {Number((
                           Math.min(3.0, questions.filter((q) => !q.blockType || q.blockType === "question" || q.type === "multiple_choice").length * 0.25) +
                           Math.min(4.0, questions.filter((q) => q.blockType === "true_false" || q.type === "true_false").length * 1.0) +
-                          Math.min(3.0, questions.filter((q) => q.blockType === "short_answer" || q.type === "short_answer").length * 0.5)
-                        ).toFixed(1)))} / 10.0 đ
+                          Math.min(3.0, questions.filter((q) => q.blockType === "short_answer" || q.type === "short_answer").length * 0.5) +
+                          questions.filter((q) => q.blockType === "essay" || q.type === "essay").length * 1.0
+                        ).toFixed(1))} / 10.0 đ
                       </span>
                     </div>
 
@@ -4591,6 +4800,14 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                           {questions.filter((q) => q.blockType === "short_answer" || q.type === "short_answer").length}/6 câu (3.0đ)
                         </span>
                       </div>
+                      {questions.some((q) => q.blockType === "essay" || q.type === "essay") && (
+                        <div className="flex items-center justify-between text-slate-700">
+                          <span>Phần Tự luận:</span>
+                          <span className="font-semibold tabular-nums text-slate-900">
+                            {questions.filter((q) => q.blockType === "essay" || q.type === "essay").length} câu
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="w-full bg-blue-200/60 rounded-full h-1.5 overflow-hidden">
@@ -5685,8 +5902,18 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
           />
         )}
 
+        {/* Responsive backdrop for tablet & mobile (CRT-16) */}
+        {aiSidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-slate-900/40 lg:hidden"
+            onClick={() => setAiSidebarOpen(false)}
+          />
+        )}
         {aiSidebarOpen ? (
-          <aside style={{ width: `${rightWidth}px` }} className="flex shrink-0 flex-col border-l border-slate-200 bg-white">
+          <aside
+            style={{ width: `${rightWidth}px` }}
+            className="fixed inset-y-0 right-0 z-50 flex shrink-0 flex-col border-l border-slate-200 bg-white shadow-2xl lg:static lg:z-auto lg:shadow-none"
+          >
             {/* Header: Title + Trí nhớ badge + Actions */}
             <div className="flex h-12 items-center justify-between border-b border-slate-100 px-4">
               <div className="flex items-center gap-2">
@@ -5724,7 +5951,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               {/* Headline with Typewriter / Cursor Look */}
               <div className="py-2 text-center">
                 <h3 className="text-lg font-semibold leading-snug text-blue-600">
-                  Giữa kì I rồi, soạn đề Toán 4 theo cấu trúc thầy cô hay dùng nhé?
+                  {`Giữa kì I rồi, soạn đề ${subject || "Toán"} ${grade || "12"} theo cấu trúc Thầy/Cô hay dùng nhé?`}
                   <span className="inline-block animate-pulse font-normal text-slate-400">|</span>
                 </h3>
               </div>
@@ -5743,17 +5970,17 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                 <div
                   onClick={() =>
                     handleSelectSuggestion(
-                      "Soạn đề giữa kì I Toán 4 gồm trắc nghiệm, đúng-sai và tự luận, thang điểm 10 kèm đáp án chi tiết"
+                      `Soạn đề kiểm tra ${subject || "Toán"} ${grade || "12"} chuẩn Bộ GD&ĐT gồm 3 phần: Trắc nghiệm 4 lựa chọn, Đúng/Sai và Trả lời ngắn, thang điểm 10 kèm đáp án chi tiết`
                     )
                   }
                   className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm transition hover:border-blue-400 hover:shadow-md"
                 >
                   <p className="text-xs font-medium leading-relaxed text-slate-700 group-hover:text-blue-600">
-                    Soạn đề giữa kì I Toán 4 gồm trắc nghiệm, đúng-sai và tự luận, thang điểm 10 kèm đáp án chi tiết
+                    {`Soạn đề kiểm tra ${subject || "Toán"} ${grade || "12"} chuẩn GDPT 2025: Trắc nghiệm, Đúng/Sai, Trả lời ngắn, thang điểm 10 kèm đáp án chi tiết`}
                   </p>
                   <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-purple-700">
                     <Clock className="h-3 w-3" />
-                    <span>Theo cách bạn hay ra đề</span>
+                    <span>Theo môn & khối lớp của bạn</span>
                   </div>
                 </div>
 
@@ -5761,13 +5988,13 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                 <div
                   onClick={() =>
                     handleSelectSuggestion(
-                      "Ra 3 đề giữa kì I Toán 4 song song, mức 8+, 9+, 10 điểm, có câu vận dụng thực tế"
+                      `Ra 3 mã đề ${subject || "Toán"} ${grade || "12"} song song có độ khó tương đương, mức 8+, 9+, 10 điểm có câu vận dụng thực tế`
                     )
                   }
                   className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm transition hover:border-blue-400 hover:shadow-md"
                 >
                   <p className="text-xs font-medium leading-relaxed text-slate-700 group-hover:text-blue-600">
-                    Ra 3 đề giữa kì I Toán 4 song song, mức 8+, 9+, 10 điểm, có câu vận dụng thực tế
+                    {`Ra 3 mã đề ${subject || "Toán"} ${grade || "12"} song song, mức 8+, 9+, 10 điểm, có câu vận dụng thực tế`}
                   </p>
                   <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-purple-700">
                     <Clock className="h-3 w-3" />
@@ -5779,17 +6006,17 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                 <div
                   onClick={() =>
                     handleSelectSuggestion(
-                      "Soạn đề giữa kì I Toán 6: tập hợp, chia hết - ƯCLN - BCNN, kèm đáp án và thang điểm"
+                      `Soạn đề ôn tập học kỳ môn ${subject || "Toán"} ${grade || "12"} bám sát ma trận năng lực, kèm hướng dẫn giải và ma trận đề`
                     )
                   }
                   className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm transition hover:border-blue-400 hover:shadow-md"
                 >
                   <p className="text-xs font-medium leading-relaxed text-slate-700 group-hover:text-blue-600">
-                    Soạn đề giữa kì I Toán 6: tập hợp, chia hết - ƯCLN - BCNN, kèm đáp án và thang điểm
+                    {`Soạn đề ôn tập ${subject || "Toán"} ${grade || "12"}: ma trận năng lực Bộ GD&ĐT, kèm hướng dẫn giải`}
                   </p>
                   <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-amber-600">
                     <Calendar className="h-3 w-3" />
-                    <span>Đang mùa kiểm tra giữa kì I</span>
+                    <span>Đang mùa kiểm tra định kỳ</span>
                   </div>
                 </div>
               </div>
@@ -5851,14 +6078,20 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                     return;
                   }
                   const sizeStr = `${(file.size / 1024).toFixed(0)} KB`;
-                  if (file.name.endsWith(".txt") || file.name.endsWith(".md") || file.type.startsWith("text/")) {
-                    const text = await file.text();
+                  try {
+                    const parsed = await parseDocumentFile(file);
+                    if (parsed.error && !parsed.text) {
+                      showToast(parsed.error, "error");
+                      return;
+                    }
+                    const textContent = parsed.text || `[Tài liệu: ${file.name} - ${sizeStr}]`;
                     setAttachedDoc({
                       name: file.name,
-                      content: text,
-                      size: sizeStr,
+                      content: textContent,
+                      size: `${sizeStr} • ${parsed.charCount.toLocaleString()} ký tự`,
                     });
-                  } else {
+                    showToast(`Đã trích xuất ${parsed.charCount.toLocaleString()} ký tự từ ${file.name}`, "success");
+                  } catch (err: any) {
                     setAttachedDoc({
                       name: file.name,
                       content: `[Tệp đính kèm: ${file.name} - Dung lượng: ${sizeStr}]`,
@@ -6098,8 +6331,8 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
         grade={grade}
         durationMinutes={parseInt(duration, 10) || 45}
         originalQuestions={questions}
-        isPro={isProUser(profile)}
-        isMax={isMaxUser(profile)}
+        isPro={isProUser(profile) || isProUser(user)}
+        isMax={isMaxUser(profile) || isMaxUser(user)}
       />
 
       {/* Upgrade Tier Modal */}

@@ -1,10 +1,15 @@
 /**
- * Catalog phòng thí nghiệm 3D (nguồn: Tongjiang Lab — lab.tongjiang.app)
+ * Catalog phòng thí nghiệm 3D (nguồn: PhET Colorado & Tongjiang Lab)
  *
- * Ghi nguồn bắt buộc (CC BY-NC 4.0):
- *   - Bài học / covers / catalog: Tongjiang Lab (© 2026 铜匠十点睡觉), CC BY-NC 4.0
- *   - Ba bài học, ảnh bìa, danh mục chỉ được dùng phi thương mại (không paywall, không quảng cáo).
- *   - File bài học gốc được host tĩnh tại /labs/courses/<slug>.html.
+ * Giấy phép & Bản quyền (CC BY-NC 4.0 Open Access):
+ *   - Các mô phỏng 3D tương tác được kế thừa và phát triển từ PhET Interactive Simulations
+ *     (Đại học Colorado Boulder, https://phet.colorado.edu) và Tongjiang Lab (© 2026 铜匠十点睡觉, https://lab.tongjiang.app).
+ *   - Giấy phép: Creative Commons Ghi nhận công của tác giả – Phi thương mại 4.0 Quốc tế (CC BY-NC 4.0).
+ *   - Toàn bộ 54 bài mô phỏng thí nghiệm 3D được mở MIỄN PHÍ 100% cho mọi Thầy Cô và Học sinh (không paywall, không thu phí bản quyền).
+ *   - Gói PRO / MAX của EduTest AI chỉ thu phí các tính năng giá trị gia tăng độc quyền do EduTest AI phát triển:
+ *     1. Trợ lý Sư phạm AI phân tích hiện tượng thí nghiệm.
+ *     2. Kính vẽ Bục giảng tương tác (Transparent Whiteboard Overlay).
+ *     3. Bộ công cụ tự động sinh Đề kiểm tra / Phiếu bài tập bám sát mô phỏng 3D.
  *
  * lang:
  *   - "metadata"  → toàn bộ nội dung bên trong bài học vẫn tiếng Trung (dùng minh họa trên máy chiếu)
@@ -37,6 +42,18 @@ export const SUBJECT_COLOR: Record<LabSubject, string> = {
   chem: "bg-emerald-100 dark:bg-emerald-950/90 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80",
   bio: "bg-rose-100 dark:bg-rose-950/90 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/80",
   geo: "bg-amber-100 dark:bg-amber-950/90 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/80",
+};
+
+export const PHET_CC_ATTRIBUTION = {
+  license: "CC BY-NC 4.0",
+  licenseName: "Creative Commons Attribution-NonCommercial 4.0 International",
+  licenseUrl: "https://creativecommons.org/licenses/by-nc/4.0/",
+  phetUrl: "https://phet.colorado.edu",
+  phetName: "PhET Interactive Simulations (University of Colorado Boulder)",
+  tongjiangUrl: "https://lab.tongjiang.app",
+  tongjiangName: "Tongjiang Lab (© 2026 铜匠十点睡觉)",
+  disclaimer:
+    "Toàn bộ 54 mô phỏng thí nghiệm 3D được cung cấp 100% miễn phí cho mục đích giáo dục phi thương mại theo giấy phép CC BY-NC 4.0. EduTest AI chỉ thu phí các công cụ giá trị gia tăng sư phạm độc quyền.",
 };
 
 export const LABS: LabLesson[] = [
@@ -544,7 +561,10 @@ export function labsBySubject(subject: LabSubject): LabLesson[] {
   return LABS.filter((l) => l.subject === subject);
 }
 
-/** Đường dẫn file bài học tĩnh trong /public */
+/** 
+ * Toàn bộ 54 bài đều mở 100% miễn phí cho người dùng (CC BY-NC 4.0)
+ * Giữ FREE_TRIAL_LABS để tương thích ngược với các module tham chiếu cũ
+ */
 export const FREE_TRIAL_LABS: Record<LabSubject, string> = {
   phys: "photoelectric-step",
   chem: "haber-step",
@@ -552,8 +572,15 @@ export const FREE_TRIAL_LABS: Record<LabSubject, string> = {
   geo: "river-step",
 };
 
-export function isLabFreeTrial(slug: string): boolean {
-  return Object.values(FREE_TRIAL_LABS).includes(slug);
+/**
+ * Kiểm tra quyền truy cập mô phỏng: Tất cả 54 bài đều mở 100% miễn phí
+ */
+export function isLabFreeTrial(_slug: string): boolean {
+  return true;
+}
+
+export function isOpenAccessLab(_slug: string): boolean {
+  return true;
 }
 
 export function labFileUrl(slug: string): string {

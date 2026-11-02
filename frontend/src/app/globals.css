@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./uiverse-form.css";
+@import "./uiverse-login.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse, connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { REFERRAL_BONUS_CREDITS } from "@/lib/constants";
 
 // GET: Lấy thông tin mã giới thiệu và số người đã mời
 export async function GET(req: NextRequest) {
@@ -20,15 +22,27 @@ export async function GET(req: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    // Đếm số người đã mời thành công
+    // Đếm tổng số người đã mời và số người đã kích hoạt đề thi
     const { count: totalReferrals } = await (supabase.from("referrals") as any)
       .select("id", { count: "exact" })
       .eq("inviter_id", user.id);
 
+    const { count: qualifiedReferrals } = await (supabase.from("referrals") as any)
+      .select("id", { count: "exact" })
+      .eq("inviter_id", user.id)
+      .eq("status", "rewarded");
+
+    const { count: pendingReferrals } = await (supabase.from("referrals") as any)
+      .select("id", { count: "exact" })
+      .eq("inviter_id", user.id)
+      .eq("status", "pending");
+
     return NextResponse.json({
       referral_code: profile?.referral_code || "EDU" + user.id.slice(0, 5).toUpperCase(),
       total_referrals: totalReferrals || 0,
-      reward_per_referral: 2000, // +2.000 credits (tương đương 4 đề Flash)
+      qualified_referrals: qualifiedReferrals || 0,
+      pending_referrals: pendingReferrals || 0,
+      reward_per_referral: REFERRAL_BONUS_CREDITS,
       has_been_referred: !!profile?.referred_by,
     });
   } catch (err: any) {
@@ -36,7 +50,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST: Nhập mã giới thiệu của đồng nghiệp để cả hai cùng nhận +2.000 credits
+// POST: Nhập mã giới thiệu của đồng nghiệp - Lưu trạng thái PENDING cho đến khi tạo đề thi đầu tiên (PR 2.3)
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -57,10 +71,11 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanCode = referral_code.trim().toUpperCase();
+    const adminClient = createAdminClient() || supabase;
 
-    // 1. Kiểm tra mã người mời
-    const { data: inviter } = await (supabase.from("users") as any)
-      .select("id, name")
+    // 1. Kiểm tra mã người mời & chống gian lận tạo vòng tròn (CRT-06 & CRT-07)
+    const { data: inviter } = await (adminClient.from("users") as any)
+      .select("id, name, referred_by")
       .eq("referral_code", cleanCode)
       .maybeSingle();
 
@@ -68,12 +83,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Mã giới thiệu không tồn tại." }, { status: 404 });
     }
 
-    if (inviter.id === user.id) {
-      return NextResponse.json({ error: "Bạn không thể tự nhập mã giới thiệu của chính mình." }, { status: 400 });
+    if (inviter.id === user.id || inviter.referred_by === user.id) {
+      return NextResponse.json({ error: "Mã giới thiệu không hợp lệ (không thể tự giới thiệu hoặc tạo vòng lặp giữa hai tài khoản)." }, { status: 400 });
     }
 
     // 2. Kiểm tra xem user hiện tại đã từng được ai giới thiệu chưa
-    const { data: currentProfile } = await (supabase.from("users") as any)
+    const { data: currentProfile } = await (adminClient.from("users") as any)
       .select("referred_by")
       .eq("id", user.id)
       .single();
@@ -82,60 +97,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Bạn đã từng áp dụng mã giới thiệu trước đó." }, { status: 400 });
     }
 
-    // 3. Cập nhật referred_by cho user
-    await (supabase.from("users") as any)
+    const { data: existingRef } = await (adminClient.from("referrals") as any)
+      .select("id")
+      .eq("invitee_id", user.id)
+      .maybeSingle();
+
+    if (existingRef) {
+      return NextResponse.json({ error: "Tài khoản của bạn đã được áp dụng phần thưởng giới thiệu trước đó." }, { status: 400 });
+    }
+
+    // 3. Cập nhật referred_by cho user qua Admin Client để bypass RLS
+    await (adminClient.from("users") as any)
       .update({ referred_by: inviter.id })
       .eq("id", user.id);
 
-    // 4. Lưu vào bảng referrals
-    const rewardCredits = 2000; // 2.000 credits (tương đương 4 đề thi Flash)
-    await (supabase.from("referrals") as any).insert({
+    // 4. Lưu vào bảng referrals ở trạng thái PENDING (chờ tạo đề thi đầu tiên)
+    const rewardCredits = REFERRAL_BONUS_CREDITS;
+    await (adminClient.from("referrals") as any).insert({
       inviter_id: inviter.id,
       invitee_id: user.id,
       reward_credits: rewardCredits,
+      status: "pending",
     });
 
-    // 5. Thưởng credits cho Invitee (Người nhập mã)
-    const { data: inviteeWallet } = await (supabase.from("wallets") as any)
-      .select("id, balance")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (inviteeWallet) {
-      await (supabase.from("wallets") as any)
-        .update({ balance: (inviteeWallet.balance || 0) + rewardCredits })
-        .eq("id", inviteeWallet.id);
-
-      await (supabase.from("wallet_txns") as any).insert({
-        wallet_id: inviteeWallet.id,
-        amount: rewardCredits,
-        type: "signup_bonus",
-        description: `Thưởng nhập mã giới thiệu từ đồng nghiệp (${cleanCode}) (+2.000 credits)`,
-      });
-    }
-
-    // 6. Thưởng credits cho Inviter (Người chia sẻ)
-    const { data: inviterWallet } = await (supabase.from("wallets") as any)
-      .select("id, balance")
-      .eq("user_id", inviter.id)
-      .maybeSingle();
-
-    if (inviterWallet) {
-      await (supabase.from("wallets") as any)
-        .update({ balance: (inviterWallet.balance || 0) + rewardCredits })
-        .eq("id", inviterWallet.id);
-
-      await (supabase.from("wallet_txns") as any).insert({
-        wallet_id: inviterWallet.id,
-        amount: rewardCredits,
-        type: "signup_bonus",
-        description: `Thưởng giới thiệu đồng nghiệp thành công (+2.000 credits)`,
-      });
-    }
+    // KHÔNG cộng thưởng ngay tại đây!
+    // Thưởng +2.000 credits sẽ được tự động giải phóng khi người được mời tạo đề thi đầu tiên (PR 2.3)
 
     return NextResponse.json({
       success: true,
-      message: "Áp dụng mã giới thiệu thành công! Thầy/cô và đồng nghiệp đều đã được cộng ngay +2.000 credits.",
+      status: "pending",
+      message: `Áp dụng mã giới thiệu thành công! Thầy/cô và ${inviter.name || "đồng nghiệp"} sẽ nhận ngay +${REFERRAL_BONUS_CREDITS.toLocaleString("vi-VN")} credits vào ví ngay khi hoàn thành tạo đề thi đầu tiên.`,
       reward_credits: rewardCredits,
       inviter_name: inviter.name || "Đồng nghiệp",
     });

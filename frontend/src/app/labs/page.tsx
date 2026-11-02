@@ -29,9 +29,8 @@ export default function LabsPage() {
             </h1>
           </div>
           <p className="mt-3 max-w-3xl text-slate-600 dark:text-slate-300 leading-relaxed">
-            54 bài thí nghiệm tương tác 3D cho Vật lý, Hóa học, Sinh học và Địa lý bám sát chương trình GDPT.
-            Tài khoản Miễn phí được trải nghiệm thử 1 bài mẫu cho mỗi môn học.
-            Nâng cấp <strong className="font-semibold text-slate-900 dark:text-white">Gói Giáo Viên PRO</strong> để mở khóa trọn bộ 54+ bài học và nhận thêm <strong className="font-semibold text-slate-900 dark:text-white">30.000 credits</strong> soạn đề AI.
+            Toàn bộ 54 bài thí nghiệm tương tác 3D cho Vật lý, Hóa học, Sinh học và Địa lý được mở <strong className="font-semibold text-emerald-600 dark:text-emerald-400">hoàn toàn miễn phí 100%</strong> cho mọi Thầy Cô và Học sinh theo giấy phép mở quốc tế CC BY-NC 4.0.
+            Nâng cấp <strong className="font-semibold text-slate-900 dark:text-white">Gói Giáo Viên PRO</strong> để sử dụng các công cụ giá trị gia tăng độc quyền: Trợ lý AI phân tích hiện tượng, Kính vẽ Bục giảng tương tác và Bộ công cụ tự động sinh đề kiểm tra bám sát mô phỏng.
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-sm">
             <span className="rounded-full border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800/80 px-3 py-1 font-medium text-slate-700 dark:text-slate-200 shadow-2xs">
@@ -49,12 +48,12 @@ export default function LabsPage() {
           </div>
         </section>
 
-        {/* Giới thiệu tính năng & Cơ chế Free Trial */}
+        {/* Giới thiệu tính năng & Thông báo Open Access */}
         <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-950/30 p-4 text-sm text-amber-900 dark:text-amber-200">
           <div className="flex items-start gap-3">
             <Sparkles className="mt-0.5 h-4 w-4 flex-none text-amber-600 dark:text-amber-400" />
             <p>
-              <strong className="font-semibold text-amber-950 dark:text-amber-100">Chính sách trải nghiệm:</strong> Mỗi môn học có 1 bài thí nghiệm mẫu mở khóa hoàn toàn miễn phí cho Thầy Cô dùng thử trên lớp. Nâng cấp Gói PRO để mở khóa trọn bộ 54+ bài và nhận 30.000 credits soạn đề AI.
+              <strong className="font-semibold text-amber-950 dark:text-amber-100">Phòng Thí Nghiệm Mở (Open Access):</strong> 100% miễn phí 54 thí nghiệm 3D theo chuẩn CC BY-NC 4.0. Nâng cấp Gói PRO để sở hữu Trợ lý AI sư phạm, Kính vẽ bục giảng tương tác và Tự động sinh đề kiểm tra từ mô phỏng.
             </p>
           </div>
           <Link
@@ -71,10 +70,19 @@ export default function LabsPage() {
         {/* Ghi nguồn theo giấy phép */}
         <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-5 text-sm text-slate-500 dark:text-slate-400">
           <p className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-200">
-            <ExternalLink className="h-4 w-4" /> Ghi nguồn (theo yêu cầu giấy phép)
+            <ExternalLink className="h-4 w-4" /> Ghi nguồn & Giấy phép bản quyền mở (CC BY-NC 4.0)
           </p>
           <p className="mt-2 leading-relaxed">
-            Nội dung bài học 3D dựa trên{" "}
+            Các mô phỏng thí nghiệm tương tác được kế thừa và lấy cảm hứng từ{" "}
+            <a
+              href="https://phet.colorado.edu"
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary dark:text-blue-400 font-medium hover:underline"
+            >
+              PhET Interactive Simulations (Đại học Colorado Boulder)
+            </a>{" "}
+            và{" "}
             <a
               href="https://lab.tongjiang.app"
               target="_blank"
@@ -83,8 +91,9 @@ export default function LabsPage() {
             >
               Tongjiang Lab
             </a>{" "}
-            (CC BY-NC 4.0), sử dụng cho mục đích giáo dục
-            phi thương mại. Phần thư viện three.js phát hành theo giấy phép MIT.
+            theo giấy phép Creative Commons Ghi nhận công của tác giả – Phi thương mại 4.0 Quốc tế (CC BY-NC 4.0).
+            Toàn bộ 54 mô phỏng được cung cấp 100% miễn phí cho giáo viên và học sinh.
+            EduTest AI chỉ thu phí các tính năng công nghệ giá trị gia tăng độc quyền (Kính vẽ bục giảng, Trợ lý AI Sư phạm, Bộ sinh đề thi). Thư viện Three.js phát hành theo giấy phép MIT.
           </p>
         </section>
 

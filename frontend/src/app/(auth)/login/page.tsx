@@ -1,8 +1,16 @@
 "use client";
 
+import "@/app/uiverse-login.css";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen } from "lucide-react";
+import {
+  BookOpen,
+  Sparkles,
+  ShieldCheck,
+  CheckCircle2,
+  Zap,
+  AlertCircle,
+} from "lucide-react";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -22,7 +30,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
       if (error) {
@@ -31,6 +39,26 @@ export default function LoginPage() {
       }
     } catch {
       setErrorMessage("Đã xảy ra lỗi khi kết nối với Google.");
+      setIsLoading(false);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    setIsLoading(true);
+    setErrorMessage("");
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "apple",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) {
+        setErrorMessage("Đăng nhập bằng Apple ID đang trong chế độ thử nghiệm sandbox. Vui lòng đăng nhập với Google hoặc Email.");
+        setIsLoading(false);
+      }
+    } catch {
+      setErrorMessage("Đã xảy ra lỗi khi kết nối với Apple.");
       setIsLoading(false);
     }
   };
@@ -46,20 +74,36 @@ export default function LoginPage() {
     setErrorMessage("");
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: authResult, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        setErrorMessage(error.message === "Invalid login credentials"
-          ? "Email hoặc mật khẩu không chính xác."
-          : error.message);
+        setErrorMessage(
+          error.message === "Invalid login credentials"
+            ? "Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại."
+            : error.message
+        );
         setIsLoading(false);
         return;
       }
 
-      router.push("/dashboard");
+      if (authResult?.user) {
+        // Tự động kiểm tra vai trò (role) từ database để điều hướng chính xác
+        const { data: userProfile } = await (supabase.from("users") as any)
+          .select("role")
+          .eq("id", authResult.user.id)
+          .maybeSingle();
+
+        if (userProfile?.role === "student") {
+          router.push("/student");
+        } else {
+          router.push("/dashboard");
+        }
+      } else {
+        router.push("/dashboard");
+      }
       router.refresh();
     } catch {
       setErrorMessage("Đã có lỗi xảy ra trong quá trình đăng nhập.");
@@ -68,117 +112,208 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#ebf3fb] text-slate-800 px-4">
-      <div className="w-full max-w-md space-y-8">
-        {/* Logo */}
-        <div className="text-center">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <BookOpen className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-slate-900">
-              Edu<span className="text-primary">Test</span> AI
-            </span>
+    <div className="min-h-screen w-full flex bg-[#e8e8e8] dark:bg-slate-950 font-sans">
+      {/* ======================================================== */}
+      {/* LEFT COLUMN: BRAND HERO & SHOWCASE (Desktop only)       */}
+      {/* ======================================================== */}
+      <div className="hidden lg:flex lg:w-5/12 xl:w-5/12 flex-col justify-between p-12 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 text-white relative overflow-hidden border-r border-slate-800">
+        {/* Subtle Ambient Background Gradients */}
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-primary/25 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 -right-32 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Brand Header */}
+        <div className="relative z-10">
+          <Link href="/" className="inline-flex items-center gap-3 group">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-105 transition duration-200">
+              <BookOpen className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <span className="text-2xl font-black tracking-tight text-white">
+                Edu<span className="text-blue-400">Test</span> AI
+              </span>
+              <p className="text-[11px] font-medium text-slate-400 uppercase tracking-widest">
+                Tutor OS & Khảo Thí Thông Minh
+              </p>
+            </div>
           </Link>
-          <h2 className="mt-6 text-2xl font-bold tracking-tight text-slate-900">
-            Đăng nhập vào tài khoản
-          </h2>
-          <p className="mt-2 text-sm text-slate-500">
-            Chào mừng bạn trở lại! Chọn phương thức đăng nhập bên dưới.
-          </p>
         </div>
 
-        {/* Login Form */}
-        <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-          {/* Google Login */}
-          <button
-            onClick={handleGoogleLogin}
-            disabled={isLoading}
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
-          >
-            <svg className="h-5 w-5" viewBox="0 0 24 24">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            {isLoading ? "Đang xử lý..." : "Đăng nhập với Google"}
-          </button>
+        {/* Unified Platform Showcase */}
+        <div className="relative z-10 my-auto py-10 space-y-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs font-semibold text-blue-300">
+            <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+            <span>AI Khảo thí Chuẩn GDPT 2025</span>
+          </div>
 
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
+          <div className="space-y-4">
+            <h1 className="text-3xl xl:text-4xl font-extrabold tracking-tight leading-tight text-white">
+              Đơn giản hóa việc soạn đề & thi thử cho{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-indigo-300">
+                Thầy Cô & Học Sinh
+              </span>
+            </h1>
+            <p className="text-slate-300 text-sm xl:text-base leading-relaxed max-w-lg">
+              Đăng nhập để truy cập công cụ soạn ma trận đề thi tự động, phòng thí nghiệm 3D mô phỏng, chấm trắc nghiệm điện thoại OMR tức thì và hỏi đáp gia sư AI 24/7.
+            </p>
+          </div>
+
+          {/* Social Proof & Key Metric Cards */}
+          <div className="grid grid-cols-2 gap-3.5 pt-2 max-w-lg">
+            <div className="rounded-2xl bg-white/[0.06] backdrop-blur-md border border-white/10 p-4 transition hover:bg-white/[0.09]">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 mb-2.5">
+                <Zap className="w-4 h-4" />
+              </div>
+              <div className="text-2xl font-black text-white">&lt; 3 Giây</div>
+              <p className="text-xs text-slate-400 mt-0.5">Tốc độ chấm phiếu OMR di động bằng camera</p>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Hoặc</span>
+
+            <div className="rounded-2xl bg-white/[0.06] backdrop-blur-md border border-white/10 p-4 transition hover:bg-white/[0.09]">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 mb-2.5">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div className="text-2xl font-black text-white">Tích Xanh</div>
+              <p className="text-xs text-slate-400 mt-0.5">Xác thực danh tính Giáo viên & Gia sư bằng AI Vision</p>
             </div>
           </div>
 
+        </div>
+
+        {/* Footer Meta */}
+        <div className="relative z-10 flex items-center justify-between text-xs text-slate-400 pt-6 border-t border-slate-800/80">
+          <span>© 2025 EduTest AI Platform</span>
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1 text-emerald-400">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Chuẩn bảo mật SSL
+            </span>
+            <Link href="/guide" className="hover:text-white transition">
+              Hướng dẫn
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* RIGHT COLUMN: SINGLE UNIVERSAL UIVERSE LOGIN CARD       */}
+      {/* ======================================================== */}
+      <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-10 py-10 overflow-y-auto">
+        <div className="w-full max-w-[360px] space-y-3">
+          {/* Mobile Brand Header */}
+          <div className="lg:hidden text-center pb-1">
+            <Link href="/" className="inline-flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md">
+                <BookOpen className="w-4 h-4" />
+              </div>
+              <span className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                Edu<span className="text-primary">Test</span> AI
+              </span>
+            </Link>
+          </div>
+
+          {/* Error Message Box */}
           {errorMessage && (
-            <div className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-              {errorMessage}
+            <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-xs text-destructive flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{errorMessage}</span>
             </div>
           )}
 
-          {/* Email Login */}
-          <form onSubmit={handleEmailLogin} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium">
-                Email
-              </label>
+          {/* ======================================================== */}
+          {/* UIVERSE FORM CONTAINER: BY AKSHAT-PATEL28                */}
+          {/* ======================================================== */}
+          <div className="form-container">
+            <p className="title">Welcome back</p>
+
+            <form className="form" onSubmit={handleEmailLogin}>
               <input
-                id="email"
                 type="email"
+                className="input"
+                placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="teacher@school.edu.vn"
                 required
-                className="mt-1 block w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
-            </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium">
-                Mật khẩu
-              </label>
               <input
-                id="password"
                 type="password"
+                className="input"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
                 required
-                className="mt-1 block w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
-            </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm cursor-pointer py-1.5 select-none min-h-[36px]">
-                <input type="checkbox" className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer" />
-                <span>Ghi nhớ đăng nhập</span>
-              </label>
-              <Link
-                href="/forgot-password"
-                className="text-sm font-semibold text-primary hover:underline py-1.5 px-2 min-h-[36px] inline-flex items-center rounded-lg hover:bg-primary/5 transition-colors"
-              >
-                Quên mật khẩu?
+              <p className="page-link">
+                <Link href="/forgot-password">
+                  <span className="page-link-label">Forgot Password?</span>
+                </Link>
+              </p>
+
+              <button className="form-btn" type="submit" disabled={isLoading}>
+                {isLoading ? "Logging in..." : "Log in"}
+              </button>
+            </form>
+
+            <p className="sign-up-label">
+              Don&apos;t have an account?
+              <Link href="/register" className="sign-up-link">
+                Sign up
               </Link>
+            </p>
+
+            <div className="buttons-container">
+              <div className="apple-login-button" onClick={handleAppleLogin}>
+                <svg
+                  stroke="currentColor"
+                  fill="currentColor"
+                  strokeWidth="0"
+                  className="apple-icon"
+                  viewBox="0 0 1024 1024"
+                  height="1em"
+                  width="1em"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M747.4 535.7c-.4-68.2 30.5-119.6 92.9-157.5-34.9-50-87.7-77.5-157.3-82.8-65.9-5.2-138 38.4-164.4 38.4-27.9 0-91.7-36.6-141.9-36.6C273.1 298.8 163 379.8 163 544.6c0 48.7 8.9 99 26.7 150.8 23.8 68.2 109.6 235.3 199.1 232.6 46.8-1.1 79.9-33.2 140.8-33.2 59.1 0 89.7 33.2 141.9 33.2 90.3-1.3 167.9-153.2 190.5-221.6-121.1-57.1-114.6-167.2-114.6-170.7zm-105.1-305c50.7-60.2 46.1-115 44.6-134.7-44.8 2.6-96.6 30.5-126.1 64.8-32.5 36.8-51.6 82.3-47.5 133.6 48.4 3.7 92.6-21.2 129-63.7z" />
+                </svg>
+                <span>Log in with Apple</span>
+              </div>
+
+              <div className="google-login-button" onClick={handleGoogleLogin}>
+                <svg
+                  stroke="currentColor"
+                  fill="currentColor"
+                  strokeWidth="0"
+                  version="1.1"
+                  x="0px"
+                  y="0px"
+                  className="google-icon"
+                  viewBox="0 0 48 48"
+                  height="1em"
+                  width="1em"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    fill="#FFC107"
+                    d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12 c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24 c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"
+                  />
+                  <path
+                    fill="#FF3D00"
+                    d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657 C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"
+                  />
+                  <path
+                    fill="#4CAF50"
+                    d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36 c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"
+                  />
+                  <path
+                    fill="#1976D2"
+                    d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571 c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
+                  />
+                </svg>
+                <span>Log in with Google</span>
+              </div>
             </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-            >
-              {isLoading ? "Đang xử lý..." : "Đăng nhập"}
-            </button>
-          </form>
+          </div>
         </div>
-
-        <p className="text-center text-sm text-muted-foreground">
-          Chưa có tài khoản?{" "}
-          <Link href="/register" className="font-bold text-primary hover:underline py-1.5 px-2 min-h-[36px] inline-flex items-center rounded-lg hover:bg-primary/5 transition-colors">
-            Đăng ký miễn phí
-          </Link>
-        </p>
       </div>
     </div>
   );

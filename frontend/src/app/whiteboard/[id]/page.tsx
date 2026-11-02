@@ -23,14 +23,8 @@ function WhiteboardStudioContent() {
     async function loadBoard() {
       if (authLoading) return;
 
-      const isAuditMode =
-        typeof window !== "undefined" &&
-        (window.location.search.includes("audit=true") ||
-          localStorage.getItem("edteach_audit") === "true" ||
-          document.cookie.includes("audit=true"));
-
-      if (!user && !isAuditMode) {
-        router.push("/login");
+      if (!user) {
+        router.push(`/login?redirectTo=${encodeURIComponent(`/whiteboard/${boardId}`)}`);
         return;
       }
 
@@ -39,51 +33,11 @@ function WhiteboardStudioContent() {
         const data = await getWhiteboardById(boardId);
         if (data) {
           setBoard(data);
-        } else if (isAuditMode) {
-          // Khởi tạo bảng mẫu cho chế độ Audit / Offline Demo
-          const fallbackBoard: Whiteboard = {
-            id: boardId,
-            user_id: user?.id || "audit-user",
-            title: "Bục Giảng Số 4.0 — Bảng Vẽ Sư Phạm",
-            description: null,
-            elements: [],
-            app_state: {
-              viewBackgroundColor: "#ffffff",
-              currentItemStrokeColor: "#0f172a",
-              gridSize: 20,
-              theme_preset: "modern_white",
-            },
-            thumbnail_url: null,
-            is_favorite: false,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-          setBoard(fallbackBoard);
         } else {
           setError("Không tìm thấy bảng vẽ hoặc bạn không có quyền truy cập.");
         }
       } catch (err: any) {
-        if (isAuditMode) {
-          setBoard({
-            id: boardId,
-            user_id: "audit-user",
-            title: "Bục Giảng Số 4.0 — Bảng Vẽ Sư Phạm",
-            description: null,
-            elements: [],
-            app_state: {
-              viewBackgroundColor: "#ffffff",
-              currentItemStrokeColor: "#0f172a",
-              gridSize: 20,
-              theme_preset: "modern_white",
-            },
-            thumbnail_url: null,
-            is_favorite: false,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-        } else {
-          setError(err.message || "Lỗi tải bảng vẽ.");
-        }
+        setError(err.message || "Lỗi tải bảng vẽ.");
       } finally {
         setIsLoading(false);
       }

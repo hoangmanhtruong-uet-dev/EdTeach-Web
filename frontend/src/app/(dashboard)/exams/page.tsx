@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import {
   Plus,
   Search,
@@ -15,11 +15,13 @@ import {
   Copy,
   Check,
   X,
-  Sparkles,
   Presentation,
   RotateCcw,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   SlidersHorizontal,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { getUserExams, deleteExam, Exam, getExamById } from "@/lib/api/exams";
@@ -35,10 +37,19 @@ export default function ExamsPage() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
 
-  // Filter & Sort States
+  // Pagination States (EXL-01)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Soft Delete Confirmation Dialog State (EXL-04, EXL-10)
+  const [deleteConfirmExam, setDeleteConfirmExam] = useState<Exam | null>(null);
+
+  // Filter & Sort States (EXL-02)
   const [selectedSubject, setSelectedSubject] = useState("all");
   const [selectedGrade, setSelectedGrade] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -51,6 +62,26 @@ export default function ExamsPage() {
   const { user, profile } = useAuth();
   const { showToast } = useToast();
   const [magicLinkExam, setMagicLinkExam] = useState<Exam | null>(null);
+  const [copiedMagicLink, setCopiedMagicLink] = useState(false);
+  const [upgradeTier, setUpgradeTier] = useState<"pro" | "max" | null>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<PricingPlan | null>(null);
+
+  // User tier checks (EXL-05)
+  const isMax = isMaxUser(profile) || isMaxUser(user);
+  const isPro = isProUser(profile) || isProUser(user) || isMax;
+
+  // Debounce search input (350ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset to page 1 whenever search, filters, or sorting change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, selectedSubject, selectedGrade, selectedStatus, sortBy]);
 
   // Click outside to close filter popover
   useEffect(() => {
@@ -67,21 +98,18 @@ export default function ExamsPage() {
     };
   }, [isFilterOpen]);
 
-  // Escape key handler for Magic Link Modal & Filter Popover
+  // Escape key handler for Modals & Filter Popover
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (magicLinkExam) setMagicLinkExam(null);
+        if (deleteConfirmExam) setDeleteConfirmExam(null);
         if (isFilterOpen) setIsFilterOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [magicLinkExam, isFilterOpen]);
-
-  const [copiedMagicLink, setCopiedMagicLink] = useState(false);
-  const [upgradeTier, setUpgradeTier] = useState<"pro" | "max" | null>(null);
-  const [checkoutPlan, setCheckoutPlan] = useState<PricingPlan | null>(null);
+  }, [magicLinkExam, deleteConfirmExam, isFilterOpen]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -97,6 +125,8 @@ export default function ExamsPage() {
     setSelectedGrade("all");
     setSelectedStatus("all");
     setSortBy("newest");
+    setSearch("");
+    setCurrentPage(1);
   };
 
   const subjectOptions = useMemo(() => {
@@ -129,12 +159,43 @@ export default function ExamsPage() {
     return Array.from(set).sort((a, b) => Number(a) - Number(b));
   }, [exams]);
 
+  // Load exams with server-side pagination & filter query (EXL-01, EXL-02)
+  const loadExams = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getUserExams({
+        limit: pageSize,
+        offset: (currentPage - 1) * pageSize,
+        search: debouncedSearch.trim() || undefined,
+        subject: selectedSubject !== "all" ? selectedSubject : undefined,
+        grade: selectedGrade !== "all" ? selectedGrade : undefined,
+        status: selectedStatus !== "all" ? selectedStatus : undefined,
+        sortBy,
+      });
+      setExams(res.exams);
+      setTotalCount(res.totalCount);
+    } catch (err) {
+      console.error("Failed to load exams", err);
+      showToast("Không thể tải danh sách đề thi. Vui lòng tải lại trang.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize, debouncedSearch, selectedSubject, selectedGrade, selectedStatus, sortBy, showToast]);
+
+  useEffect(() => {
+    loadExams();
+  }, [loadExams]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const startItem = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(totalCount, currentPage * pageSize);
+
   const handleExportDualTeaching = async (id: string) => {
     try {
       setExportingId(id);
       const fullExam = await getExamById(id);
       if (fullExam) {
-        await exportDualTeachingDocx(fullExam, isProUser(profile) || isProUser(user));
+        await exportDualTeachingDocx(fullExam, isPro);
       }
       showToast("Đã xuất thành công bộ đề kép giảng dạy (.docx)!", "success");
     } catch (e) {
@@ -145,104 +206,52 @@ export default function ExamsPage() {
     }
   };
 
+  // EXL-03: Magic link handler with MAX tier check
   const handleMagicLinkClick = (exam: Exam) => {
-    if (!isMaxUser(profile)) {
+    if (!isMax) {
       setUpgradeTier("max");
       return;
     }
     setMagicLinkExam(exam);
   };
 
-  useEffect(() => {
-    loadExams();
-  }, []);
-
-  async function loadExams() {
-    setLoading(true);
-    try {
-      const res = await getUserExams();
-      setExams(res.exams);
-    } catch (err) {
-      console.error("Failed to load exams", err);
-    } finally {
-      setLoading(false);
+  // EXL-05: Bục Giảng Số PRO tier handler
+  const handleTeachClick = (exam: Exam) => {
+    if (!isPro) {
+      setUpgradeTier("pro");
+      return;
     }
-  }
+  };
 
-  async function handleDelete(id: string) {
-    if (!confirm("Bạn có chắc chắn muốn xóa đề thi này không?")) return;
-    setDeletingId(id);
+  // EXL-04, EXL-10: Confirmation Delete
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmExam) return;
+    const idToDelete = deleteConfirmExam.id;
+    setDeletingId(idToDelete);
     try {
-      await deleteExam(id);
-      setExams((prev) => prev.filter((e) => e.id !== id));
-      showToast("Đã xóa đề thi thành công.", "success");
+      await deleteExam(idToDelete);
+      showToast("Đã chuyển đề thi vào thùng rác thành công.", "success");
+      setDeleteConfirmExam(null);
+      if (exams.length === 1 && currentPage > 1) {
+        setCurrentPage((p) => p - 1);
+      } else {
+        await loadExams();
+      }
     } catch (err) {
       console.error("Failed to delete exam", err);
       showToast("Không thể xóa đề thi. Vui lòng thử lại.", "error");
     } finally {
       setDeletingId(null);
     }
-  }
+  };
 
-  const filteredExams = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    const result = exams.filter((e) => {
-      // 1. Search text
-      if (term) {
-        const matchName = e.name?.toLowerCase().includes(term);
-        const matchSubject = e.subject?.toLowerCase().includes(term);
-        if (!matchName && !matchSubject) return false;
-      }
-
-      // 2. Subject
-      if (selectedSubject !== "all") {
-        if (!e.subject || e.subject.toLowerCase() !== selectedSubject.toLowerCase()) {
-          return false;
-        }
-      }
-
-      // 3. Grade
-      if (selectedGrade !== "all") {
-        if (!e.grade || e.grade.toString() !== selectedGrade.toString()) {
-          return false;
-        }
-      }
-
-      // 4. Status
-      if (selectedStatus !== "all") {
-        if (e.status !== selectedStatus) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-
-    // 5. Sorting
-    result.sort((a, b) => {
-      if (sortBy === "newest") {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      }
-      if (sortBy === "oldest") {
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      }
-      if (sortBy === "questions_desc") {
-        return (b.question_count || 0) - (a.question_count || 0);
-      }
-      if (sortBy === "questions_asc") {
-        return (a.question_count || 0) - (b.question_count || 0);
-      }
-      if (sortBy === "name_asc") {
-        return (a.name || "").localeCompare(b.name || "", "vi");
-      }
-      if (sortBy === "name_desc") {
-        return (b.name || "").localeCompare(a.name || "", "vi");
-      }
-      return 0;
-    });
-
-    return result;
-  }, [exams, search, selectedSubject, selectedGrade, selectedStatus, sortBy]);
+  const magicLinkUrl = magicLinkExam
+    ? typeof window !== "undefined"
+      ? `${window.location.origin}/grading/submit/${magicLinkExam.id}?name=${encodeURIComponent(
+          magicLinkExam.name
+        )}`
+      : `https://edutest.vn/grading/submit/${magicLinkExam.id}`
+    : "";
 
   return (
     <div className="space-y-6">
@@ -349,16 +358,31 @@ export default function ExamsPage() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    {/* 1. Môn học */}
+                  <div className="space-y-4 text-xs">
+                    {/* Sắp xếp */}
                     <div>
-                      <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                        Môn học
-                      </label>
+                      <label className="block font-semibold text-muted-foreground mb-1.5">Sắp xếp theo:</label>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as any)}
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <option value="newest">Mới nhất trước</option>
+                        <option value="oldest">Cũ nhất trước</option>
+                        <option value="questions_desc">Nhiều câu hỏi nhất</option>
+                        <option value="questions_asc">Ít câu hỏi nhất</option>
+                        <option value="name_asc">Tên A → Z</option>
+                        <option value="name_desc">Tên Z → A</option>
+                      </select>
+                    </div>
+
+                    {/* Môn học */}
+                    <div>
+                      <label className="block font-semibold text-muted-foreground mb-1.5">Môn học:</label>
                       <select
                         value={selectedSubject}
                         onChange={(e) => setSelectedSubject(e.target.value)}
-                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer transition"
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         <option value="all">Tất cả môn học</option>
                         {subjectOptions.map((subj) => (
@@ -369,85 +393,55 @@ export default function ExamsPage() {
                       </select>
                     </div>
 
-                    {/* 2. Khối lớp */}
+                    {/* Khối lớp */}
                     <div>
-                      <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                        Khối lớp
-                      </label>
+                      <label className="block font-semibold text-muted-foreground mb-1.5">Khối lớp:</label>
                       <select
                         value={selectedGrade}
                         onChange={(e) => setSelectedGrade(e.target.value)}
-                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer transition"
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         <option value="all">Tất cả khối lớp</option>
-                        {gradeOptions.map((gr) => (
-                          <option key={gr} value={gr}>
-                            Lớp {gr}
+                        {gradeOptions.map((g) => (
+                          <option key={g} value={g}>
+                            Lớp {g}
                           </option>
                         ))}
                       </select>
                     </div>
 
-                    {/* 3. Trạng thái */}
+                    {/* Trạng thái */}
                     <div>
-                      <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                        Trạng thái
-                      </label>
+                      <label className="block font-semibold text-muted-foreground mb-1.5">Trạng thái:</label>
                       <select
                         value={selectedStatus}
                         onChange={(e) => setSelectedStatus(e.target.value)}
-                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer transition"
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         <option value="all">Tất cả trạng thái</option>
                         <option value="completed">Đã hoàn thành</option>
-                        <option value="generating">Đang tạo AI</option>
                         <option value="draft">Bản nháp</option>
+                        <option value="generating">Đang tạo...</option>
                         <option value="failed">Thất bại</option>
                       </select>
                     </div>
 
-                    {/* 4. Sắp xếp */}
-                    <div>
-                      <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                        Sắp xếp theo
-                      </label>
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as any)}
-                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer transition"
+                    {/* Action buttons */}
+                    <div className="flex items-center justify-between pt-3 border-t border-border">
+                      <button
+                        type="button"
+                        onClick={handleResetFilters}
+                        disabled={activeFilterCount === 0}
+                        className="text-muted-foreground hover:text-foreground font-semibold disabled:opacity-40 transition cursor-pointer"
                       >
-                        <option value="newest">Mới nhất trước</option>
-                        <option value="oldest">Cũ nhất trước</option>
-                        <option value="questions_desc">Nhiều câu hỏi nhất</option>
-                        <option value="questions_asc">Ít câu hỏi nhất</option>
-                        <option value="name_asc">Tên (A → Z)</option>
-                        <option value="name_desc">Tên (Z → A)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={handleResetFilters}
-                      disabled={activeFilterCount === 0}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:hover:text-muted-foreground transition cursor-pointer disabled:cursor-not-allowed"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      <span>Đặt lại</span>
-                    </button>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground">
-                        Hiển thị <strong>{filteredExams.length}</strong> đề
-                      </span>
+                        Đặt lại bộ lọc
+                      </button>
                       <button
                         type="button"
                         onClick={() => setIsFilterOpen(false)}
-                        className="rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer"
+                        className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer"
                       >
-                        Xong
+                        Áp dụng ({activeFilterCount})
                       </button>
                     </div>
                   </div>
@@ -457,113 +451,109 @@ export default function ExamsPage() {
           </div>
         </div>
 
-        {/* Active filter badge pills */}
-        {activeFilterCount > 0 && (
-          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Bộ lọc đang bật:</span>
-            {selectedSubject !== "all" && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 text-blue-600 dark:text-blue-400 font-medium">
-                <span>
-                  Môn: <strong>{selectedSubject}</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedSubject("all")}
-                  className="hover:text-blue-800 dark:hover:text-blue-200 cursor-pointer ml-0.5"
-                  title="Xóa lọc môn này"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+        {/* Active Filters Pill Bar & Live Status (EXL-02, EXL-10) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <div aria-live="polite" className="text-xs text-muted-foreground font-medium">
+            {loading ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Đang cập nhật danh sách…
               </span>
-            )}
-            {selectedGrade !== "all" && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 text-purple-600 dark:text-purple-400 font-medium">
-                <span>
-                  Lớp: <strong>{selectedGrade}</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedGrade("all")}
-                  className="hover:text-purple-800 dark:hover:text-purple-200 cursor-pointer ml-0.5"
-                  title="Xóa lọc lớp này"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+            ) : totalCount > 0 ? (
+              <span>
+                Tìm thấy <strong>{totalCount}</strong> đề thi
+                {debouncedSearch && <span> khớp với &quot;{debouncedSearch}&quot;</span>}
               </span>
-            )}
-            {selectedStatus !== "all" && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                <span>
-                  Trạng thái:{" "}
-                  <strong>
-                    {selectedStatus === "completed"
-                      ? "Hoàn thành"
-                      : selectedStatus === "generating"
-                      ? "Đang tạo AI"
-                      : selectedStatus === "draft"
-                      ? "Bản nháp"
-                      : "Thất bại"}
-                  </strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedStatus("all")}
-                  className="hover:text-emerald-800 dark:hover:text-emerald-200 cursor-pointer ml-0.5"
-                  title="Xóa lọc trạng thái này"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )}
-            {sortBy !== "newest" && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-amber-600 dark:text-amber-400 font-medium">
-                <span>
-                  Sắp xếp:{" "}
-                  <strong>
-                    {sortBy === "oldest"
-                      ? "Cũ nhất"
-                      : sortBy === "questions_desc"
-                      ? "Nhiều câu nhất"
-                      : sortBy === "questions_asc"
-                      ? "Ít câu nhất"
-                      : sortBy === "name_asc"
-                      ? "Tên A-Z"
-                      : "Tên Z-A"}
-                  </strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSortBy("newest")}
-                  className="hover:text-amber-800 dark:hover:text-amber-200 cursor-pointer ml-0.5"
-                  title="Đặt lại sắp xếp mặc định"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="text-primary hover:underline font-semibold cursor-pointer ml-1 text-xs"
-            >
-              Xóa tất cả bộ lọc
-            </button>
+            ) : null}
           </div>
-        )}
+
+          {activeFilterCount > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-muted-foreground text-[11px] font-medium mr-1">Đang lọc:</span>
+              {selectedSubject !== "all" && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 text-xs font-semibold">
+                  Môn: {selectedSubject}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSubject("all")}
+                    className="hover:text-destructive cursor-pointer"
+                    title="Bỏ lọc môn"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {selectedGrade !== "all" && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 text-xs font-semibold">
+                  Lớp: {selectedGrade}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGrade("all")}
+                    className="hover:text-destructive cursor-pointer"
+                    title="Bỏ lọc lớp"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {selectedStatus !== "all" && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 text-xs font-semibold">
+                  Trạng thái: {selectedStatus === "completed" ? "Đã hoàn thành" : selectedStatus}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStatus("all")}
+                    className="hover:text-destructive cursor-pointer"
+                    title="Bỏ lọc trạng thái"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {sortBy !== "newest" && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-muted text-foreground border border-border px-2.5 py-1 text-xs font-semibold">
+                  Sắp xếp:{" "}
+                  {sortBy === "oldest"
+                    ? "Cũ nhất"
+                    : sortBy === "questions_desc"
+                    ? "Nhiều câu nhất"
+                    : sortBy === "questions_asc"
+                    ? "Ít câu nhất"
+                    : sortBy === "name_asc"
+                    ? "Tên A-Z"
+                    : "Tên Z-A"}
+                  <button
+                    type="button"
+                    onClick={() => setSortBy("newest")}
+                    className="hover:text-destructive cursor-pointer"
+                    title="Đặt lại sắp xếp"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="text-primary hover:underline font-semibold cursor-pointer ml-1 text-xs"
+              >
+                Xóa tất cả bộ lọc
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Exam List */}
+      {/* Exam List Table */}
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
-        {loading ? (
+        {loading && exams.length === 0 ? (
           <div className="flex h-48 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
-        ) : filteredExams.length === 0 ? (
+        ) : exams.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
               <BookOpen className="h-6 w-6 text-muted-foreground" />
             </div>
-            {exams.length === 0 ? (
+            {totalCount === 0 && !debouncedSearch && activeFilterCount === 0 ? (
               <>
                 <h3 className="mt-4 font-semibold">Chưa có đề thi nào</h3>
                 <p className="mt-1 text-xs text-muted-foreground">Bắt đầu bằng cách tạo một đề thi mới ngay bây giờ!</p>
@@ -582,10 +572,7 @@ export default function ExamsPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearch("");
-                    handleResetFilters();
-                  }}
+                  onClick={handleResetFilters}
                   className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
@@ -598,60 +585,89 @@ export default function ExamsPage() {
           <div className="divide-y divide-border">
             <div className="grid grid-cols-12 gap-4 p-4 text-xs font-semibold text-muted-foreground sm:grid">
               <div className="col-span-5 sm:col-span-4">Tên đề thi</div>
-              <div className="hidden sm:col-span-2 sm:block">Môn / Lớp</div>
+              <div className="col-span-3 sm:col-span-2">Môn / Lớp</div>
+              <div className="col-span-4 sm:col-span-2">Trạng thái</div>
               <div className="hidden sm:col-span-1 sm:block">Số câu</div>
               <div className="hidden sm:col-span-2 sm:block">Ngày tạo</div>
-              <div className="col-span-7 text-right sm:col-span-3">Thao tác</div>
+              <div className="hidden sm:col-span-1 sm:block text-right">Thao tác</div>
             </div>
-            {filteredExams.map((exam) => (
+
+            {exams.map((exam) => (
               <div
                 key={exam.id}
-                className="grid grid-cols-12 items-center gap-4 p-4 transition-colors hover:bg-muted/50"
+                className="grid grid-cols-12 items-center gap-4 p-4 hover:bg-muted/50 transition-colors"
               >
-                <div className="col-span-12 sm:col-span-4">
-                  <div className="overflow-hidden">
-                    <Link href={`/exams/${exam.id}`} className="truncate font-medium hover:text-primary">
-                      {exam.name}
-                    </Link>
-                    <span
-                      className={`ml-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium sm:hidden ${
-                        exam.status === "completed"
-                          ? "bg-green-100 text-green-700"
-                          : exam.status === "generating"
-                          ? "bg-blue-100 text-blue-700"
-                          : exam.status === "failed"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {exam.status === "completed"
-                        ? "Hoàn thành"
+                <div className="col-span-5 sm:col-span-4">
+                  <Link
+                    href={`/exams/${exam.id}`}
+                    className="font-semibold text-foreground hover:text-primary transition-colors line-clamp-1 text-sm"
+                  >
+                    {exam.name}
+                  </Link>
+                  <p className="text-xs text-muted-foreground sm:hidden mt-0.5">
+                    {exam.subject} • Lớp {exam.grade} • {exam.question_count} câu
+                  </p>
+                </div>
+
+                <div className="col-span-3 sm:col-span-2 text-xs">
+                  <span className="font-medium text-foreground">{exam.subject}</span>
+                  <span className="text-muted-foreground"> • Lớp {exam.grade}</span>
+                </div>
+
+                <div className="col-span-4 sm:col-span-2">
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                      exam.status === "completed"
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                         : exam.status === "generating"
-                        ? "Đang tạo"
+                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
                         : exam.status === "failed"
-                        ? "Thất bại"
-                        : "Nháp"}
-                    </span>
-                  </div>
+                        ? "bg-destructive/10 text-destructive"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {exam.status === "completed"
+                      ? "Hoàn thành"
+                      : exam.status === "generating"
+                      ? "Đang tạo..."
+                      : exam.status === "failed"
+                      ? "Thất bại"
+                      : "Bản nháp"}
+                  </span>
                 </div>
-                <div className="hidden text-sm text-muted-foreground sm:col-span-2 sm:block">
-                  {exam.subject} - Lớp {exam.grade}
-                </div>
+
                 <div className="hidden text-sm tabular-nums sm:col-span-1 sm:block">{exam.question_count} câu</div>
                 <div className="hidden text-sm tabular-nums text-muted-foreground sm:col-span-2 sm:block">
                   {new Date(exam.created_at).toLocaleDateString("vi-VN")}
                 </div>
-                <div className="flex items-center justify-end gap-1 sm:col-span-3 flex-wrap sm:flex-nowrap">
-                  <Link
-                    href={`/teach/${exam.id}`}
-                    aria-label={`Trình chiếu Bục Giảng Số đề ${exam.name}`}
-                    className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 min-h-[36px] text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 transition-colors shadow-2xs whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
-                    title="Bục Giảng Số: Trình chiếu chữa đề kết hợp Bảng nháp Excalidraw (Gói PRO)"
-                  >
-                    <Presentation className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                    <span>Bục giảng</span>
-                  </Link>
 
+                <div className="flex items-center justify-end gap-1 sm:col-span-1 flex-wrap sm:flex-nowrap">
+                  {/* Bục Giảng Số Button (EXL-05 PRO Gate) */}
+                  {isPro ? (
+                    <Link
+                      href={`/teach/${exam.id}`}
+                      aria-label={`Trình chiếu Bục Giảng Số đề ${exam.name}`}
+                      className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 min-h-[36px] text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 transition-colors shadow-2xs whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+                      title="Bục Giảng Số: Trình chiếu chữa đề kết hợp Bảng nháp Excalidraw (Gói PRO)"
+                    >
+                      <Presentation className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      <span className="hidden md:inline">Bục giảng</span>
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleTeachClick(exam)}
+                      aria-label={`Nâng cấp PRO để trình chiếu Bục Giảng Số cho đề ${exam.name}`}
+                      className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 min-h-[36px] text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors shadow-2xs whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
+                      title="Bục Giảng Số (Đặc quyền Gói PRO - Nhấn để nâng cấp)"
+                    >
+                      <Crown className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden="true" />
+                      <span className="hidden md:inline">Bục giảng</span>
+                    </button>
+                  )}
+
+                  {/* View / Edit Button */}
                   <Link
                     href={`/exams/${exam.id}`}
                     aria-label={`Xem và chỉnh sửa đề ${exam.name}`}
@@ -660,6 +676,8 @@ export default function ExamsPage() {
                   >
                     <Eye className="h-4 w-4" aria-hidden="true" />
                   </Link>
+
+                  {/* Dual Teaching Export */}
                   <button
                     type="button"
                     onClick={() => handleExportDualTeaching(exam.id)}
@@ -674,6 +692,8 @@ export default function ExamsPage() {
                       <Download className="h-4 w-4 text-blue-600 dark:text-blue-400" aria-hidden="true" />
                     )}
                   </button>
+
+                  {/* Magic Link Button (MAX tier) */}
                   <button
                     type="button"
                     onClick={() => handleMagicLinkClick(exam)}
@@ -683,13 +703,15 @@ export default function ExamsPage() {
                   >
                     <Share2 className="h-4 w-4" aria-hidden="true" />
                   </button>
+
+                  {/* Soft Delete Trigger (EXL-04, EXL-10) */}
                   <button
                     type="button"
-                    onClick={() => handleDelete(exam.id)}
+                    onClick={() => setDeleteConfirmExam(exam)}
                     disabled={deletingId === exam.id}
                     aria-label={`Xóa đề ${exam.name}`}
                     className="h-9 w-9 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50 transition cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-destructive shrink-0"
-                    title="Xóa"
+                    title="Xóa đề thi"
                   >
                     {deletingId === exam.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -702,9 +724,97 @@ export default function ExamsPage() {
             ))}
           </div>
         )}
+
+        {/* Pagination Bar (EXL-01) */}
+        {totalCount > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border bg-card/50 text-xs text-muted-foreground">
+            <div aria-live="polite" className="tabular-nums font-medium">
+              Hiển thị <strong>{startItem}</strong> - <strong>{endItem}</strong> trong tổng số{" "}
+              <strong>{totalCount}</strong> đề thi
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage <= 1 || loading}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-card text-foreground font-semibold hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                aria-label="Trang trước"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Trước</span>
+              </button>
+
+              <span className="px-2 font-medium tabular-nums text-foreground">
+                Trang {currentPage} / {totalPages}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages || loading}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-card text-foreground font-semibold hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                aria-label="Trang sau"
+              >
+                <span>Sau</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Modal Magic Link Giao đề Online (Gói MAX) */}
+      {/* Delete Confirmation Modal (EXL-04, EXL-10) */}
+      {deleteConfirmExam && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dialog-title"
+          aria-describedby="delete-dialog-desc"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200"
+        >
+          <div className="bg-white dark:bg-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-neutral-200 dark:border-neutral-800 relative text-left">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 id="delete-dialog-title" className="font-bold text-base text-foreground">
+                  Xác nhận xóa đề thi
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Đề thi sẽ được chuyển vào thùng rác
+                </p>
+              </div>
+            </div>
+
+            <p id="delete-dialog-desc" className="text-sm text-neutral-600 dark:text-neutral-300 mb-6 leading-relaxed">
+              Bạn có chắc chắn muốn xóa đề thi <strong>&quot;{deleteConfirmExam.name}&quot;</strong> ({deleteConfirmExam.subject} - Lớp {deleteConfirmExam.grade})? Thao tác này an toàn và không làm đứt gãy lịch sử chấm thi.
+            </p>
+
+            <div className="flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmExam(null)}
+                className="px-4 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={deletingId === deleteConfirmExam.id}
+                onClick={handleConfirmDelete}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-destructive text-white text-xs font-bold hover:bg-destructive/90 transition shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                {deletingId === deleteConfirmExam.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Xóa đề thi</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Magic Link Giao đề Online (Gói MAX - EXL-03) */}
       {magicLinkExam && (
         <div
           role="dialog"
@@ -737,7 +847,7 @@ export default function ExamsPage() {
             </div>
 
             <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-4 leading-relaxed">
-              Học sinh chỉ cần mở liên kết hoặc quét mã QR dưới đây trên điện thoại để làm bài trực tuyến. Không cần đăng nhập, hệ thống tự động ghi nhận điểm số và lập bảng xếp hạng.
+              Học sinh chỉ cần mở liên kết dưới đây trên điện thoại hoặc máy tính để làm bài trực tuyến. Không cần đăng nhập, hệ thống tự động ghi nhận điểm số theo ma trận đề thi.
             </p>
 
             <div className="rounded-xl border border-border bg-neutral-50 dark:bg-muted/40 p-3.5 mb-4">
@@ -750,25 +860,13 @@ export default function ExamsPage() {
                   type="text"
                   readOnly
                   aria-label="Đường dẫn làm bài trực tuyến cho học sinh"
-                  value={
-                    typeof window !== "undefined"
-                      ? `${window.location.origin}/grading/submit/${magicLinkExam.id}?name=${encodeURIComponent(
-                          magicLinkExam.name
-                        )}`
-                      : `https://eduteast.vn/grading/submit/${magicLinkExam.id}`
-                  }
+                  value={magicLinkUrl}
                   className="block w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 />
                 <button
                   type="button"
                   onClick={() => {
-                    const link =
-                      typeof window !== "undefined"
-                        ? `${window.location.origin}/grading/submit/${magicLinkExam.id}?name=${encodeURIComponent(
-                            magicLinkExam.name
-                          )}`
-                        : `https://eduteast.vn/grading/submit/${magicLinkExam.id}`;
-                    navigator.clipboard.writeText(link);
+                    navigator.clipboard.writeText(magicLinkUrl);
                     setCopiedMagicLink(true);
                     showToast("Đã sao chép liên kết làm bài vào khay nhớ tạm!", "success");
                     setTimeout(() => setCopiedMagicLink(false), 2000);
@@ -799,9 +897,17 @@ export default function ExamsPage() {
       <UpgradeTierModal
         isOpen={!!upgradeTier}
         onClose={() => setUpgradeTier(null)}
-        requiredTier={upgradeTier || "max"}
-        featureTitle="Giao đề Online qua Magic Link (Không cần tài khoản)"
-        featureDesc="Đặc quyền Gói Luyện Thi MAX: Biến mọi đề thi trong kho của bạn thành liên kết và mã QR trực tuyến gửi qua Zalo. Học sinh làm bài tức thì trên điện thoại, hệ thống tự động chấm điểm và xếp hạng cả lớp."
+        requiredTier={upgradeTier || "pro"}
+        featureTitle={
+          upgradeTier === "max"
+            ? "Giao đề Online qua Magic Link (Không cần tài khoản)"
+            : "Trình chiếu Bục Giảng Số 4.0 (Gói PRO)"
+        }
+        featureDesc={
+          upgradeTier === "max"
+            ? "Đặc quyền Gói Luyện Thi MAX: Biến mọi đề thi trong kho của bạn thành liên kết và mã QR trực tuyến gửi qua Zalo. Học sinh làm bài tức thì trên điện thoại, hệ thống tự động chấm điểm và xếp hạng cả lớp."
+            : "Đặc quyền Gói Giảng Dạy PRO: Trình chiếu câu hỏi thông minh chuẩn GDPT 2025, bảng nháp Excalidraw tương tác thời gian thực, phóng to công thức LaTeX và xuất file đề kép."
+        }
         onSelectPlan={(plan) => setCheckoutPlan(plan)}
       />
 

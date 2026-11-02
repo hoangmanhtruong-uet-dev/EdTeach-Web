@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
+import { SUPPORT_EMAIL } from "@/lib/constants";
 
 export function Footer() {
   return (
@@ -43,7 +44,7 @@ export function Footer() {
           <div>
             <h3 className="text-sm font-semibold">Liên hệ</h3>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li>Email: support@edutest.ai</li>
+              <li>Email: {SUPPORT_EMAIL}</li>
               <li>
                 <Link href="https://facebook.com" className="hover:text-foreground">
                   Facebook

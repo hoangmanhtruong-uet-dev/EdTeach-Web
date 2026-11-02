@@ -382,62 +382,7 @@ function TeachingStudioContent() {
 
         const data: any = await getExamById(examId);
         if (!data) {
-          const isAuditMode =
-            typeof window !== "undefined" &&
-            (window.location.search.includes("audit=true") ||
-              localStorage.getItem("edteach_audit") === "true" ||
-              document.cookie.includes("audit=true"));
-
-          if (isAuditMode) {
-            const fallbackExam: any = {
-              id: examId,
-              name: "Đề Khảo Sát Vật Lý 12 — Chuẩn Ma Trận GDPT 2025",
-              subject: "Vật lý",
-              grade: "12",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              user_id: user?.id || "audit-user",
-              questions: [
-                {
-                  id: "q_demo_1",
-                  exam_id: examId,
-                  content: "Một con lắc lò xo dao động điều hòa theo phương trình $x = 4\\cos(10\\pi t + \\pi/3)\\text{ cm}$. Tốc độ cực đại của vật trong quá trình dao động là:",
-                  type: "multiple_choice",
-                  order_index: 1,
-                  options: [
-                    "A. 40π cm/s",
-                    "B. 40 cm/s",
-                    "C. 20π cm/s",
-                    "D. 160π cm/s"
-                  ],
-                  correct_answer: "A",
-                  explanation: "Tốc độ cực đại của dao động điều hòa tính theo công thức: $v_{\\max} = \\omega A = 10\\pi \\cdot 4 = 40\\pi\\text{ cm/s}$. Chọn phương án A.",
-                  difficulty: "medium",
-                  created_at: new Date().toISOString(),
-                },
-                {
-                  id: "q_demo_2",
-                  exam_id: examId,
-                  content: "Hiện tượng quang điện ngoài xảy ra khi chiếu ánh sáng đơn sắc có bước sóng $\\lambda$ thích hợp vào bề mặt kim loại. Giới hạn quang điện của kim loại phụ thuộc vào:",
-                  type: "multiple_choice",
-                  order_index: 2,
-                  options: [
-                    "A. Bản chất của kim loại",
-                    "B. Cường độ của chùm sáng kích thích",
-                    "C. Bước sóng của ánh sáng kích thích",
-                    "D. Điện thế của catôt"
-                  ],
-                  correct_answer: "A",
-                  explanation: "Giới hạn quang điện $\\lambda_0 = \\frac{hc}{A}$ chỉ phụ thuộc vào bản chất của kim loại (công thoát A). Chọn phương án A.",
-                  difficulty: "easy",
-                  created_at: new Date().toISOString(),
-                }
-              ],
-            };
-            setExam(fallbackExam);
-          } else {
-            setError("Không tìm thấy đề thi hoặc đề thi đã bị xóa.");
-          }
+          setError("Không tìm thấy đề thi hoặc đề thi đã bị xóa.");
         } else {
           if (data.questions && Array.isArray(data.questions)) {
             data.questions.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0));
@@ -784,6 +729,60 @@ function TeachingStudioContent() {
           <Loader2 className="h-9 w-9 animate-spin text-amber-400" />
           <p className="text-sm font-semibold tracking-wide">Đang khởi tạo Bục Giảng Số 4.0…</p>
         </div>
+      </div>
+    );
+  }
+
+  // EXL-05: PRO Tier Gate for Bục Giảng Số
+  if (!loading && !isPro) {
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-950 p-6 text-center text-white">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 mb-4">
+          <Crown className="h-8 w-8" />
+        </div>
+        <h2 className="text-2xl font-bold text-white">Bục Giảng Số 4.0 Dành Riêng Cho Gói PRO & MAX</h2>
+        <p className="mt-3 text-sm text-slate-400 max-w-lg leading-relaxed">
+          Trải nghiệm trình chiếu chữa bài thông minh, phóng to công thức LaTeX, vẽ phác thảo thời gian thực với bảng nháp Excalidraw, thí nghiệm mô phỏng 3D và giao đề kép chuyên nghiệp.
+        </p>
+        <div className="mt-6 flex items-center gap-3">
+          <button
+            onClick={() => setUpgradeModalOpen(true)}
+            className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-amber-500/25 hover:from-amber-600 hover:to-amber-700 transition cursor-pointer"
+          >
+            Nâng cấp Gói PRO ngay
+          </button>
+          <button
+            onClick={() => router.push("/exams")}
+            className="rounded-xl border border-slate-700 px-5 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800 transition cursor-pointer"
+          >
+            Quay lại danh sách đề thi
+          </button>
+        </div>
+
+        {/* Upgrade Modal */}
+        <UpgradeTierModal
+          isOpen={upgradeModalOpen}
+          onClose={() => setUpgradeModalOpen(false)}
+          requiredTier="pro"
+          featureTitle="Trình chiếu Bục Giảng Số 4.0"
+          featureDesc="Nâng cấp lên gói PRO để mở khóa toàn bộ tính năng Bục Giảng Số, bảng nháp thông minh, xuất file đề kép song song và kho phòng thí nghiệm 3D."
+          onSelectPlan={(plan) => {
+            setUpgradeModalOpen(false);
+            setCheckoutPlan(plan);
+          }}
+        />
+
+        {checkoutPlan && (
+          <PaymentCheckoutModal
+            isOpen={!!checkoutPlan}
+            onClose={() => setCheckoutPlan(null)}
+            selectedPlan={checkoutPlan}
+            onSuccess={() => {
+              setCheckoutPlan(null);
+              window.location.reload();
+            }}
+          />
+        )}
       </div>
     );
   }

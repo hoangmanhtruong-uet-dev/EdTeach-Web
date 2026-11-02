@@ -402,17 +402,13 @@ export default function StudentExamsPage() {
                       )}
                     </div>
                   ) : (
-                    <button
-                      onClick={() => {
-                        alert(
-                          `Bắt đầu làm bài: "${exam.examTitle}"\nThời gian: ${exam.durationMinutes || 45} phút.\nChúc bạn làm bài thật tốt!`
-                        );
-                      }}
+                    <Link
+                      href={`/student/exams/${exam.examId || exam.id}`}
                       className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer"
                     >
                       <span>Bắt đầu làm bài</span>
                       <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
+                    </Link>
                   )}
                 </div>
               </div>

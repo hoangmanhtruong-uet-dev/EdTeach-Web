@@ -116,35 +116,68 @@ export function ShuffleExamModal({
         let newOptions = q.options;
         let newCorrect = q.correct_answer;
 
-        if (Array.isArray(q.options) && q.options.length === 4) {
-          // Lưu lại nội dung đáp án đúng cũ
-          const oldCorrectKey = (q.correct_answer || "").toString().trim().toUpperCase();
-          const targetText =
-            q.options.find((opt: any) =>
-              typeof opt === "string" ? opt.startsWith(oldCorrectKey) : opt.key === oldCorrectKey
-            )?.text || "";
+        const isOptionsObject = q.options && typeof q.options === "object" && !Array.isArray(q.options);
+        let rawEntries: Array<{ originalKey: string; text: string }> = [];
 
-          // Đảo 4 lựa chọn
-          const optSeed = variantSeed + qIdx * 7;
-          const shuffledOpts = shuffleArray(q.options, optSeed);
-          const keys = ["A", "B", "C", "D"];
-
-          newOptions = shuffledOpts.map((opt: any, i: number) => {
-            const rawText = typeof opt === "string" ? opt.replace(/^[A-D][.:]\s*/, "") : opt.text || "";
+        if (isOptionsObject) {
+          rawEntries = Object.entries(q.options).map(([k, v]) => ({
+            originalKey: k.trim().toUpperCase(),
+            text: typeof v === "string" ? v : String(v ?? ""),
+          }));
+        } else if (Array.isArray(q.options)) {
+          rawEntries = q.options.map((opt: any, i: number) => {
+            const fallbackKey = String.fromCharCode(65 + i);
+            if (typeof opt === "string") {
+              const match = opt.match(/^([A-D])\s*[\.:]\s*(.*)$/i);
+              return {
+                originalKey: match ? match[1].toUpperCase() : fallbackKey,
+                text: match ? match[2].trim() : opt.trim(),
+              };
+            }
             return {
-              key: keys[i],
-              text: rawText,
+              originalKey: (opt.key || fallbackKey).toString().trim().toUpperCase(),
+              text: (opt.text || "").toString().trim(),
             };
           });
+        }
 
-          // Tìm lại key mới của phương án đúng
-          const foundIdx = newOptions.findIndex((opt: any) =>
-            targetText ? opt.text === targetText : false
-          );
-          if (foundIdx !== -1) {
-            newCorrect = keys[foundIdx];
+        if (rawEntries.length === 4) {
+          const oldCorrectKey = (q.correct_answer || "").toString().trim().toUpperCase();
+          let targetEntry = rawEntries.find((e) => e.originalKey === oldCorrectKey);
+          if (!targetEntry && rawEntries.length > 0) {
+            targetEntry =
+              rawEntries.find((e) => e.text.toLowerCase() === oldCorrectKey.toLowerCase()) ||
+              rawEntries[0];
+          }
+
+          const optSeed = variantSeed + qIdx * 7;
+          const shuffledEntries = shuffleArray(rawEntries, optSeed);
+          const keys = ["A", "B", "C", "D"];
+          let foundCorrectKey = "A";
+
+          if (isOptionsObject) {
+            const nextOptionsObj: Record<string, string> = {};
+            shuffledEntries.forEach((entry, i) => {
+              const k = keys[i];
+              nextOptionsObj[k] = entry.text;
+              if (entry === targetEntry) {
+                foundCorrectKey = k;
+              }
+            });
+            newOptions = nextOptionsObj;
+            newCorrect = foundCorrectKey;
           } else {
-            newCorrect = keys[0];
+            newOptions = shuffledEntries.map((entry, i) => {
+              const k = keys[i];
+              if (entry === targetEntry) {
+                foundCorrectKey = k;
+              }
+              return {
+                key: k,
+                text: entry.text,
+              };
+            });
+            newCorrect = foundCorrectKey;
           }
         }
 

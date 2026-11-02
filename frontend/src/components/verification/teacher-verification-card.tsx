@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   ShieldCheck,
   Upload,
@@ -17,6 +18,7 @@ import {
   Loader2,
   RefreshCw,
   Info,
+  ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 
@@ -135,9 +137,6 @@ export function TeacherVerificationCard() {
               <h3 className="font-bold text-base text-neutral-900 dark:text-white">
                 Xác Thực Danh Tính Giáo Viên (Teacher eKYC)
               </h3>
-              <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
-                Sprint 3
-              </span>
             </div>
             <p className="text-xs text-neutral-500 dark:text-slate-400">
               Định danh sư phạm chính chủ bằng AI Vision OCR & kích hoạt Tích Xanh bảo chứng
@@ -156,8 +155,17 @@ export function TeacherVerificationCard() {
             <span>Chờ Admin duyệt (24h)</span>
           </div>
         ) : (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-slate-800 text-neutral-600 dark:text-slate-400 text-xs font-semibold">
-            <span>Chưa xác thực</span>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-slate-800 text-neutral-600 dark:text-slate-400 text-xs font-semibold">
+              <span>Chưa xác thực</span>
+            </div>
+            <Link
+              href={profile?.role === "tutor" ? "/verify/tutor" : "/verify/teacher"}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-xs"
+            >
+              <span>Mở trang xác thực riêng</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         )}
       </div>

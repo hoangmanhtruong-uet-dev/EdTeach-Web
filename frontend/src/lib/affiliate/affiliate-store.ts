@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { APP_URL, MINIMUM_PAYOUT_VND } from "@/lib/constants";
 
 function getServiceSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -195,7 +196,7 @@ function maskEmail(email: string): string {
 
 export async function getAffiliateStats(
   userId: string,
-  origin = "https://edutest.ai"
+  origin = APP_URL
 ): Promise<AffiliateStats> {
   const supabase = getServiceSupabase();
 
@@ -344,6 +345,20 @@ export async function recordCommission(
           updated_at: new Date().toISOString(),
         })
         .eq("id", inviterId);
+
+      // Đồng bộ vào ngăn withdrawable_revenue_vnd của bảng wallets
+      const { data: inviterWallet } = await (supabase.from("wallets") as any)
+        .select("id, withdrawable_revenue_vnd")
+        .eq("user_id", inviterId)
+        .maybeSingle();
+      if (inviterWallet) {
+        await (supabase.from("wallets") as any)
+          .update({
+            withdrawable_revenue_vnd: Number(inviterWallet.withdrawable_revenue_vnd || 0) + commissionAmount,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", inviterWallet.id);
+      }
     }
 
     return { success: true, commissionAmount };
@@ -367,8 +382,9 @@ export async function convertAffiliateToCredits(
     };
   }
 
-  // Tỷ lệ ưu đãi: 1.000đ = 1.500 Credits (Nhân 1.5x)
-  const creditsAdded = Math.round(amountVnd * 1.5);
+  // ECO-01 FIX: Xóa bỏ hoàn toàn hệ số nhân 1.5x để triệt tiêu lỗ hổng Arbitrage
+  // Tỷ giá chuẩn: 1 credit = 100 VNĐ -> amountVnd / 100
+  const creditsAdded = Math.round(amountVnd / 100);
   const supabase = getServiceSupabase();
   const nowIso = new Date().toISOString();
 
@@ -400,7 +416,7 @@ export async function convertAffiliateToCredits(
         amountVnd,
         creditsReceived: creditsAdded,
         status: "completed",
-        adminNote: "Quy đổi Credits 1.5x tức thì (Demo Fallback)",
+        adminNote: "Quy đổi Promotional Credits tức thì (Demo Fallback)",
         createdAt: nowIso,
         processedAt: nowIso,
       });
@@ -424,24 +440,34 @@ export async function convertAffiliateToCredits(
       .update({ affiliate_balance: newBalanceVnd, updated_at: nowIso })
       .eq("id", userId);
 
-    // 3. Cộng Credits vào Wallets
+    // 3. Cộng Credits vào Wallets (ngăn promotional_balance) và đồng bộ withdrawable_revenue_vnd
     const { data: wallet } = await (supabase.from("wallets") as any)
-      .select("id, balance")
+      .select("id, balance, promotional_balance, withdrawable_revenue_vnd")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (wallet) {
-      const newCreditsBalance = (wallet.balance || 0) + creditsAdded;
+      const newPromoBalance = (wallet.promotional_balance || 0) + creditsAdded;
+      const newWithdrawable = Math.max(0, (wallet.withdrawable_revenue_vnd || 0) - amountVnd);
       await (supabase.from("wallets") as any)
-        .update({ balance: newCreditsBalance, updated_at: nowIso })
+        .update({
+          promotional_balance: newPromoBalance,
+          withdrawable_revenue_vnd: newWithdrawable,
+          updated_at: nowIso,
+        })
         .eq("id", wallet.id);
 
       // Ghi nhật ký ví
       await (supabase.from("wallet_txns") as any).insert({
         wallet_id: wallet.id,
         amount: creditsAdded,
-        type: "signup_bonus",
-        description: `⚡ Đổi ${amountVnd.toLocaleString()}đ hoa hồng sang +${creditsAdded.toLocaleString()} Credits (Ưu đãi x1.5)`,
+        type: "bonus",
+        description: `⚡ Đổi ${amountVnd.toLocaleString("vi-VN")}đ hoa hồng sang +${creditsAdded.toLocaleString("vi-VN")} Promotional Credits`,
+        metadata: {
+          converted_from_vnd: amountVnd,
+          rate_vnd_per_credit: 100,
+          bucket: "promotional_balance",
+        },
       });
     }
 
@@ -452,7 +478,7 @@ export async function convertAffiliateToCredits(
       amount_vnd: amountVnd,
       credits_received: creditsAdded,
       status: "completed",
-      admin_note: "Quy đổi tự động sang AI Credits tức thì (x1.5)",
+      admin_note: "Quy đổi tự động sang Promotional Credits (1 credit = 100 VNĐ)",
       processed_at: nowIso,
     });
 
@@ -495,8 +521,11 @@ export async function requestCashPayout(
 ): Promise<{ success: boolean; payoutId?: string; error?: string }> {
   const { amountVnd, bankCode, bankAccount, bankAccountName } = params;
 
-  if (amountVnd < 100000) {
-    return { success: false, error: "Hạn mức rút tiền mặt tối thiểu là 100.000đ." };
+  if (amountVnd < MINIMUM_PAYOUT_VND) {
+    return {
+      success: false,
+      error: `Hạn mức rút tiền mặt tối thiểu là ${MINIMUM_PAYOUT_VND.toLocaleString("vi-VN")}đ.`,
+    };
   }
 
   if (!bankCode || !bankAccount || !bankAccountName) {
@@ -553,6 +582,34 @@ export async function requestCashPayout(
     await (supabase.from("users") as any)
       .update({ affiliate_balance: newBalance, updated_at: nowIso })
       .eq("id", userId);
+
+    // Đồng bộ trừ ngăn withdrawable_revenue_vnd trong bảng wallets
+    const { data: userWallet } = await (supabase.from("wallets") as any)
+      .select("id, withdrawable_revenue_vnd")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (userWallet) {
+      await (supabase.from("wallets") as any)
+        .update({
+          withdrawable_revenue_vnd: Math.max(0, Number(userWallet.withdrawable_revenue_vnd || 0) - amountVnd),
+          updated_at: nowIso,
+        })
+        .eq("id", userWallet.id);
+
+      await (supabase.from("wallet_txns") as any).insert({
+        wallet_id: userWallet.id,
+        amount: 0,
+        type: "payout_request",
+        description: `Yêu cầu rút hoa hồng affiliate ${amountVnd.toLocaleString("vi-VN")} VNĐ về ${bankCode}`,
+        metadata: {
+          payout_type: "affiliate",
+          amount_vnd: amountVnd,
+          bank_code: bankCode,
+        },
+        created_at: nowIso,
+      });
+    }
 
     const { data: payout, error: insErr } = await (supabase.from("affiliate_payouts") as any)
       .insert({

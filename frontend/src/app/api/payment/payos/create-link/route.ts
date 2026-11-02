@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { payOSService } from "@/lib/payment/payos";
 import { saveFallbackOrder } from "@/lib/payment/payment-fallback-store";
 import { validateAndResolvePackage } from "@/lib/payment/pricing-catalog";
+import { getBaseUrl } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
   try {
@@ -47,9 +48,7 @@ export async function POST(req: NextRequest) {
     // PayOS yêu cầu orderCode là số nguyên dương duy nhất (tối đa 9007199254740991)
     const orderCode = Math.floor(Date.now() / 1000) * 1000 + Math.floor(Math.random() * 1000);
 
-    const host = req.headers.get("host") || "localhost:3000";
-    const protocol = req.headers.get("x-forwarded-proto") || "http";
-    const baseUrl = `${protocol}://${host}`;
+    const baseUrl = getBaseUrl(req);
 
     const verifiedTier = resolvedPackage.tier || (verifiedIsPro ? "pro" : "free");
 

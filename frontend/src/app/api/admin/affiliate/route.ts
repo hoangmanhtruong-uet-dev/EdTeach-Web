@@ -4,6 +4,7 @@ import {
   getAllPayoutsForAdmin,
   processPayoutAdmin,
 } from "@/lib/affiliate/affiliate-store";
+import { isAdmin } from "@/lib/auth/admin";
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,11 +13,8 @@ export async function GET(req: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Check admin authorization
-    const isAuthorized =
-      !user ||
-      user.email?.includes("admin") ||
-      user.email === "truongcri0101@gmail.com";
+    // Check admin authorization: must be authenticated AND admin
+    const isAuthorized = user && (await isAdmin(supabase, user));
 
     if (!isAuthorized) {
       return NextResponse.json(
@@ -47,10 +45,8 @@ export async function POST(req: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const isAuthorized =
-      !user ||
-      user.email?.includes("admin") ||
-      user.email === "truongcri0101@gmail.com";
+    // Check admin authorization: must be authenticated AND admin
+    const isAuthorized = user && (await isAdmin(supabase, user));
 
     if (!isAuthorized) {
       return NextResponse.json(

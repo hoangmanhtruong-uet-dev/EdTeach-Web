@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const session = getRemoteSession(token);
+    const session = await getRemoteSession(token);
     if (!session) {
       return NextResponse.json(
         { error: "Phiên quét không tồn tại hoặc đã hết hạn." },
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const submissions = consumePendingSubmissions(token);
+    const submissions = await consumePendingSubmissions(token);
 
     return NextResponse.json({
       success: true,

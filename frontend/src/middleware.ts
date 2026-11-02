@@ -37,26 +37,39 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isDashboardRoute =
+  const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/exams") ||
+    pathname.startsWith("/teach") ||
+    (pathname.startsWith("/grading") && !pathname.startsWith("/grading/submit")) ||
     pathname.startsWith("/wallet") ||
-    pathname.startsWith("/settings");
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/student") ||
+    (pathname.startsWith("/labs") && !pathname.startsWith("/labs/courses/") && !pathname.startsWith("/labs/covers/")) ||
+    pathname.startsWith("/marketplace") ||
+    pathname.startsWith("/whiteboard") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/affiliate");
 
   const isAuthRoute =
     pathname.startsWith("/login") || pathname.startsWith("/register");
 
-  // Nếu chưa đăng nhập và truy cập các trang Dashboard -> Chuyển về /login
-  // Cho phép /exams/create để người dùng trải nghiệm ngay phòng soạn đề
-  const isAudit = request.headers.get("x-playwright-audit") === "true";
-  if (!isAudit && !user && isDashboardRoute && !pathname.startsWith("/exams/create")) {
+  // Nếu chưa đăng nhập và truy cập các trang được bảo vệ -> Chuyển về /login?redirectTo=...
+  if (!user && isProtectedRoute) {
     const redirectUrl = new URL("/login", request.url);
+    redirectUrl.searchParams.set("redirectTo", pathname);
     redirectUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Nếu đã đăng nhập và truy cập trang /login hoặc /register -> Chuyển vào /dashboard
+  // Nếu đã đăng nhập và truy cập trang /login hoặc /register -> Chuyển vào trang đích hoặc /dashboard
   if (user && isAuthRoute) {
+    const destination =
+      request.nextUrl.searchParams.get("redirectTo") ||
+      request.nextUrl.searchParams.get("next");
+    if (destination && destination.startsWith("/") && !destination.startsWith("//")) {
+      return NextResponse.redirect(new URL(destination, request.url));
+    }
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -67,8 +80,16 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/exams/:path*",
+    "/teach/:path*",
+    "/grading/:path*",
     "/wallet/:path*",
     "/settings/:path*",
+    "/student/:path*",
+    "/labs/:path*",
+    "/marketplace/:path*",
+    "/whiteboard/:path*",
+    "/admin/:path*",
+    "/affiliate/:path*",
     "/login",
     "/register",
   ],

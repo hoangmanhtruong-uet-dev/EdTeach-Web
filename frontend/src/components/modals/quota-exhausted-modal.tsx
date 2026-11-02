@@ -16,6 +16,7 @@ import {
   Loader2,
   Heart,
 } from "lucide-react";
+import { APP_URL, REFERRAL_BONUS_CREDITS } from "@/lib/constants";
 
 interface QuotaExhaustedModalProps {
   isOpen: boolean;
@@ -51,9 +52,9 @@ export function QuotaExhaustedModal({
 
   if (!isOpen) return null;
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://edutest.ai";
+  const origin = typeof window !== "undefined" ? window.location.origin : APP_URL;
   const shareUrl = `${origin}?ref=${referralCode}`;
-  const prewrittenMsg = `Thầy/cô ơi, em vừa dùng thử EduTest AI soạn đề thi chuẩn Bộ GD&ĐT nhanh và chuẩn ma trận lắm. Đăng ký qua link này thì cả hai thầy cô cùng được tặng thêm 2.000 credits miễn phí (tương đương 4 đề thi Flash) nhé: ${shareUrl}`;
+  const prewrittenMsg = `Thầy/cô ơi, em vừa dùng thử EduTest AI soạn đề thi chuẩn Bộ GD&ĐT nhanh và chuẩn ma trận lắm. Đăng ký qua link này thì cả hai thầy cô cùng được tặng thêm ${REFERRAL_BONUS_CREDITS.toLocaleString("vi-VN")} credits miễn phí (tương đương 4 đề thi Flash) nhé: ${shareUrl}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -100,7 +101,7 @@ export function QuotaExhaustedModal({
   const accountNo = process.env.NEXT_PUBLIC_PAYMENT_ACCOUNT_NO || "0988888888";
   const accountName = process.env.NEXT_PUBLIC_PAYMENT_ACCOUNT_NAME || "EDUTEST AI";
 
-  const transferAmount = selectedPlan === "pack19" ? 19000 : 99000;
+  const transferAmount = selectedPlan === "pack19" ? 19000 : 149000;
   const transferContent = `EDUPAY ${userId.slice(0, 6).toUpperCase()}`;
   const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${transferAmount}&addInfo=${encodeURIComponent(
     transferContent
@@ -167,10 +168,10 @@ export function QuotaExhaustedModal({
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-blue-900">
-                      Mời 1 đồng nghiệp = Cả hai cùng nhận +2.000 credits miễn phí!
+                      Mời 1 đồng nghiệp = Cả hai cùng nhận +{REFERRAL_BONUS_CREDITS.toLocaleString("vi-VN")} credits miễn phí!
                     </h4>
                     <p className="mt-1 text-xs text-blue-700 leading-relaxed">
-                      Chia sẻ mã hoặc link giới thiệu cho giáo viên cùng trường hoặc bạn bè. Khi đồng nghiệp đăng ký qua link, cả hai thầy cô đều được cộng ngay 2.000 credits vào ví (tương đương 4 đề thi Flash chuẩn ma trận).
+                      Chia sẻ mã hoặc link giới thiệu cho giáo viên cùng trường hoặc bạn bè. Khi đồng nghiệp đăng ký qua link, cả hai thầy cô đều được cộng ngay {REFERRAL_BONUS_CREDITS.toLocaleString("vi-VN")} credits vào ví (tương đương 4 đề thi Flash chuẩn ma trận).
                     </p>
                   </div>
                 </div>
@@ -260,7 +261,7 @@ export function QuotaExhaustedModal({
                   <p className="mt-1 text-[11px] text-slate-500">+10.000 credits vào ví (~20 đề Flash)</p>
                 </div>
 
-                {/* Option 99k */}
+                {/* Option PRO 149k */}
                 <div
                   onClick={() => setSelectedPlan("sub49")}
                   className={`cursor-pointer rounded-xl border p-3.5 transition ${
@@ -273,8 +274,8 @@ export function QuotaExhaustedModal({
                     GÓI KHUYÊN DÙNG
                   </span>
                   <h4 className="mt-1 text-sm font-bold text-slate-900">Giáo Viên PRO</h4>
-                  <p className="text-lg font-extrabold text-amber-600">99.000đ<span className="text-xs font-normal text-slate-500">/tháng</span></p>
-                  <p className="mt-1 text-[11px] text-slate-500">+30.000 credits & mở 54+ Labs 3D</p>
+                  <p className="text-lg font-extrabold text-amber-600">149.000đ<span className="text-xs font-normal text-slate-500">/tháng</span></p>
+                  <p className="mt-1 text-[11px] text-slate-500">+30.000 credits & mở khóa AI nâng cao</p>
                 </div>
               </div>
 

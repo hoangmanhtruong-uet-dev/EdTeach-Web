@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       success: true,
       creditsAdded: result.creditsAdded,
       newBalanceVnd: result.newBalanceVnd,
-      message: `Đã quy đổi thành công ${amountVnd.toLocaleString()}đ sang +${result.creditsAdded.toLocaleString()} Credits (Ưu đãi x1.5)!`,
+      message: `Đã quy đổi thành công ${amountVnd.toLocaleString()}đ sang +${result.creditsAdded.toLocaleString()} Credits!`,
     });
   } catch (err: any) {
     console.error("[API Affiliate Convert] POST error:", err);

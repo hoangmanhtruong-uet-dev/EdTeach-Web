@@ -27,7 +27,7 @@ export const PRO_MONTHLY: PricingPlan = {
   description: "Dành cho Giáo viên trường THCS / THPT đứng lớp tiêu chuẩn",
   features: [
     "Cộng +30.000 Credits/tháng vào ví",
-    "Mở khóa toàn bộ 64+ Phòng Thí Nghiệm 3D & Bảng trắng tương tác",
+    "Trợ lý AI phân tích Thí nghiệm 3D, Kính vẽ bục giảng & Tự động sinh đề từ mô phỏng (54 bài mở miễn phí)",
     "Xuất file Word (.docx) & PDF sạch 100% (Không dính watermark của web)",
     "Trộn tối đa 4 mã đề chuẩn GDPT 2025 (kèm Barem ma trận đặc tả)",
     "Chấm trắc nghiệm OMR & lưu lịch sử theo từng lớp",
@@ -68,7 +68,7 @@ export const MAX_MONTHLY: PricingPlan = {
   description: "Dành cho Giáo viên Luyện thi / Dạy thêm chuyên nghiệp / Trung tâm",
   features: [
     "Bao gồm toàn bộ quyền lợi của Gói PRO",
-    "Cộng +100.000 Credits/tháng (Ưu tiên AI DeepSeek-R1 suy luận sâu)",
+    "Cộng +100.000 Credits/tháng (Mô hình AI Suy luận Đa tác tử: Gemini 2.0 Thinking & Deep Reasoning)",
     "Tải lên PDF/Ảnh đề cũ -> AI bóc tách & 'Nhân bản đề tương tự'",
     "Trộn đề công nghiệp: Trộn từ 8 đến 12 mã đề thi độc lập",
     "Đóng dấu Watermark thương hiệu riêng của Giáo viên / Lớp học chống lộ đề",
@@ -111,6 +111,34 @@ export const CREDIT_PACKS = [
 export const IS_BETA_ALL_FEATURES_UNLOCKED = false;
 
 /**
+ * Kiểm tra xem gói thuê bao có còn hạn sử dụng hay không.
+ * - Trả về false nếu subscription_expires_at đã qua hoặc không hợp lệ.
+ * - Trả về true nếu subscription_expires_at > now().
+ * - Nếu subscription_expires_at là null/undefined:
+ *   + Với trường học (school) hoặc tài khoản quản trị: coi là vĩnh viễn/hợp đồng.
+ *   + Với các gói trả phí pro/max thông thường: nếu có ngày hết hạn thì bắt buộc phải chưa hết hạn.
+ */
+export function isSubscriptionActive(profile: any): boolean {
+  if (!profile) return false;
+
+  const rawExpires = profile.subscription_expires_at || (profile as any).subscriptionExpiresAt;
+  if (rawExpires) {
+    const expiresTimestamp = new Date(rawExpires).getTime();
+    if (isNaN(expiresTimestamp) || expiresTimestamp <= Date.now()) {
+      return false; // Đã hết hạn!
+    }
+    return true; // Còn hạn
+  }
+
+  // Nếu không có subscription_expires_at:
+  // Nếu là gói free thì không có quyền trả phí
+  if (!profile.tier || profile.tier === "free") return false;
+
+  // Trường học (school) hoặc tài khoản được cấp thủ công không set hạn
+  return true;
+}
+
+/**
  * Kiểm tra người dùng có quyền gói MAX (Luyện thi VIP / Trường học / Quản trị viên)
  */
 export function isMaxUser(profile: any): boolean {
@@ -125,16 +153,13 @@ export function isMaxUser(profile: any): boolean {
   ) {
     return true;
   }
-  return (
-    profile.tier === "max" ||
-    profile.tier === "school" ||
-    (profile as any).subscription_tier === "max" ||
-    (profile as any).subscription_tier === "school" ||
-    profile.preferences?.subscription_tier === "max" ||
-    profile.preferences?.subscription_tier === "school" ||
-    (profile as any).user_metadata?.subscription_tier === "max" ||
-    (profile as any).user_metadata?.subscription_tier === "school"
-  );
+  // Nguồn chân lý là cột 'tier' trên bảng public.users
+  const tier = profile.tier || (profile as any).subscription_tier;
+  if (tier !== "max" && tier !== "school") {
+    return false;
+  }
+  // Đối chiếu chặt chẽ subscription_expires_at > now()
+  return isSubscriptionActive(profile);
 }
 
 /**
@@ -145,12 +170,12 @@ export function isProUser(profile: any): boolean {
   if (!profile) return false;
   // Người dùng gói MAX có toàn bộ đặc quyền của gói PRO
   if (isMaxUser(profile)) return true;
-  return (
-    profile.tier === "pro" ||
-    (profile as any).subscription_tier === "pro" ||
-    profile.preferences?.subscription_tier === "pro" ||
-    (profile as any).user_metadata?.subscription_tier === "pro"
-  );
+  const tier = profile.tier || (profile as any).subscription_tier;
+  if (tier !== "pro") {
+    return false;
+  }
+  // Đối chiếu chặt chẽ subscription_expires_at > now()
+  return isSubscriptionActive(profile);
 }
 
 /**
@@ -161,6 +186,19 @@ export function isProUser(profile: any): boolean {
  */
 export function isRealPayingUser(profile: any): boolean {
   return isProUser(profile);
+}
+
+/**
+ * Lấy phân hạng hiệu lực hiện tại sau khi đã kiểm tra thời hạn
+ */
+export function getEffectiveTier(profile: any): "free" | "pro" | "max" | "school" {
+  if (isMaxUser(profile)) {
+    return profile?.tier === "school" ? "school" : "max";
+  }
+  if (isProUser(profile)) {
+    return "pro";
+  }
+  return "free";
 }
 
 export function getTierName(profile: any): string {

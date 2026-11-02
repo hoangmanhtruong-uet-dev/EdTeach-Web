@@ -9,6 +9,7 @@ import {
   saveStudentReport,
   formatZaloShareMessage,
 } from "@/lib/reports/student-report-store";
+import { getBaseUrl } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
   try {
@@ -122,9 +123,7 @@ export async function POST(req: NextRequest) {
     await saveStudentReport(reportData);
 
     // 7. Compute absolute report URL for sharing
-    const host = req.headers.get("host") || "localhost:3001";
-    const proto = req.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
-    const baseUrl = `${proto}://${host}`;
+    const baseUrl = getBaseUrl(req);
     const reportUrl = `${baseUrl}/report/${token}`;
 
     const zaloShareText = formatZaloShareMessage(reportData, baseUrl);

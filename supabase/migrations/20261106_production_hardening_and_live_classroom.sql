@@ -52,26 +52,73 @@ BEGIN
         updated_at = now()
     WHERE id = v_wallet_id;
 
-    -- Ghi sổ giao dịch ví bất biến
-    INSERT INTO public.credit_transactions (
-        wallet_id,
-        user_id,
-        amount,
-        balance_after,
-        type,
-        description,
-        reference_id
-    ) VALUES (
-        v_wallet_id,
-        p_user_id,
-        -p_amount,
-        v_new_balance,
-        'deduct',
-        p_description,
-        p_ref_id
-    );
+    -- Ghi sổ giao dịch ví bất biến vào bảng public.wallet_txns
+    IF p_amount > 0 THEN
+        INSERT INTO public.wallet_txns (
+            wallet_id,
+            amount,
+            type,
+            description,
+            ref_id
+        ) VALUES (
+            v_wallet_id,
+            -p_amount,
+            'generate_exam',
+            p_description,
+            p_ref_id
+        );
+    END IF;
 
-    RETURN jsonb_build_object('success', true, 'new_balance', v_new_balance);
+    RETURN jsonb_build_object('success', true, 'balance', v_new_balance, 'new_balance', v_new_balance, 'deducted', p_amount);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Hàm hoàn lại Credits nguyên tử khi gọi AI bị lỗi
+CREATE OR REPLACE FUNCTION public.refund_user_credits(
+    p_user_id UUID,
+    p_amount INTEGER,
+    p_description TEXT DEFAULT '',
+    p_ref_id UUID DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_balance INTEGER;
+    v_wallet_id UUID;
+    v_new_balance INTEGER;
+BEGIN
+    SELECT id, balance INTO v_wallet_id, v_balance
+    FROM public.wallets
+    WHERE user_id = p_user_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'WALLET_NOT_FOUND');
+    END IF;
+
+    v_new_balance := v_balance + p_amount;
+
+    UPDATE public.wallets
+    SET balance = v_new_balance,
+        updated_at = now()
+    WHERE id = v_wallet_id;
+
+    IF p_amount > 0 THEN
+        INSERT INTO public.wallet_txns (
+            wallet_id,
+            amount,
+            type,
+            description,
+            ref_id
+        ) VALUES (
+            v_wallet_id,
+            p_amount,
+            'refund',
+            p_description,
+            p_ref_id
+        );
+    END IF;
+
+    RETURN jsonb_build_object('success', true, 'balance', v_new_balance, 'new_balance', v_new_balance, 'refunded', p_amount);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

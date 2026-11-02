@@ -33,7 +33,7 @@ import {
   Crown,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
-import { isMaxUser, PricingPlan } from "@/lib/payment/plans";
+import { isProUser, isMaxUser, PricingPlan } from "@/lib/payment/plans";
 import { UpgradeTierModal } from "@/components/modals/upgrade-tier-modal";
 import { PaymentCheckoutModal } from "@/components/modals/payment-checkout-modal";
 import { ZaloShareModal } from "./zalo-share-modal";
@@ -92,7 +92,7 @@ export function SessionDetailView({
 }: SessionDetailViewProps) {
   const router = useRouter();
   const { profile } = useAuth();
-  const isProUser = profile?.tier === "pro" || profile?.tier === "school";
+  const isPro = isProUser(profile);
 
   // Modal states
   const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);

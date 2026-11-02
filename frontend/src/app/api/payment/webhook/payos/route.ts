@@ -125,9 +125,22 @@ export async function POST(req: NextRequest) {
       // Nâng cấp gói cước MAX hoặc PRO và tính hạn sử dụng
       const isSemester = paidAmount === 899000 || paidAmount === 599000;
       const daysToAdd = isSemester ? 150 : 30; // 5 tháng (học kỳ) hoặc 30 ngày (hàng tháng)
-      const expiresAtIso = new Date(Date.now() + daysToAdd * 24 * 3600 * 1000).toISOString();
 
-      if (paidAmount === 229000 || paidAmount === 899000 || data.description?.includes("MAX")) {
+      // Lấy thời hạn hiện tại của người dùng để cộng dồn nếu đang còn hạn
+      const { data: currentUser } = await (supabase.from("users") as any)
+        .select("subscription_expires_at, tier")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const currentExpiresAt = currentUser?.subscription_expires_at
+        ? new Date(currentUser.subscription_expires_at).getTime()
+        : 0;
+      const now = Date.now();
+      const baseTimestamp = currentExpiresAt > now ? currentExpiresAt : now;
+      const expiresAtIso = new Date(baseTimestamp + daysToAdd * 24 * 3600 * 1000).toISOString();
+
+      // PRC-02 FIX: Loại bỏ hoàn toàn data.description?.includes('MAX') để ngăn leo thang qua memo chuyển khoản
+      if (paidAmount === 229000 || paidAmount === 899000) {
         try {
           const { error: tierErr } = await (supabase.from("users") as any)
             .update({ 
@@ -160,8 +173,7 @@ export async function POST(req: NextRequest) {
       } else if (
         paidAmount === 149000 ||
         paidAmount === 599000 ||
-        paidAmount === 99000 ||
-        data.description?.includes("PRO")
+        paidAmount === 99000
       ) {
         try {
           await (supabase.from("users") as any)

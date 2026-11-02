@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   Check,
 } from "lucide-react";
+import { SUPPORT_EMAIL } from "@/lib/constants";
 
 const guideTopics = [
   {
@@ -64,7 +65,7 @@ const faqs = [
   },
   {
     q: "Gói PRO có những đặc quyền gì vượt trội so với gói Free?",
-    a: "Gói Giáo Viên PRO (99.000đ/tháng) mở khóa 100% tính năng Chấm trắc nghiệm AI qua camera điện thoại, mở khóa tính năng Học sinh tự nộp bài online qua Link & Mã QR, tặng kèm 500 Credits tạo đề mỗi tháng và không giới hạn số lượt tạo đề hàng ngày.",
+    a: "Gói Giáo Viên PRO (149.000đ/tháng) mở khóa 100% tính năng Chấm trắc nghiệm AI qua camera điện thoại, mở khóa tính năng Học sinh tự nộp bài online qua Link & Mã QR, tặng kèm 30.000 Credits tạo đề mỗi tháng và không giới hạn số lượt tạo đề hàng ngày.",
   },
   {
     q: "Làm sao để thanh toán qua cổng PayOS / VietQR?",
@@ -80,7 +81,7 @@ const faqs = [
   },
   {
     q: "Tôi cần hỗ trợ kỹ thuật hoặc góp ý tính năng thì liên hệ ở đâu?",
-    a: "Thầy/Cô có thể gửi email về hòm thư hỗ trợ chính thức: lienhe@soandethi.com hoặc tham gia nhóm Zalo Hỗ trợ giáo viên toàn quốc để được giải đáp 24/7.",
+    a: `Thầy/Cô có thể gửi email về hòm thư hỗ trợ chính thức: ${SUPPORT_EMAIL} hoặc tham gia nhóm Zalo Hỗ trợ giáo viên toàn quốc để được giải đáp 24/7.`,
   },
 ];
 

@@ -6,7 +6,9 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
-    "lint": "eslint"
+    "lint": "eslint",
+    "copy-excalidraw-assets": "node -e \"const fs=require('fs'); const src='node_modules/@excalidraw/excalidraw/dist/prod/fonts'; const dest='public/fonts'; if(fs.existsSync(src)){fs.mkdirSync(dest, {recursive:true}); fs.cpSync(src, dest, {recursive:true}); console.log('Excalidraw fonts copied to public/fonts');}\"",
+    "postinstall": "npm run copy-excalidraw-assets"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.1",
@@ -19,10 +21,12 @@
     "file-saver": "^2.0.5",
     "katex": "^0.19.0",
     "lucide-react": "^1.56.0",
+    "mammoth": "^1.13.0",
     "next": "^16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "tailwind-merge": "^3.7.0",
+    "unpdf": "^2.1.0",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

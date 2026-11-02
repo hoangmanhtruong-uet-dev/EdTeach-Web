@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const session = getRemoteSession(token);
+    const session = await getRemoteSession(token);
     if (!session) {
       return NextResponse.json(
         { error: "Phiên kết nối không tồn tại hoặc đã hết hạn." },
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         omrResult = json.data;
 
         // Immediately report back score to mobile phone HUD
-        reportSessionResult(token, {
+        await reportSessionResult(token, {
           studentName: omrResult.student_code && omrResult.student_code !== "??????"
             ? `SBD: ${omrResult.student_code}`
             : (studentName || "Thí sinh"),
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       console.warn("Auto OMR grading fallback:", e);
     }
 
-    const sub = submitPhotoToSession(token, {
+    const sub = await submitPhotoToSession(token, {
       imageBase64,
       studentName: omrResult?.student_code
         ? `SBD: ${omrResult.student_code}`

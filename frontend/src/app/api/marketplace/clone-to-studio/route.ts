@@ -77,7 +77,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const questions: any[] = item.exam_data?.questions || [];
+    let examData = item.exam_data;
+    if (!examData || Object.keys(examData).length === 0 || !examData.questions || examData.questions.length === 0) {
+      try {
+        const { data: contents } = await (supabase
+          .from("marketplace_item_contents") as any)
+          .select("exam_data")
+          .eq("item_id", item_id)
+          .maybeSingle();
+
+        const contentData = contents as { exam_data?: any } | null;
+        if (contentData?.exam_data && typeof contentData.exam_data === "object") {
+          examData = contentData.exam_data;
+        }
+      } catch (contentsErr) {
+        console.warn("[clone-to-studio] Error fetching marketplace_item_contents:", contentsErr);
+      }
+    }
+
+    const questions: any[] = examData?.questions || [];
 
     // 3. Tạo bản ghi THẬT trong bảng exams (Sprint MP-1 Fix U10 & A9)
     const newExamData = {

@@ -6,6 +6,7 @@ export const FREE_TIER_MAX_BOARDS = 5;
 
 /**
  * Lấy danh sách bảng vẽ của user hiện tại
+ * Tối ưu hóa: Chỉ select các trường metadata, tránh overfetching mảng elements & files khổng lồ (WBD-05)
  */
 export async function getUserWhiteboards(): Promise<Whiteboard[]> {
   const supabase = createClient();
@@ -13,7 +14,7 @@ export async function getUserWhiteboards(): Promise<Whiteboard[]> {
   if (!user) return [];
 
   const { data, error } = await (supabase.from as any)("whiteboards")
-    .select("*")
+    .select("id, user_id, title, description, thumbnail_url, is_favorite, created_at, updated_at")
     .eq("user_id", user.id)
     .order("updated_at", { ascending: false });
 

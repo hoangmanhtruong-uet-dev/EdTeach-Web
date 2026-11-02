@@ -378,35 +378,118 @@ export async function joinExamByCode(
     return { success: false, error: "Mã đề thi hoặc mã lớp phải từ 3 ký tự trở lên." };
   }
 
-  // Generate new enrollment for the joined exam
-  const newExam: StudentExamItem = {
-    id: "enr-joined-" + Date.now(),
-    examId: "exam-" + cleanCode.toLowerCase(),
-    examTitle: `Đề Thi Khảo Thí GDPT (Mã: ${cleanCode})`,
-    subject: cleanCode.includes("LY") ? "Vật Lý" : cleanCode.includes("HOA") ? "Hóa Học" : "Toán Học",
-    grade: "12",
-    teacherName: "Thầy Cô Bộ Môn",
-    status: "assigned",
-    durationMinutes: 45,
-    assignedAt: new Date().toISOString(),
-  };
-
-  getStudentFallbackStore().addExam(studentId, newExam);
-
+  // 1. Try checking real classroom join_code in database
   try {
     const supabase = getServiceSupabase();
-    await (supabase.from("student_exam_enrollments") as any).insert({
-      student_id: studentId,
-      exam_id: newExam.examId,
-      exam_title: newExam.examTitle,
-      subject: newExam.subject,
-      grade: newExam.grade,
-      teacher_name: newExam.teacherName,
-      status: "assigned",
-    });
-  } catch {
-    // ignore
+    const { data: classroom } = await (supabase.from("classrooms") as any)
+      .select("id, name, grade, subject, teacher_id, is_join_code_active, join_code_expires_at")
+      .eq("join_code", cleanCode)
+      .maybeSingle();
+
+    if (classroom && classroom.is_join_code_active && new Date() <= new Date(classroom.join_code_expires_at)) {
+      // Enroll student into classroom
+      await (supabase.from("classroom_members") as any).upsert({
+        classroom_id: classroom.id,
+        student_id: studentId,
+        display_name: "Học sinh " + studentId.slice(0, 6),
+        status: "active",
+      }, { onConflict: "classroom_id,student_id" });
+
+      // Look for latest assignment
+      const { data: assignment } = await (supabase.from("assignments") as any)
+        .select("id, exam_id, title, duration_minutes, created_at")
+        .eq("classroom_id", classroom.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (assignment) {
+        const joinedExam: StudentExamItem = {
+          id: assignment.id,
+          examId: assignment.exam_id,
+          examTitle: assignment.title,
+          subject: classroom.subject || "Toán Học",
+          grade: classroom.grade || "12",
+          teacherName: "Thầy Cô Lớp " + classroom.name,
+          status: "assigned",
+          durationMinutes: assignment.duration_minutes || 45,
+          assignedAt: new Date().toISOString(),
+        };
+
+        getStudentFallbackStore().addExam(studentId, joinedExam);
+        return { success: true, exam: joinedExam };
+      }
+    }
+  } catch (err) {
+    console.warn("[Student Store] DB joinExamByCode classroom check error:", err);
   }
 
-  return { success: true, exam: newExam };
+  // 2. Try checking if code matches an active exam directly in database
+  try {
+    const supabase = getServiceSupabase();
+    let { data: directExam, error: examErr } = await (supabase.from("exams") as any)
+      .select("id, name, subject, grade, duration_minutes")
+      .eq("id", cleanCode.toLowerCase())
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (examErr && (examErr.message?.includes("deleted_at") || (examErr as any).code === "42703")) {
+      const retry = await (supabase.from("exams") as any)
+        .select("id, name, subject, grade, duration_minutes")
+        .eq("id", cleanCode.toLowerCase())
+        .maybeSingle();
+      directExam = retry.data;
+    }
+
+    if (directExam) {
+      const joinedExam: StudentExamItem = {
+        id: "enr-" + Date.now(),
+        examId: directExam.id,
+        examTitle: directExam.name,
+        subject: directExam.subject || "Toán Học",
+        grade: directExam.grade || "12",
+        teacherName: "Thầy Cô Bộ Môn",
+        status: "assigned",
+        durationMinutes: directExam.duration_minutes || 45,
+        assignedAt: new Date().toISOString(),
+      };
+
+      await (supabase.from("student_exam_enrollments") as any).upsert({
+        student_id: studentId,
+        exam_id: joinedExam.examId,
+        exam_title: joinedExam.examTitle,
+        subject: joinedExam.subject,
+        grade: joinedExam.grade,
+        teacher_name: joinedExam.teacherName,
+        status: "assigned",
+      }, { onConflict: "student_id,exam_id" });
+
+      getStudentFallbackStore().addExam(studentId, joinedExam);
+      return { success: true, exam: joinedExam };
+    }
+  } catch (examErr) {
+    console.warn("[Student Store] DB joinExamByCode direct exam check error:", examErr);
+  }
+
+  // Allow DEMO or TOAN12 code explicitly for development/offline testing
+  if (cleanCode === "TOAN12" || cleanCode === "EXAM-TOAN-12" || cleanCode.startsWith("DEMO")) {
+    const demoExam: StudentExamItem = {
+      id: "enr-" + Date.now(),
+      examId: cleanCode === "TOAN12" ? "exam-toan-12" : "exam-demo-2025",
+      examTitle: cleanCode === "TOAN12" ? "Khảo Sát Khảo Thí Toán GDPT 2025" : `Đề Thi Khảo Thí GDPT 2025 (Demo)`,
+      subject: "Toán Học",
+      grade: "12",
+      teacherName: cleanCode === "TOAN12" ? "Thầy Nguyễn Đức Trọng" : "Thầy Cô Bộ Môn",
+      status: "assigned",
+      durationMinutes: 45,
+      assignedAt: new Date().toISOString(),
+    };
+    getStudentFallbackStore().addExam(studentId, demoExam);
+    return { success: true, exam: demoExam };
+  }
+
+  return {
+    success: false,
+    error: "Không tìm thấy bài thi hoặc mã lớp học này (không tồn tại, đã kết thúc hoặc đã hết hạn).",
+  };
 }

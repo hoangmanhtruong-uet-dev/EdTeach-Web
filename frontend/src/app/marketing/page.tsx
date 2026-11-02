@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Download, Play, Video, Image as ImageIcon, Copy, Check, ExternalLink, Sparkles, ArrowLeft } from "lucide-react";
+import { APP_URL } from "@/lib/constants";
 
 export default function MarketingKitPage() {
   const [copiedIndex, setCopiedIndex] = React.useState<number | null>(null);
@@ -57,7 +58,7 @@ Không chỉ là phần mềm soạn đề thông thường, EdTeach vừa ra m�
 ✨ Chấm thi trắc nghiệm OMR bằng camera điện thoại 0 đồng, lọc ngay câu sai >40% đưa lên bục giảng chữa dứt điểm!
 
 🎁 Hiện tại đang MỞ KHÓA MIỄN PHÍ 14 NGÀY toàn bộ tính năng PRO & MAX cho giáo viên trải nghiệm:
-👉 Thầy/Cô dùng thử ngay tại: https://ed-teach-rust.vercel.app
+👉 Thầy/Cô dùng thử ngay tại: ${APP_URL}
 
 #EdTeach #BucGiangSo #GDPT2025 #GiaoVienVietNam #SoanDeAI #Excalidraw #ThiNghiem3D`,
     },
@@ -72,7 +73,7 @@ Bấm 1 nút trên EdTeach:
 3️⃣ Mở mô hình 3D trực quan bật kính vẽ neon khoanh chú thích ngay trên chuyển động vật lý.
 
 Đăng ký tài khoản miễn phí tặng ngay 5.000 credits trải nghiệm cho Thầy Cô:
-👉 Trải nghiệm ngay: https://ed-teach-rust.vercel.app`,
+👉 Trải nghiệm ngay: ${APP_URL}`,
     },
   ];
 

@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const ok = reportSessionResult(token, {
+    const ok = await reportSessionResult(token, {
       studentName: studentName || "Học sinh",
       studentCode: studentCode || "",
       score: typeof score === "number" ? score : 0,

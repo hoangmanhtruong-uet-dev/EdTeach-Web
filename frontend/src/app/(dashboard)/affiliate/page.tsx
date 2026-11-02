@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { AffiliateStats } from "@/lib/affiliate/affiliate-store";
+import { APP_URL, MINIMUM_PAYOUT_VND } from "@/lib/constants";
 
 const POPULAR_BANKS = [
   { code: "VCB", name: "Vietcombank (Ngoại Thương)" },
@@ -130,8 +131,8 @@ export default function AffiliatePage() {
   };
 
   const handleRequestPayout = async () => {
-    if (!payoutAmount || payoutAmount < 100000) {
-      setErrorMsg("Hạn mức rút tiền mặt tối thiểu là 100.000đ.");
+    if (!payoutAmount || payoutAmount < MINIMUM_PAYOUT_VND) {
+      setErrorMsg(`Hạn mức rút tiền mặt tối thiểu là ${MINIMUM_PAYOUT_VND.toLocaleString("vi-VN")}đ.`);
       return;
     }
     if (!bankAccount.trim() || !bankAccountName.trim()) {
@@ -171,7 +172,7 @@ export default function AffiliatePage() {
   };
 
   const referralCode = stats?.referralCode || profile?.referral_code || "EDUTESTVIP";
-  const shareUrl = stats?.shareUrl || `https://edutest.ai/register?ref=${referralCode}`;
+  const shareUrl = stats?.shareUrl || `${APP_URL}/register?ref=${referralCode}`;
   const affiliateBalance = stats?.affiliateBalance ?? 0;
   const totalEarned = stats?.totalAffiliateEarned ?? 0;
   const inviteeCount = stats?.inviteeCount ?? 0;
@@ -197,7 +198,7 @@ export default function AffiliatePage() {
           </h1>
 
           <p className="text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">
-            Mỗi khi đồng nghiệp được Thầy Cô giới thiệu nâng cấp gói PRO/MAX hoặc mua Credits, Thầy Cô nhận ngay 20% doanh thu. Tự do rút tiền mặt VietQR hoặc nhân 1.5x quy đổi sang AI Credits.
+            Mỗi khi đồng nghiệp được Thầy Cô giới thiệu nâng cấp gói PRO/MAX hoặc mua Credits, Thầy Cô nhận ngay 20% doanh thu. Tự do rút tiền mặt VietQR hoặc quy đổi sang AI Credits.
           </p>
 
           {/* Sharing Tools Box */}
@@ -272,7 +273,7 @@ export default function AffiliatePage() {
               className="flex-1 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition flex items-center justify-center gap-1.5 disabled:opacity-40 cursor-pointer"
             >
               <Zap className="w-3.5 h-3.5 text-amber-500" />
-              <span>Đổi Credits (x1.5)</span>
+              <span>Đổi Credits</span>
             </button>
 
             <button
@@ -283,7 +284,7 @@ export default function AffiliatePage() {
                 setPayoutAmount(affiliateBalance);
                 setShowPayoutModal(true);
               }}
-              disabled={affiliateBalance < 100000}
+              disabled={affiliateBalance < MINIMUM_PAYOUT_VND}
               className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 disabled:opacity-40 cursor-pointer shadow-xs"
             >
               <Building className="w-3.5 h-3.5" />
@@ -383,7 +384,7 @@ export default function AffiliatePage() {
               <Clock className="w-4 h-4 text-indigo-500" />
               <span>Lịch Sử Rút & Quy Đổi</span>
             </h3>
-            <span className="text-xs text-slate-500">Min 100k tiền mặt</span>
+            <span className="text-xs text-slate-500">Min 200k tiền mặt</span>
           </div>
 
           {stats?.pendingPayouts && stats.pendingPayouts.length > 0 ? (
@@ -392,7 +393,7 @@ export default function AffiliatePage() {
                 <div key={p.id} className="py-3 flex items-center justify-between text-xs">
                   <div>
                     <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <span>{p.payoutType === "credits" ? "⚡ Đổi sang Credits (x1.5)" : "🏦 Rút tiền VietQR"}</span>
+                      <span>{p.payoutType === "credits" ? "⚡ Đổi sang Credits" : "🏦 Rút tiền VietQR"}</span>
                       {p.status === "completed" && (
                         <span className="px-1.5 py-0.5 rounded-sm bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 text-[10px] font-bold">
                           Thành công
@@ -474,7 +475,7 @@ export default function AffiliatePage() {
         </div>
       )}
 
-      {/* 5. MODAL: ĐỔI SANG CREDITS (x1.5) */}
+      {/* 5. MODAL: ĐỔI SANG CREDITS */}
       {showConvertModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-4 border border-slate-200 dark:border-slate-800 shadow-2xl">
@@ -493,7 +494,7 @@ export default function AffiliatePage() {
             </div>
 
             <div className="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-xs text-indigo-800 dark:text-indigo-200 leading-relaxed">
-              🎉 <strong>Ưu đãi nhân 1.5x:</strong> Mỗi 1.000đ hoa hồng được quy đổi thành <strong>1.500 Credits</strong>. Kích hoạt vào ví ngay lập tức trong 0 giây!
+              🎉 <strong>Tỷ giá chuẩn:</strong> Mỗi 1.000đ hoa hồng được quy đổi thành <strong>10 Credits</strong> (1 Credit = 100đ). Kích hoạt vào ví ngay lập tức trong 0 giây!
             </div>
 
             <div className="space-y-2">
@@ -525,7 +526,7 @@ export default function AffiliatePage() {
             <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl flex items-center justify-between text-xs">
               <span className="text-slate-500">Số Credits nhận được:</span>
               <strong className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                +{Math.round((convertAmount || 0) * 1.5).toLocaleString()} Credits
+                +{Math.round((convertAmount || 0) / 100).toLocaleString()} Credits
               </strong>
             </div>
 
@@ -572,7 +573,7 @@ export default function AffiliatePage() {
             </div>
 
             <p className="text-xs text-slate-500">
-              Hạn mức rút tối thiểu 100.000đ. Hệ thống đối soát và chuyển khoản qua mạng Napas247 trong vòng 24 giờ làm việc.
+              Hạn mức rút tối thiểu {MINIMUM_PAYOUT_VND.toLocaleString("vi-VN")}đ. Hệ thống đối soát và chuyển khoản qua mạng Napas247 trong vòng 24 giờ làm việc.
             </p>
 
             <div className="space-y-3 text-xs">
@@ -582,7 +583,7 @@ export default function AffiliatePage() {
                 </label>
                 <input
                   type="number"
-                  min={100000}
+                  min={MINIMUM_PAYOUT_VND}
                   max={affiliateBalance}
                   step={50000}
                   value={payoutAmount || ""}
@@ -651,7 +652,7 @@ export default function AffiliatePage() {
               type="button"
               disabled={
                 requestingPayout ||
-                payoutAmount < 100000 ||
+                payoutAmount < MINIMUM_PAYOUT_VND ||
                 payoutAmount > affiliateBalance ||
                 !bankAccount.trim() ||
                 !bankAccountName.trim()

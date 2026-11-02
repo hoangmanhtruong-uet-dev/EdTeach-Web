@@ -49,13 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!error && data) {
         let finalProfile: any = { ...(data as any) };
         try {
-          const { data: authData } = await supabase.auth.getUser();
-          const meta = authData?.user?.user_metadata;
-          if (
-            meta?.subscription_tier === "max" ||
-            meta?.tier === "max" ||
-            (data as any)?.email === "truongcri0101@gmail.com"
-          ) {
+          if ((data as any)?.email === "truongcri0101@gmail.com") {
             finalProfile.tier = "max";
             finalProfile.subscription_tier = "max";
           }
@@ -157,11 +151,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn("Supabase sign out error:", err);
+    }
     setUser(null);
     setProfile(null);
     setWallet(null);
     setSession(null);
+
+    // Clear cookies if any
+    if (typeof document !== "undefined") {
+      document.cookie = "eduteach_target_role=; path=/; max-age=0";
+    }
+
+    // Force hard redirect to login screen
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
   };
 
   return (

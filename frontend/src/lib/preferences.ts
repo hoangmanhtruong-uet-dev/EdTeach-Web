@@ -16,7 +16,7 @@ export interface ExportPreferences {
 
 export interface GradingAndAiPreferences {
   defaultGradingSheet: "gdpt_2025" | "sheet_40" | "sheet_50" | "sheet_20";
-  preferredAiModel: "deepseek" | "gemini";
+  preferredAiModel: "thinking" | "gemini" | "deepseek";
 }
 
 export interface NotificationPreferences {
@@ -50,7 +50,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   },
   gradingAndAi: {
     defaultGradingSheet: "gdpt_2025",
-    preferredAiModel: "deepseek",
+    preferredAiModel: "thinking",
   },
   notifications: {
     emailExamCompleted: true,
@@ -60,13 +60,15 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   },
 };
 
-const STORAGE_KEY = "eduteast_user_preferences";
+const STORAGE_KEY = "eduteach_user_preferences";
+const LEGACY_STORAGE_KEY = "eduteast_user_preferences";
 
 export function getUserPreferences(profile?: any): UserPreferences {
   let savedLocal: Partial<UserPreferences> | null = null;
   if (typeof window !== "undefined") {
     try {
-      const item = localStorage.getItem(STORAGE_KEY);
+      const item =
+        localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
       if (item) savedLocal = JSON.parse(item);
     } catch {
       // ignore

@@ -71,11 +71,30 @@ export async function GET(
     }
 
     if (isPurchased) {
-      // Người mua hoặc tác giả: nhận full 100% câu hỏi + đáp án + giải thích
+      // Người mua hoặc tác giả: nhận full 100% câu hỏi + đáp án + giải thích từ marketplace_item_contents
+      let fullExamData = item.exam_data;
+      if (!fullExamData || Object.keys(fullExamData).length === 0 || !fullExamData.questions || fullExamData.questions.length === 0) {
+        try {
+          const { data: contents } = await (supabase
+            .from("marketplace_item_contents") as any)
+            .select("exam_data")
+            .eq("item_id", id)
+            .maybeSingle();
+
+          const contentData = contents as { exam_data?: any } | null;
+          if (contentData?.exam_data && typeof contentData.exam_data === "object") {
+            fullExamData = contentData.exam_data;
+          }
+        } catch (contentsErr) {
+          console.warn("[marketplace items id] Error fetching marketplace_item_contents:", contentsErr);
+        }
+      }
+
       return NextResponse.json({
         success: true,
         item: {
           ...item,
+          exam_data: fullExamData,
           is_owner: isOwner,
           is_purchased: true,
         },

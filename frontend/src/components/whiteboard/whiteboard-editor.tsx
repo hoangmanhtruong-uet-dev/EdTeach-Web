@@ -37,6 +37,7 @@ import { FloatingClassroomTools } from "@/components/whiteboard/floating-classro
 type ExcalidrawEditorAPI = {
   getSceneElements: () => Record<string, unknown>[];
   updateScene: (sceneData: { elements?: Record<string, unknown>[]; appState?: Record<string, unknown> }) => void;
+  setActiveTool?: (tool: { type: string } | { type: "custom"; customType: string }) => void;
 };
 
 /**
@@ -116,11 +117,31 @@ export default function WhiteboardEditor({
   const [isZenMode, setIsZenMode] = useState(false);
   const [isLaserActive, setIsLaserActive] = useState(false);
 
+  const handleToggleLaser = useCallback(() => {
+    setIsLaserActive((prev) => {
+      const next = !prev;
+      if (excalidrawAPI && typeof (excalidrawAPI as any).setActiveTool === "function") {
+        try {
+          (excalidrawAPI as any).setActiveTool({ type: next ? "laser" : "selection" });
+        } catch (e) {
+          console.warn("Excalidraw laser tool fallback:", e);
+        }
+      }
+      return next;
+    });
+  }, [excalidrawAPI]);
+
   // References for debounce
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const latestDataRef = useRef<{ elements: Record<string, unknown>[]; appState: Record<string, unknown> }>({
+  const isInitialMountRef = useRef<boolean>(true);
+  const latestDataRef = useRef<{
+    elements: Record<string, unknown>[];
+    appState: Record<string, unknown>;
+    files?: Record<string, unknown> | unknown[];
+  }>({
     elements: initialBoard.elements || [],
     appState: initialBoard.app_state || {},
+    files: initialBoard.files || {},
   });
 
   const localCacheKey = `edteach_wb_${initialBoard.id}`;
@@ -129,7 +150,12 @@ export default function WhiteboardEditor({
 
   // Auto-save logic với tự động sinh Thumbnail ngầm (Sprint W-1)
   const performSave = useCallback(
-    async (elements: Record<string, unknown>[], appState: Record<string, unknown>, newTitle?: string) => {
+    async (
+      elements: Record<string, unknown>[],
+      appState: Record<string, unknown>,
+      newTitle?: string,
+      files?: Record<string, unknown> | unknown[]
+    ) => {
       setSaveStatus("saving");
       try {
         if (typeof window !== "undefined") {
@@ -165,6 +191,10 @@ export default function WhiteboardEditor({
           },
         };
 
+        if (files !== undefined) {
+          updatePayload.files = files;
+        }
+
         if (nextThumbnailUrl) {
           updatePayload.thumbnail_url = nextThumbnailUrl;
         }
@@ -189,7 +219,12 @@ export default function WhiteboardEditor({
   useEffect(() => {
     return () => {
       if (latestDataRef.current?.elements?.length) {
-        performSave(latestDataRef.current.elements, latestDataRef.current.appState);
+        performSave(
+          latestDataRef.current.elements,
+          latestDataRef.current.appState,
+          undefined,
+          latestDataRef.current.files
+        );
       }
     };
   }, [performSave]);
@@ -205,11 +240,22 @@ export default function WhiteboardEditor({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isZenMode]);
 
-  const handleCanvasChange = (elements: readonly Record<string, unknown>[], appState: Record<string, unknown>) => {
+  const handleCanvasChange = (
+    elements: readonly Record<string, unknown>[],
+    appState: Record<string, unknown>,
+    files?: Record<string, unknown>
+  ) => {
     latestDataRef.current = {
       elements: [...elements],
       appState: { ...appState },
+      files: files ? { ...files } : latestDataRef.current?.files,
     };
+
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+
     setSaveStatus("unsaved");
 
     if (debounceTimerRef.current) {
@@ -217,7 +263,12 @@ export default function WhiteboardEditor({
     }
 
     debounceTimerRef.current = setTimeout(() => {
-      performSave(latestDataRef.current.elements, latestDataRef.current.appState);
+      performSave(
+        latestDataRef.current.elements,
+        latestDataRef.current.appState,
+        undefined,
+        latestDataRef.current.files
+      );
     }, 2500);
   };
 
@@ -702,6 +753,7 @@ export default function WhiteboardEditor({
             currentItemStrokeColor: currentTheme.defaultStrokeColor,
             gridSize: currentTheme.gridSize || 20,
           }}
+          initialFiles={board.files}
           isPro={isPro}
           onChange={handleCanvasChange}
           onApiReady={(api) => setExcalidrawAPI(api as unknown as ExcalidrawEditorAPI)}
@@ -723,7 +775,7 @@ export default function WhiteboardEditor({
           isZenMode={isZenMode}
           onToggleZenMode={() => setIsZenMode(!isZenMode)}
           isLaserActive={isLaserActive}
-          onToggleLaser={() => setIsLaserActive(!isLaserActive)}
+          onToggleLaser={handleToggleLaser}
         />
 
         {/* 4. NGĂN KÉO KHO ĐỀ THI & CHÈN CÂU HỎI */}

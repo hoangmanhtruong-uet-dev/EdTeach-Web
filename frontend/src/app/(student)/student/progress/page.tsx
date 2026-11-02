@@ -18,6 +18,7 @@ import {
   FileText,
 } from "lucide-react";
 import { StudentCompetencyProgress } from "@/lib/student/student-store";
+import StudentRadarChart from "@/components/student/student-radar-chart";
 
 export default function StudentProgressPage() {
   const [loading, setLoading] = useState(true);
@@ -108,28 +109,6 @@ export default function StudentProgressPage() {
   const strengths = progress?.strengths ?? [];
   const weaknesses = progress?.weaknesses ?? [];
 
-  // Helper for Radar Polygon points
-  // 4 axes: Top (Recognition), Right (Comprehension), Bottom (Application), Left (Advanced App)
-  // Center is (120, 120), radius = 90
-  const cx = 120;
-  const cy = 120;
-  const maxR = 90;
-
-  const getCoordinates = (value: number, angleDeg: number) => {
-    const angleRad = (angleDeg * Math.PI) / 180;
-    const r = (value / 100) * maxR;
-    return {
-      x: cx + r * Math.cos(angleRad),
-      y: cy + r * Math.sin(angleRad),
-    };
-  };
-
-  const p1 = getCoordinates(radar.recognition, -90); // Top
-  const p2 = getCoordinates(radar.comprehension, 0); // Right
-  const p3 = getCoordinates(radar.application, 90); // Bottom
-  const p4 = getCoordinates(radar.advancedApplication, 180); // Left
-  const polygonPoints = `${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y} ${p4.x},${p4.y}`;
-
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-300">
       {/* 1. HERO HEADER */}
@@ -205,66 +184,11 @@ export default function StudentProgressPage() {
 
       {/* 2. RADAR & COMPETENCY LEVEL BARS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Radar SVG Visualizer */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col items-center justify-between">
-          <div className="w-full flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-indigo-600" />
-              <span>Biểu Đồ Radar 4 Cấp Độ Tư Duy</span>
-            </h2>
-            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2.5 py-1 rounded-full border border-indigo-200 dark:border-indigo-800">
-              {progress?.claimedReportsCount || 1} Phiếu đã tổng hợp
-            </span>
-          </div>
-
-          {/* SVG Polar Radar */}
-          <div className="relative py-4">
-            <svg width="240" height="240" viewBox="0 0 240 240" className="overflow-visible">
-              {/* Outer boundary circles */}
-              <circle cx={cx} cy={cy} r={maxR} fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeWidth="1" />
-              <circle cx={cx} cy={cy} r={maxR * 0.75} fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeDasharray="3 3" strokeWidth="1" />
-              <circle cx={cx} cy={cy} r={maxR * 0.5} fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeDasharray="3 3" strokeWidth="1" />
-              <circle cx={cx} cy={cy} r={maxR * 0.25} fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeDasharray="3 3" strokeWidth="1" />
-
-              {/* Cross Axis Lines */}
-              <line x1={cx} y1={cy - maxR} x2={cx} y2={cy + maxR} stroke="currentColor" className="text-slate-300 dark:text-slate-700" strokeWidth="1" />
-              <line x1={cx - maxR} y1={cy} x2={cx + maxR} y2={cy} stroke="currentColor" className="text-slate-300 dark:text-slate-700" strokeWidth="1" />
-
-              {/* Data polygon */}
-              <polygon
-                points={polygonPoints}
-                fill="rgba(99, 102, 241, 0.25)"
-                stroke="#6366f1"
-                strokeWidth="2.5"
-                className="transition-all duration-500 ease-out"
-              />
-
-              {/* Vertex points */}
-              <circle cx={p1.x} cy={p1.y} r="4.5" className="fill-indigo-600 stroke-white stroke-2" />
-              <circle cx={p2.x} cy={p2.y} r="4.5" className="fill-indigo-600 stroke-white stroke-2" />
-              <circle cx={p3.x} cy={p3.y} r="4.5" className="fill-indigo-600 stroke-white stroke-2" />
-              <circle cx={p4.x} cy={p4.y} r="4.5" className="fill-indigo-600 stroke-white stroke-2" />
-            </svg>
-
-            {/* Axis Labels */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 text-[11px] font-bold text-slate-700 dark:text-slate-300">
-              Nhận biết ({radar.recognition}%)
-            </div>
-            <div className="absolute top-1/2 right-0 translate-x-3 -translate-y-1/2 text-[11px] font-bold text-slate-700 dark:text-slate-300 text-left">
-              Thông hiểu ({radar.comprehension}%)
-            </div>
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-2 text-[11px] font-bold text-slate-700 dark:text-slate-300">
-              Vận dụng ({radar.application}%)
-            </div>
-            <div className="absolute top-1/2 left-0 -translate-x-3 -translate-y-1/2 text-[11px] font-bold text-slate-700 dark:text-slate-300 text-right">
-              VD Cao ({radar.advancedApplication}%)
-            </div>
-          </div>
-
-          <p className="text-xs text-slate-500 text-center max-w-sm mt-4">
-            Độ rộng của vùng màu tím phản ánh năng lực toàn diện. Mở rộng vùng Vận dụng & Vận dụng cao sẽ giúp bạn bứt phá điểm 9-10.
-          </p>
-        </div>
+        {/* Radar SVG Visualizer & A11y Data Table */}
+        <StudentRadarChart
+          radarLevels={radar}
+          claimedReportsCount={progress?.claimedReportsCount || 1}
+        />
 
         {/* Competency Level Detail Cards */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-5">

@@ -1,13 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { APP_URL, REFERRAL_BONUS_CREDITS } from "@/lib/constants";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
 
   // BẢO MẬT: Chống Open Redirect - Đảm bảo next là đường dẫn tương đối an toàn
-  let safeNext = "/dashboard";
+  let safeNext = "/student";
   const rawNext = searchParams.get("next");
   if (
     rawNext &&
@@ -23,7 +25,7 @@ export async function GET(request: Request) {
   // Kiểm tra host ủy quyền từ reverse proxy Vercel
   const forwardedHost = request.headers.get("x-forwarded-host");
   const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
-  const redirectBase = forwardedHost ? `${forwardedProto}://${forwardedHost}` : origin;
+  const redirectBase = forwardedHost ? `${forwardedProto}://${forwardedHost}` : origin || APP_URL;
 
   if (code) {
     const supabase = await createClient();
@@ -40,15 +42,16 @@ export async function GET(request: Request) {
           "Thầy Cô";
         const avatarUrl = u.user_metadata?.avatar_url || u.user_metadata?.picture || "";
 
-        // Kiểm tra xem user đã tồn tại trước đó chưa
+        // Kiểm tra xem user đã tồn tại trước đó chưa (bao gồm cả role)
         const { data: existingUser } = await (supabase.from("users") as any)
-          .select("id, referred_by")
+          .select("id, referred_by, role")
           .eq("id", u.id)
           .maybeSingle();
 
-        // Kiểm tra mã giới thiệu lưu trong cookie từ link mời ?ref=...
+        // Kiểm tra mã giới thiệu và target role trong cookie
         const cookieStore = await cookies();
         const refCodeFromCookie = cookieStore.get("eduteach_referral_code")?.value?.trim().toUpperCase();
+        const targetRoleCookie = cookieStore.get("eduteach_target_role")?.value?.trim().toLowerCase();
         let inviterUser: any = null;
         let bonusCredits = 0;
 
@@ -59,7 +62,38 @@ export async function GET(request: Request) {
             .maybeSingle();
           if (foundInviter && foundInviter.id !== u.id) {
             inviterUser = foundInviter;
-            bonusCredits = 2000;
+            bonusCredits = REFERRAL_BONUS_CREDITS;
+          }
+        }
+
+        // Xác định vai trò (role) của người dùng:
+        // 1. Nếu user đã tồn tại trong DB, bảo lưu role hiện tại (tránh ghi đè giáo viên/gia sư thành học sinh)
+        // 2. Nếu đăng ký qua tab chọn Giáo viên / Gia sư, gán đúng role mục tiêu
+        // 3. Mặc định với người dùng mới đăng nhập Google thông thường: 'student'
+        let assignedRole: "teacher" | "tutor" | "student" = "student";
+        if (existingUser?.role) {
+          assignedRole = existingUser.role;
+        } else if (targetRoleCookie === "teacher" || targetRoleCookie === "tutor") {
+          assignedRole = targetRoleCookie as "teacher" | "tutor";
+        } else {
+          assignedRole = "student";
+        }
+
+        // Điều hướng điểm đến:
+        // Nếu không có next URL chỉ định hoặc là next mặc định, chuyển hướng thông minh
+        if (!rawNext || rawNext === "/dashboard" || rawNext === "/student") {
+          if (!existingUser) {
+            // Tài khoản mới đăng ký qua Google:
+            if (assignedRole === "teacher") {
+              safeNext = "/verify/teacher";
+            } else if (assignedRole === "tutor") {
+              safeNext = "/verify/tutor";
+            } else {
+              safeNext = "/student";
+            }
+          } else {
+            // Tài khoản cũ đăng nhập lại:
+            safeNext = assignedRole === "student" ? "/student" : "/dashboard";
           }
         }
 
@@ -72,63 +106,41 @@ export async function GET(request: Request) {
             referral_code: refCode,
             referred_by: inviterUser ? inviterUser.id : (existingUser?.referred_by || null),
             tier: "free",
-            role: "teacher",
+            role: assignedRole,
           },
           { onConflict: "id" }
         );
 
-        // Khởi tạo ví: Mặc định 5000 credits, nếu có giới thiệu thì +2000 credits = 7000 credits
-        const startingBalance = 5000 + bonusCredits;
+        // Khởi tạo ví: Mặc định 5000 promotional credits quà chào mừng thành viên mới
+        const startingBalance = 5000;
         const { data: newWallet } = await (supabase.from("wallets") as any).upsert(
           {
             user_id: u.id,
             balance: startingBalance,
+            promotional_balance: startingBalance,
+            purchased_balance: 0,
+            withdrawable_revenue_vnd: 0,
+            escrow_balance_vnd: 0,
             daily_quota: 3,
             daily_quota_used: 0,
           },
           { onConflict: "user_id", ignoreDuplicates: true }
         ).select("id").maybeSingle();
 
-        // Nếu người dùng mới đăng ký qua link giới thiệu, xử lý trả thưởng cho cả 2
+        // Nếu người dùng mới đăng ký qua link giới thiệu: Ghi nhận trạng thái PENDING
+        // Thưởng +2.000 credits sẽ được giải phóng khi người được mời tạo đề thi đầu tiên (PR 2.3)
         if (inviterUser && bonusCredits > 0) {
           try {
-            // 1. Lưu bản ghi referrals
-            await (supabase.from("referrals") as any).insert({
+            const admin = createAdminClient() || supabase;
+
+            await (admin.from("referrals") as any).insert({
               inviter_id: inviterUser.id,
               invitee_id: u.id,
               reward_credits: bonusCredits,
+              status: "pending",
             });
-
-            // 2. Thưởng +2000 credits cho Người mời (Inviter)
-            const { data: inviterWallet } = await (supabase.from("wallets") as any)
-              .select("id, balance")
-              .eq("user_id", inviterUser.id)
-              .maybeSingle();
-
-            if (inviterWallet) {
-              await (supabase.from("wallets") as any)
-                .update({ balance: (inviterWallet.balance || 0) + bonusCredits })
-                .eq("id", inviterWallet.id);
-
-              await (supabase.from("wallet_txns") as any).insert({
-                wallet_id: inviterWallet.id,
-                amount: bonusCredits,
-                type: "signup_bonus",
-                description: `Thưởng giới thiệu đồng nghiệp (${fullName}) đăng ký thành công (+2.000 credits)`,
-              });
-            }
-
-            // 3. Ghi transaction cho người được mời
-            if (newWallet) {
-              await (supabase.from("wallet_txns") as any).insert({
-                wallet_id: newWallet.id,
-                amount: bonusCredits,
-                type: "signup_bonus",
-                description: `Thưởng đăng ký từ link giới thiệu của đồng nghiệp (${inviterUser.name || "Đồng nghiệp"}) (+2.000 credits)`,
-              });
-            }
           } catch (referralErr) {
-            console.warn("Process referral reward error:", referralErr);
+            console.warn("Process pending referral error:", referralErr);
           }
         }
       } catch (dbErr) {
@@ -138,6 +150,7 @@ export async function GET(request: Request) {
       const response = NextResponse.redirect(`${redirectBase}${safeNext}`);
       // Xoá cookie referral sau khi đã sử dụng
       response.cookies.delete("eduteach_referral_code");
+      response.cookies.delete("eduteach_target_role");
       return response;
     }
   }

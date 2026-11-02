@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { PayoutRequest } from "@/types/marketplace";
+import { MINIMUM_PAYOUT_VND, MARKETPLACE_CREDIT_RATE_VND } from "@/lib/constants";
 
 export async function GET() {
   try {
@@ -15,29 +17,33 @@ export async function GET() {
     }
 
     let balance = 0;
+    let withdrawableRevenueVnd = 0;
+    let escrowBalanceVnd = 0;
     let isPro = false;
     let isMax = false;
 
     try {
       const { data: wallet } = await (supabase
         .from("wallets") as any)
-        .select("id, balance")
+        .select("id, balance, withdrawable_revenue_vnd, escrow_balance_vnd")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (wallet) {
         balance = (wallet as any).balance ?? 0;
+        withdrawableRevenueVnd = Number((wallet as any).withdrawable_revenue_vnd ?? 0);
+        escrowBalanceVnd = Number((wallet as any).escrow_balance_vnd ?? 0);
       }
 
       const { data: profile } = await (supabase
         .from("users") as any)
-        .select("subscription_tier")
+        .select("tier")
         .eq("id", user.id)
         .maybeSingle();
 
       if (profile) {
-        if ((profile as any).subscription_tier === "max") isMax = true;
-        else if ((profile as any).subscription_tier === "pro") isPro = true;
+        if ((profile as any).tier === "max") isMax = true;
+        else if ((profile as any).tier === "pro") isPro = true;
       }
     } catch {
       // Fallback
@@ -96,7 +102,10 @@ export async function GET() {
         total_sales: totalSales,
         active_listings: activeListings,
         available_balance: balance,
-        available_vnd: balance * 100,
+        available_vnd: withdrawableRevenueVnd,
+        withdrawable_revenue_vnd: withdrawableRevenueVnd,
+        escrow_balance_vnd: escrowBalanceVnd,
+        min_payout_vnd: MINIMUM_PAYOUT_VND,
         commission_rate: commissionRate,
         is_pro: isPro || isMax,
         is_max: isMax,
@@ -122,12 +131,26 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { amount_credits, bank_name, account_number, account_holder } = body;
+    const {
+      amount_credits,
+      amount_vnd: rawAmountVnd,
+      bank_name,
+      account_number,
+      account_holder,
+    } = body;
 
-    const credits = parseInt(amount_credits, 10);
-    if (!credits || credits < 500) {
+    const requestedVnd = Number(
+      rawAmountVnd ||
+        (amount_credits
+          ? Number(amount_credits) * MARKETPLACE_CREDIT_RATE_VND
+          : 0)
+    );
+
+    if (!requestedVnd || requestedVnd < MINIMUM_PAYOUT_VND) {
       return NextResponse.json(
-        { error: "Hạn mức rút tiền tối thiểu là 500 credits (tương đương 50.000 VNĐ)." },
+        {
+          error: `Hạn mức rút tiền tối thiểu là ${MINIMUM_PAYOUT_VND.toLocaleString("vi-VN")} VNĐ.`,
+        },
         { status: 400 }
       );
     }
@@ -139,36 +162,87 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Kiểm tra số dư ví
-    let currentBalance = 0;
+    const credits = Math.round(requestedVnd / MARKETPLACE_CREDIT_RATE_VND);
+    const payoutId = crypto.randomUUID();
+
+    // 1. Khấu trừ doanh thu khả dụng qua RPC nguyên tử hoặc fallback an toàn
+    let currentRevenue = 0;
     let walletId = "";
-    const { data: wallet } = await (supabase
-      .from("wallets") as any)
-      .select("id, balance")
+
+    const { data: wallet } = await (supabase.from("wallets") as any)
+      .select("id, withdrawable_revenue_vnd")
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (wallet) {
-      currentBalance = (wallet as any).balance ?? 0;
+      currentRevenue = Number((wallet as any).withdrawable_revenue_vnd ?? 0);
       walletId = (wallet as any).id ?? "";
     }
 
-    if (currentBalance < credits) {
+    if (currentRevenue < requestedVnd) {
       return NextResponse.json(
-        { error: `Số dư ví không đủ. Ví hiện có ${currentBalance} credits, cần ${credits} credits.` },
+        {
+          error: `Số dư doanh thu khả dụng không đủ (${currentRevenue.toLocaleString("vi-VN")}đ < ${requestedVnd.toLocaleString("vi-VN")}đ).`,
+        },
         { status: 400 }
       );
     }
 
-    const amountVnd = credits * 100;
-    const payoutId = crypto.randomUUID();
+    // Ưu tiên gọi atomic RPC deduct_withdrawable_revenue_atomic
+    let rpcDeducted = false;
+    try {
+      const { data: rpcRes, error: rpcErr } = await (supabase.rpc as any)(
+        "deduct_withdrawable_revenue_atomic",
+        {
+          p_user_id: user.id,
+          p_amount_vnd: requestedVnd,
+          p_payout_type: "marketplace",
+          p_metadata: {
+            bank_name: bank_name.trim(),
+            account_number: account_number.trim(),
+            account_holder: account_holder.trim().toUpperCase(),
+            payout_id: payoutId,
+          },
+        }
+      );
+      if (!rpcErr && rpcRes && rpcRes.success !== false) {
+        rpcDeducted = true;
+      }
+    } catch {
+      rpcDeducted = false;
+    }
 
-    // 1. Tạo yêu cầu rút tiền trong DB (status = 'pending') (Sprint MP-1 Fix U1 & A5)
-    const { error: payoutError } = await (supabase.from("payout_requests") as any).insert({
+    // Fallback nếu RPC chưa nạp hoặc dùng admin client
+    if (!rpcDeducted && walletId) {
+      const adminClient = createAdminClient() || supabase;
+      await (adminClient.from("wallets") as any)
+        .update({
+          withdrawable_revenue_vnd: currentRevenue - requestedVnd,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", walletId);
+
+      await (adminClient.from("wallet_txns") as any).insert({
+        wallet_id: walletId,
+        amount: 0,
+        type: "payout_request",
+        description: `Yêu cầu rút tiền mặt ${requestedVnd.toLocaleString("vi-VN")} VNĐ về ${bank_name}`,
+        metadata: {
+          payout_id: payoutId,
+          payout_type: "marketplace",
+          amount_vnd: requestedVnd,
+          bank_name: bank_name.trim(),
+        },
+      });
+    }
+
+    // 2. Tạo yêu cầu rút tiền trong DB (status = 'pending')
+    const admin = createAdminClient() || supabase;
+    const { error: payoutError } = await (admin.from("payout_requests") as any).insert({
       id: payoutId,
       user_id: user.id,
       amount_credits: credits,
-      amount_vnd: amountVnd,
+      amount_vnd: requestedVnd,
       bank_name: bank_name.trim(),
       account_number: account_number.trim(),
       account_holder: account_holder.trim().toUpperCase(),
@@ -177,28 +251,18 @@ export async function POST(req: NextRequest) {
 
     if (payoutError) {
       console.error("Lỗi insert payout_requests:", payoutError);
-      return NextResponse.json({ error: "Lỗi tạo yêu cầu rút tiền: " + payoutError.message }, { status: 500 });
-    }
-
-    // 2. Tạm khóa credits rút trong ví người dùng
-    if (walletId) {
-      await (supabase
-        .from("wallets") as any)
-        .update({ balance: currentBalance - credits, updated_at: new Date().toISOString() })
-        .eq("id", walletId);
-
-      await (supabase.from("wallet_txns") as any).insert({
-        wallet_id: walletId,
-        amount: -credits,
-        type: "payout_request",
-        description: `Yêu cầu rút tiền ${amountVnd.toLocaleString("vi-VN")} VNĐ về ${bank_name}`,
-      });
+      return NextResponse.json(
+        { error: "Lỗi tạo yêu cầu rút tiền: " + payoutError.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: `Đã gửi yêu cầu rút ${credits.toLocaleString("vi-VN")} credits (${amountVnd.toLocaleString("vi-VN")} VNĐ) thành công!`,
+      message: `Đã gửi yêu cầu rút ${requestedVnd.toLocaleString("vi-VN")} VNĐ thành công! Tiền sẽ được chuyển về tài khoản của Thầy Cô trong vòng 24h.`,
       payout_id: payoutId,
+      amount_vnd: requestedVnd,
+      amount_credits: credits,
     });
   } catch (err: any) {
     console.error("Lỗi POST /api/marketplace/payout:", err);

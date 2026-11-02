@@ -136,6 +136,8 @@ export async function POST(req: NextRequest) {
       price_credits,
       tags,
       questions,
+      exam_id,
+      examId,
     } = body;
 
     if (!title || !subject || !grade || price_credits === undefined) {
@@ -152,20 +154,58 @@ export async function POST(req: NextRequest) {
     try {
       const { data: profile } = await (supabase
         .from("users") as any)
-        .select("name, subscription_tier")
+        .select("name, tier")
         .eq("id", user.id)
         .maybeSingle();
 
       if (profile) {
         if ((profile as any).name) sellerName = (profile as any).name;
-        if ((profile as any).subscription_tier === "max") sellerTier = "max";
-        else if ((profile as any).subscription_tier === "pro") sellerTier = "pro";
+        if ((profile as any).tier === "max") sellerTier = "max";
+        else if ((profile as any).tier === "pro") sellerTier = "pro";
       }
     } catch {
       // Dùng fallback
     }
 
-    const fullQuestions: any[] = Array.isArray(questions) ? questions : [];
+    let fullQuestions: any[] = Array.isArray(questions) ? questions : [];
+
+    // MKT-06 / MKT-04: Trích xuất câu hỏi thật từ CSDL nếu người dùng đăng bán từ đề có sẵn
+    const sourceExamId = exam_id || examId;
+    if (fullQuestions.length === 0 && sourceExamId) {
+      try {
+        const { data: dbQuestions } = await (supabase
+          .from("questions") as any)
+          .select("*")
+          .eq("exam_id", sourceExamId)
+          .order("order_index", { ascending: true });
+
+        if (dbQuestions && dbQuestions.length > 0) {
+          fullQuestions = dbQuestions.map((q: any, idx: number) => ({
+            id: q.id,
+            order: q.order_index ?? idx + 1,
+            type: q.type || "multiple_choice",
+            content: q.content,
+            options: q.options || [],
+            correct_answer: q.correct_answer,
+            explanation: q.explanation,
+            difficulty: q.difficulty || "medium",
+          }));
+        } else {
+          // Thử trích xuất từ config của đề thi
+          const { data: dbExam } = await (supabase
+            .from("exams") as any)
+            .select("config")
+            .eq("id", sourceExamId)
+            .maybeSingle();
+
+          if (dbExam?.config?.questions && Array.isArray(dbExam.config.questions)) {
+            fullQuestions = dbExam.config.questions;
+          }
+        }
+      } catch (qErr) {
+        console.warn("[marketplace items POST] Failed to fetch questions for exam_id:", qErr);
+      }
+    }
     const sampleQuestions = fullQuestions.slice(0, 3).map((q: any, idx: number) => ({
       id: q.id || `sample-${idx + 1}`,
       order: q.order || idx + 1,
@@ -240,6 +280,13 @@ export async function POST(req: NextRequest) {
       if (insertError) {
         console.warn("Lưu Supabase marketplace_items có lỗi, dùng memory fallback:", insertError.message);
       }
+
+      // Đảm bảo nội dung câu hỏi được lưu vào marketplace_item_contents (SEC-01 & MKT-06)
+      await (supabase.from("marketplace_item_contents") as any).upsert({
+        item_id: newItem.id,
+        exam_data: newItem.exam_data,
+        updated_at: new Date().toISOString(),
+      });
     } catch (e: any) {
       console.warn("Lỗi kết nối Supabase khi insert:", e.message);
     }

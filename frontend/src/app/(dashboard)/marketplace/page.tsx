@@ -38,6 +38,7 @@ import { useToast } from "@/context/toast-context";
 import { MarketplaceItem } from "@/types/marketplace";
 import { exportMarketplaceExamToDocx } from "@/lib/marketplace/export-docx";
 import { getUserExams, Exam } from "@/lib/api/exams";
+import { MINIMUM_PAYOUT_VND, MARKETPLACE_CREDIT_RATE_VND } from "@/lib/constants";
 import { isProUser, isMaxUser } from "@/lib/payment/plans";
 
 export default function MarketplacePage() {
@@ -154,8 +155,9 @@ export default function MarketplacePage() {
     setPayoutError(null);
     setPayoutMessage(null);
 
-    if (payoutAmount < 2000) {
-      setPayoutError("Hạn mức rút tối thiểu là 2.000 credits (tương đương 200.000 VNĐ).");
+    const minPayoutCredits = MINIMUM_PAYOUT_VND / MARKETPLACE_CREDIT_RATE_VND;
+    if (payoutAmount < minPayoutCredits) {
+      setPayoutError(`Hạn mức rút tối thiểu là ${minPayoutCredits.toLocaleString("vi-VN")} credits (tương đương ${MINIMUM_PAYOUT_VND.toLocaleString("vi-VN")} VNĐ).`);
       return;
     }
 
@@ -642,9 +644,27 @@ export default function MarketplacePage() {
       {/* 4. DANH SÁCH CARD ĐỀ THI */}
       {/* ========================================================= */}
       {loading ? (
-        <div className="py-20 text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground">Đang tải dữ liệu từ Chợ Đề Thi...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 animate-pulse">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="bg-white rounded-2xl p-5 border border-border shadow-xs flex flex-col justify-between h-[230px]"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="h-5 w-24 bg-slate-100 rounded-lg" />
+                  <div className="h-4 w-16 bg-slate-100 rounded" />
+                </div>
+                <div className="h-5 w-4/5 bg-slate-100 rounded mb-2" />
+                <div className="h-3 w-full bg-slate-100 rounded mb-1" />
+                <div className="h-3 w-2/3 bg-slate-100 rounded mb-3" />
+              </div>
+              <div className="pt-3 border-t border-border flex items-center justify-between">
+                <div className="h-4 w-28 bg-slate-100 rounded" />
+                <div className="h-8 w-20 bg-slate-100 rounded-xl" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : filteredItems.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -673,17 +693,25 @@ export default function MarketplacePage() {
                         item.seller_tier === "pro" && (
                           <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
                             <Award className="w-3 h-3 text-amber-600" />
-                            PRO
+                            Tác giả PRO
                           </span>
                         )
                       )}
                     </div>
                     <div className="flex items-center gap-1 text-amber-500 font-bold text-xs">
-                      <Star className="w-3.5 h-3.5 fill-amber-400" />
-                      <span>{item.rating}</span>
-                      <span className="text-[10px] text-muted-foreground font-normal">
-                        ({item.downloads_count} lượt tải)
-                      </span>
+                      {item.review_count && item.review_count > 0 && item.rating > 0 ? (
+                        <>
+                          <Star className="w-3.5 h-3.5 fill-amber-400" />
+                          <span>{item.rating.toFixed(1)}</span>
+                          <span className="text-[10px] text-muted-foreground font-normal">
+                            ({item.downloads_count ?? 0} lượt tải)
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground font-normal">
+                          {(item.downloads_count ?? 0) > 0 ? `${item.downloads_count} lượt tải` : "Chưa có đánh giá"}
+                        </span>
+                      )}
                     </div>
                   </div>
 

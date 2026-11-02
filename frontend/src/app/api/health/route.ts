@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
         },
         ai_engine: {
           status: geminiConfigured ? "configured" : "missing_key",
-          provider: "Google Gemini 2.5 & DeepSeek-R1",
+          provider: "Google Gemini 2.0 Flash & Gemini 2.0 Thinking",
         },
         payment_gateway: {
           status: payosConfigured ? "configured" : "sandbox_mode",
