@@ -9,7 +9,14 @@
     "dev:ai": "cd ai-service && uvicorn main:app --reload --port 8000",
     "build:frontend": "npm --prefix frontend run build",
     "mcp:playwright": "playwright-mcp",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:tier1": "playwright test tests/e2e/tier1-feature-coverage",
+    "test:e2e:tier2": "playwright test tests/e2e/tier2-boundary-corner",
+    "test:e2e:tier3": "playwright test tests/e2e/tier3-cross-feature",
+    "test:e2e:tier4": "playwright test tests/e2e/tier4-application-scenarios",
+    "test:adversarial": "powershell -ExecutionPolicy Bypass -File tests/adversarial/run_all_m2_adversarial_tests.ps1",
+    "test:omr": "python ai-service/test_omr.py",
+    "test:all": "npm run test:e2e && npm run test:omr"
   },
   "devDependencies": {
     "@playwright/mcp": "^0.0.83",
