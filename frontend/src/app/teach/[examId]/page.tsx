@@ -534,33 +534,45 @@ function TeachingStudioContent() {
   // Pin Question to Canvas ("Đưa đề lên bảng")
   const handlePinQuestionToBoard = useCallback(() => {
     if (!excalidrawApiRef.current || !exam?.questions) return;
-    const currentQ = exam.questions[currentIdx];
-    if (!currentQ) return;
+    const originalQ = exam.questions[currentIdx];
+    if (!originalQ) return;
+
+    // Nếu đang xem câu hỏi biến thể AI (cloned), đưa câu biến thể lên; ngược lại đưa câu gốc
+    const isViewingClonedNow = !!showClonedTab[originalQ.id];
+    const currentClonedNow = clonedQuestionsMap[originalQ.id];
+    const targetQ = isViewingClonedNow && currentClonedNow ? {
+      ...originalQ,
+      content: currentClonedNow.content,
+      options: currentClonedNow.options,
+      correct_answer: currentClonedNow.correct_answer,
+      explanation: currentClonedNow.explanation,
+    } : originalQ;
 
     try {
-      const cardElements = convertQuestionToExcalidrawCard(currentQ, {
+      const cardElements = convertQuestionToExcalidrawCard(targetQ, {
         startX: 120,
         startY: 100,
         isDarkTheme: true,
         subject: exam.subject,
         grade: Number(exam.grade) || 12,
+        questionIndex: currentIdx + 1,
       });
 
       const currentElements = (excalidrawApiRef.current.getSceneElements?.() || []) as Record<string, unknown>[];
       const merged = sanitizeExcalidrawElements([...currentElements, ...cardElements]);
 
       excalidrawApiRef.current.updateScene({ elements: merged as any });
-      drawingsMapRef.current[currentQ.id] = merged;
-      setQuestionsWithDrawings((prev) => ({ ...prev, [currentQ.id]: true }));
+      drawingsMapRef.current[originalQ.id] = merged;
+      setQuestionsWithDrawings((prev) => ({ ...prev, [originalQ.id]: true }));
       triggerTeachSave(drawingsMapRef.current);
 
       if (splitRatio === 100) setSplitRatio(50);
       setActiveRightTab("whiteboard");
-      showToast("📌 Đã đưa câu hỏi lên bảng vẽ canvas!", "success");
+      showToast(`📌 Đã đưa CÂU ${currentIdx + 1} lên bảng vẽ canvas!`, "success");
     } catch (err: any) {
       showToast("Lỗi đưa câu hỏi lên bảng: " + err.message, "error");
     }
-  }, [exam, currentIdx, splitRatio, triggerTeachSave, showToast]);
+  }, [exam, currentIdx, showClonedTab, clonedQuestionsMap, splitRatio, triggerTeachSave, showToast]);
 
   const currentQ: Question | undefined = exam?.questions?.[currentIdx];
   const totalQuestions = exam?.questions?.length || 0;

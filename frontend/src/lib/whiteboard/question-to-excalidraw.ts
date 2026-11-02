@@ -9,6 +9,7 @@ interface ConvertQuestionOptions {
   isDarkTheme?: boolean;
   subject?: string;
   grade?: number;
+  questionIndex?: number;
 }
 
 const DIFFICULTY_MAP: Record<string, string> = {
@@ -19,24 +20,130 @@ const DIFFICULTY_MAP: Record<string, string> = {
 };
 
 /**
+ * Chuyển đổi mã KaTeX / LaTeX toán học sang ký tự Unicode chuẩn để hiển thị đẹp trên Canvas Excalidraw
+ */
+export function cleanLatexToUnicode(str: string): string {
+  if (!str) return '';
+  let s = str;
+
+  // 1. Số mũ: ^{2}, ^2, ^{n+1}, v.v.
+  const supers: Record<string, string> = {
+    '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+    '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+    '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾',
+    'n': 'ⁿ', 'x': 'ˣ', 'y': 'ʸ'
+  };
+  s = s.replace(/\^\{([^}]+)\}/g, (_, exp) =>
+    exp.split('').map((c: string) => supers[c] || c).join('')
+  );
+  s = s.replace(/\^([0-9nxy+-])/g, (_, c) => supers[c] || c);
+
+  // 2. Chỉ số dưới: _{1}, _1, _{i}, v.v.
+  const subs: Record<string, string> = {
+    '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+    '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+    '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎',
+    'x': 'ₓ', 'y': 'ᵧ', 'i': 'ᵢ', 'j': 'ⱼ'
+  };
+  s = s.replace(/_\{([^}]+)\}/g, (_, sub) =>
+    sub.split('').map((c: string) => subs[c] || c).join('')
+  );
+  s = s.replace(/_([0-9xyij])/g, (_, c) => subs[c] || c);
+
+  // 3. Căn bậc hai & căn bậc n: \sqrt{...}, \sqrt[n]{...}
+  s = s.replace(/\\sqrt\[([^\]]+)\]\{([^}]+)\}/g, 'ˢᵘᵖ($1)√($2)');
+  s = s.replace(/\\sqrt\{([^}]+)\}/g, '√($1)');
+  s = s.replace(/\\sqrt\s+([0-9a-zA-Z]+)/g, '√$1');
+
+  // 4. Phân số: \frac{a}{b} -> (a)/(b)
+  s = s.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)');
+
+  // 5. Ký hiệu so sánh & phép toán
+  s = s.replace(/\\le\b|\\leq\b/g, '≤');
+  s = s.replace(/\\ge\b|\\geq\b/g, '≥');
+  s = s.replace(/\\ne\b|\\neq\b/g, '≠');
+  s = s.replace(/\\pm\b/g, '±');
+  s = s.replace(/\\mp\b/g, '∓');
+  s = s.replace(/\\times\b/g, '×');
+  s = s.replace(/\\cdot\b/g, '·');
+  s = s.replace(/\\div\b/g, '÷');
+
+  // 6. Ký hiệu tập hợp & logic & hình học
+  s = s.replace(/\\in\b/g, '∈');
+  s = s.replace(/\\notin\b/g, '∉');
+  s = s.replace(/\\infty\b/g, '∞');
+  s = s.replace(/\\subset\b/g, '⊂');
+  s = s.replace(/\\cup\b/g, '∪');
+  s = s.replace(/\\cap\b/g, '∩');
+  s = s.replace(/\\forall\b/g, '∀');
+  s = s.replace(/\\exists\b/g, '∃');
+  s = s.replace(/\\approx\b/g, '≈');
+  s = s.replace(/\\equiv\b/g, '≡');
+  s = s.replace(/\\angle\b/g, '∠');
+  s = s.replace(/\\parallel\b/g, '∥');
+  s = s.replace(/\\perp\b/g, '⊥');
+  s = s.replace(/\\vec\{([^}]+)\}/g, 'vec($1)');
+
+  // 7. Ký tự Hy Lạp thường gặp trong Toán/Lý
+  s = s.replace(/\\pi\b/g, 'π');
+  s = s.replace(/\\alpha\b/g, 'α');
+  s = s.replace(/\\beta\b/g, 'β');
+  s = s.replace(/\\gamma\b/g, 'γ');
+  s = s.replace(/\\theta\b/g, 'θ');
+  s = s.replace(/\\Delta\b/g, 'Δ');
+  s = s.replace(/\\lambda\b/g, 'λ');
+  s = s.replace(/\\omega\b/g, 'ω');
+  s = s.replace(/\\Omega\b/g, 'Ω');
+
+  // 8. Bỏ các lệnh bọc định dạng KaTeX: \text{}, \mathrm{}, \mathbf{}, \overline{}, v.v.
+  s = s.replace(/\\(text|mathrm|mathbf|mathit|textbf|bar|overline)\{([^}]+)\}/g, '$2');
+
+  // 9. Dấu ngoặc co giãn \left(, \right)
+  s = s.replace(/\\left\(/g, '(').replace(/\\right\)/g, ')');
+  s = s.replace(/\\left\[/g, '[').replace(/\\right\]/g, ']');
+  s = s.replace(/\\left\\\{/g, '{').replace(/\\right\\\}/g, '}');
+  s = s.replace(/\\left\|/g, '|').replace(/\\right\|/g, '|');
+
+  // 10. Bỏ dấu bao quanh công thức LaTeX ($ và $$)
+  s = s.replace(/\$\$/g, '').replace(/\$/g, '');
+
+  // 11. Bỏ dấu gạch chéo ngược còn sót trước từ đơn
+  s = s.replace(/\\([a-zA-Z]+)/g, '$1');
+
+  // Chuẩn hóa khoảng trắng
+  s = s.replace(/[ \t]+/g, ' ');
+
+  return s.trim();
+}
+
+/**
  * Tách văn bản thành nhiều dòng với chiều dài dòng tối đa (tránh tràn khung Excalidraw)
  */
 function wrapText(text: string, maxCharsPerLine = 48): string[] {
   if (!text) return [];
-  const words = text.replace(/\r\n/g, '\n').split(/\s+/);
-  const lines: string[] = [];
-  let currentLine = '';
+  const rawLines = text.replace(/\r\n/g, '\n').split('\n');
+  const finalLines: string[] = [];
 
-  for (const word of words) {
-    if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
-      currentLine = (currentLine + ' ' + word).trim();
-    } else {
-      if (currentLine) lines.push(currentLine);
-      currentLine = word;
+  for (const rawLine of rawLines) {
+    if (!rawLine.trim()) {
+      finalLines.push('');
+      continue;
     }
+    const words = rawLine.split(/\s+/);
+    let currentLine = '';
+
+    for (const word of words) {
+      if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
+        currentLine = (currentLine + ' ' + word).trim();
+      } else {
+        if (currentLine) finalLines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    if (currentLine) finalLines.push(currentLine);
   }
-  if (currentLine) lines.push(currentLine);
-  return lines;
+
+  return finalLines;
 }
 
 /**
@@ -63,31 +170,61 @@ export function convertQuestionToExcalidrawCard(
   const headerBg = isDark ? '#1e293b' : '#eff6ff';
   const headerText = isDark ? '#38bdf8' : '#1d4ed8';
 
-  // 1. Phân tích nội dung câu hỏi
-  const orderNum = question.order || 1;
+  // 1. Phân tích số thứ tự & nội dung câu hỏi
+  const orderNum =
+    options.questionIndex ??
+    question.order_index ??
+    question.orderIndex ??
+    question.order ??
+    1;
   const diffLabel = DIFFICULTY_MAP[question.difficulty || 'medium'] || 'Thông hiểu';
   const subjectTag = options.subject ? `${options.subject} ${options.grade ? options.grade : ''}` : '';
 
-  const wrappedQuestion = wrapText(question.content || 'Nội dung câu hỏi', 52);
-  const questionTextHeight = wrappedQuestion.length * 26;
+  // Chuyển đổi KaTeX sang Unicode toán học chuẩn
+  const cleanedContent = cleanLatexToUnicode(question.content || 'Nội dung câu hỏi');
+  const wrappedQuestion = wrapText(cleanedContent, 52);
+  const questionTextHeight = Math.max(30, wrappedQuestion.length * 28);
 
-  // 2. Phân tích phương án trắc nghiệm hoặc tiểu mục
+  // 2. Phân tích phương án trắc nghiệm hoặc tiểu mục (Hỗ trợ Array, Object key-value, JSON string)
+  let rawOptions: string[] = [];
+  if (Array.isArray(question.options)) {
+    rawOptions = (question.options as unknown[]).map((o) => (typeof o === 'string' ? o : String(o)));
+  } else if (typeof question.options === 'object' && question.options !== null) {
+    rawOptions = Object.values(question.options as Record<string, unknown>).map(String);
+  } else if (typeof question.options === 'string') {
+    try {
+      const parsed = JSON.parse(question.options);
+      if (Array.isArray(parsed)) rawOptions = parsed.map(String);
+      else if (typeof parsed === 'object' && parsed !== null) rawOptions = Object.values(parsed).map(String);
+      else rawOptions = [question.options];
+    } catch {
+      rawOptions = [question.options];
+    }
+  }
+
   let optionsTextHeight = 0;
   const optionLines: string[] = [];
+  const OPTION_PREFIXES = ['A', 'B', 'C', 'D', 'E', 'F'];
 
-  if (Array.isArray(question.options) && question.options.length > 0) {
-    question.options.forEach((opt: string) => {
-      const wrapped = wrapText(opt, 50);
+  if (rawOptions.length > 0) {
+    rawOptions.forEach((opt: string, idx: number) => {
+      const prefix = OPTION_PREFIXES[idx] || `${idx + 1}`;
+      const cleanedOpt = cleanLatexToUnicode(opt);
+      const formatted = /^[A-Z]\s*[\.:]/i.test(cleanedOpt.trim())
+        ? cleanedOpt.trim()
+        : `${prefix}. ${cleanedOpt.trim()}`;
+      const wrapped = wrapText(formatted, 50);
       optionLines.push(...wrapped);
     });
-    optionsTextHeight = optionLines.length * 24 + 10;
+    optionsTextHeight = Math.max(30, optionLines.length * 26 + 12);
   } else if (Array.isArray(question.sub_questions) && question.sub_questions.length > 0) {
     question.sub_questions.forEach((sub: any) => {
       const subLabel = sub.sub_label || 'a';
-      const wrapped = wrapText(`${subLabel}) ${sub.content}`, 50);
+      const cleanedSub = cleanLatexToUnicode(sub.content);
+      const wrapped = wrapText(`${subLabel}) ${cleanedSub}`, 50);
       optionLines.push(...wrapped);
     });
-    optionsTextHeight = optionLines.length * 24 + 10;
+    optionsTextHeight = Math.max(30, optionLines.length * 26 + 12);
   }
 
   // 3. Phân tích lời giải (nếu có)
@@ -98,9 +235,10 @@ export function convertQuestionToExcalidrawCard(
       explanationLines.push(`Đáp án chuẩn: ${question.correct_answer}`);
     }
     if (question.explanation) {
-      explanationLines.push(...wrapText(`Hướng dẫn giải: ${question.explanation}`, 50));
+      const cleanedExp = cleanLatexToUnicode(question.explanation);
+      explanationLines.push(...wrapText(`Hướng dẫn giải: ${cleanedExp}`, 50));
     }
-    explanationHeight = explanationLines.length * 24 + 40;
+    explanationHeight = Math.max(40, explanationLines.length * 24 + 40);
   }
 
   // Tổng chiều cao thẻ
@@ -155,27 +293,36 @@ export function convertQuestionToExcalidrawCard(
     x: startX + 16,
     y: startY + 12,
     text: headerTitle,
+    originalText: headerTitle,
     fontSize: 16,
     fontFamily: 2,
     textAlign: 'left',
     verticalAlign: 'top',
+    width: cardWidth - 32,
+    height: 28,
+    autoResize: true,
     strokeColor: headerText,
     groupIds: [groupId],
   });
 
   // ================= 3. NỘI DUNG CÂU HỎI (Question Text) =================
   let currentY = startY + 56;
+  const qJoined = wrappedQuestion.join('\n');
 
   elements.push({
     id: `q_content_${groupId}`,
     type: 'text',
     x: startX + 20,
     y: currentY,
-    text: wrappedQuestion.join('\n'),
+    text: qJoined,
+    originalText: qJoined,
     fontSize: 18,
     fontFamily: 2,
     textAlign: 'left',
     verticalAlign: 'top',
+    width: cardWidth - 40,
+    height: questionTextHeight,
+    autoResize: true,
     strokeColor: textColor,
     groupIds: [groupId],
   });
@@ -200,16 +347,21 @@ export function convertQuestionToExcalidrawCard(
       groupIds: [groupId],
     });
 
+    const optJoined = optionLines.join('\n');
     elements.push({
       id: `options_txt_${groupId}`,
       type: 'text',
       x: startX + 24,
       y: currentY + 6,
-      text: optionLines.join('\n'),
+      text: optJoined,
+      originalText: optJoined,
       fontSize: 16,
       fontFamily: 2,
       textAlign: 'left',
       verticalAlign: 'top',
+      width: cardWidth - 48,
+      height: optionsTextHeight,
+      autoResize: true,
       strokeColor: subTextColor,
       groupIds: [groupId],
     });
@@ -237,16 +389,21 @@ export function convertQuestionToExcalidrawCard(
       groupIds: [groupId],
     });
 
+    const expJoined = explanationLines.join('\n');
     elements.push({
       id: `exp_txt_${groupId}`,
       type: 'text',
       x: startX + 28,
       y: currentY + 14,
-      text: explanationLines.join('\n'),
+      text: expJoined,
+      originalText: expJoined,
       fontSize: 15,
       fontFamily: 2,
       textAlign: 'left',
       verticalAlign: 'top',
+      width: cardWidth - 56,
+      height: expBoxHeight - 20,
+      autoResize: true,
       strokeColor: isDark ? '#6ee7b7' : '#047857',
       groupIds: [groupId],
     });
@@ -276,10 +433,14 @@ export function convertQuestionToExcalidrawCard(
         x: startX + 32,
         y: currentY + Math.max(14, expBoxHeight / 2 - 12),
         text: '🔒 [ REVEAL MODE: Click chọn & kéo/xóa hộp che để hiện lời giải ]',
+        originalText: '🔒 [ REVEAL MODE: Click chọn & kéo/xóa hộp che để hiện lời giải ]',
         fontSize: 13,
         fontFamily: 2,
         textAlign: 'center',
         verticalAlign: 'middle',
+        width: cardWidth - 64,
+        height: 24,
+        autoResize: true,
         strokeColor: '#f59e0b',
       });
     }

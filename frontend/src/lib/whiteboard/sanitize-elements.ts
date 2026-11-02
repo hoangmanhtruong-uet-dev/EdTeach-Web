@@ -97,6 +97,20 @@ export function sanitizeExcalidrawElement(el: any, index = 0): Record<string, un
     sanitized.textAlign = el.textAlign || "left";
     sanitized.verticalAlign = el.verticalAlign || "top";
     sanitized.lineHeight = el.lineHeight || 1.25;
+    sanitized.autoResize = el.autoResize !== undefined ? Boolean(el.autoResize) : true;
+
+    // Tính toán width & height nếu chưa có hoặc nhỏ hơn độ dài thực tế của text (tránh bị Excalidraw crop ở 100px)
+    const lines = textStr.split("\n");
+    const maxLineLength = Math.max(...lines.map((l: string) => l.length), 1);
+    const estWidth = Math.max(120, Math.min(800, maxLineLength * ((sanitized.fontSize as number) * 0.75)));
+    const estHeight = Math.max(28, lines.length * ((sanitized.fontSize as number) * (sanitized.lineHeight as number || 1.25)));
+
+    if (typeof el.width !== "number" || el.width < estWidth) {
+      sanitized.width = estWidth;
+    }
+    if (typeof el.height !== "number" || el.height < estHeight) {
+      sanitized.height = estHeight;
+    }
   }
 
   return sanitized;
