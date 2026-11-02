@@ -131,10 +131,10 @@ export function FloatingClassroomTools({
 
   return (
     <>
-      {/* 1. THANH CÔNG CỤ NỔI (FLOATING DOCK Ở GÓC DƯỚI) */}
+      {/* 1. THANH CÔNG CỤ NỔI (FLOATING DOCK Ở GÓC DƯỚI PHẢI TRÊN DESKTOP, TRÊN SLIDE BAR NẾU MÀN HẸP) */}
       <aside
         aria-label="Thanh công cụ bục giảng nổi"
-        className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 rounded-full border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-3 py-1.5 shadow-xl backdrop-blur-md transition-all hover:scale-[1.02]"
+        className="fixed bottom-4 right-14 z-40 max-xl:bottom-16 max-xl:left-1/2 max-xl:-translate-x-1/2 max-xl:right-auto flex items-center gap-1.5 rounded-full border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-3 py-1.5 shadow-xl backdrop-blur-md transition-all hover:scale-[1.02]"
       >
         {/* Nút Timer Mini */}
         <button
@@ -234,7 +234,7 @@ export function FloatingClassroomTools({
 
       {/* 2. CỬA SỔ TIMER ĐẾM NGƯỢC NỔI (KHI MỞ CHI TIẾT) */}
       {showTimerModal && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 w-80 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed bottom-16 right-14 z-50 max-xl:bottom-28 max-xl:left-1/2 max-xl:-translate-x-1/2 max-xl:right-auto w-80 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <Timer className="h-4 w-4 text-amber-500" />
