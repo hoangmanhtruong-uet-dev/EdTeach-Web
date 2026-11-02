@@ -167,9 +167,28 @@ export default function WhiteboardEditor({
 
   // STEM Floating Modals
   const [showMathModal, setShowMathModal] = useState(false);
+  const [editingFormulaElement, setEditingFormulaElement] = useState<{
+    id: string;
+    rawLatex: string;
+    color?: string;
+    fontSize?: "sm" | "md" | "lg" | "xl";
+  } | null>(null);
   const [showCasioModal, setShowCasioModal] = useState(false);
   const [show3DModelModal, setShow3DModelModal] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const handleDoubleClickElement = useCallback((element: Record<string, unknown>) => {
+    if (element.customData && (element.customData as any).type === "latex") {
+      const custom = element.customData as any;
+      setEditingFormulaElement({
+        id: element.id as string,
+        rawLatex: custom.rawLatex || "",
+        color: custom.color || currentTheme.defaultStrokeColor,
+        fontSize: custom.fontSize || "lg",
+      });
+      setShowMathModal(true);
+    }
+  }, [currentTheme]);
 
   const handleToggleLaser = useCallback(() => {
     setIsLaserActive((prev) => {
@@ -279,10 +298,14 @@ export default function WhiteboardEditor({
     [board.id, title, localCacheKey, currentTheme, pages, currentPageIndex]
   );
 
-  // Lưu trước khi rời trang
+  // Tự động Flush lưu NGAY khi tab bị ẩn hoặc đóng trình duyệt
   useEffect(() => {
-    return () => {
-      if (latestDataRef.current?.elements?.length) {
+    const flushSave = () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      if (latestDataRef.current?.elements) {
         performSave(
           latestDataRef.current.elements,
           latestDataRef.current.appState,
@@ -290,6 +313,25 @@ export default function WhiteboardEditor({
           latestDataRef.current.files
         );
       }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        flushSave();
+      }
+    };
+
+    const handlePageHide = () => {
+      flushSave();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handlePageHide);
+      flushSave();
     };
   }, [performSave]);
 
@@ -351,17 +393,21 @@ export default function WhiteboardEditor({
     await updateWhiteboard(board.id, { is_favorite: nextVal });
   };
 
-  // Đổi phông nền Sư phạm
+  // Đổi phông nền Sư phạm (Giấy ô ly, kẻ ngang, bảng xanh, bảng đen, bảng trắng)
   const handleSelectTheme = (theme: BoardTheme) => {
     setCurrentTheme(theme);
     setShowThemeMenu(false);
 
     if (excalidrawAPI) {
+      const isPattern = theme.pattern === "student_grid" || theme.pattern === "lined_notebook";
+      const isDark = theme.isDark;
       const updatedAppState = {
         ...latestDataRef.current.appState,
-        viewBackgroundColor: theme.viewBackgroundColor,
+        viewBackgroundColor: isPattern ? "transparent" : theme.viewBackgroundColor,
         currentItemStrokeColor: theme.defaultStrokeColor,
         gridSize: theme.gridSize || 20,
+        gridModeEnabled: theme.pattern === "student_grid",
+        theme: isDark ? "dark" : "light",
         theme_preset: theme.id,
       };
 
@@ -602,7 +648,14 @@ export default function WhiteboardEditor({
   };
 
   // ================= STEM TOOLS INSERTION HANDLERS =================
-  const handleInsertFormula = (svgDataUrl: string, width: number, height: number, rawLatex: string) => {
+  const handleInsertFormula = (
+    svgDataUrl: string,
+    width: number,
+    height: number,
+    rawLatex: string,
+    formulaColor?: string,
+    formulaSize?: "sm" | "md" | "lg" | "xl"
+  ) => {
     if (!excalidrawAPI) return;
 
     const fileId = `math_file_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -618,6 +671,37 @@ export default function WhiteboardEditor({
     }
 
     const currentElements = excalidrawAPI.getSceneElements() as any[];
+
+    // Nếu đang sửa công thức có sẵn -> Cập nhật tại chỗ (in-place)
+    if (editingFormulaElement) {
+      const nextElements = currentElements.map((el) => {
+        if (el.id === editingFormulaElement.id) {
+          return {
+            ...el,
+            fileId,
+            width: Math.max(120, width),
+            height: Math.max(50, height),
+            customData: {
+              ...el.customData,
+              type: "latex",
+              rawLatex,
+              color: formulaColor,
+              fontSize: formulaSize,
+            },
+          };
+        }
+        return el;
+      });
+
+      const sanitized = sanitizeExcalidrawElements(nextElements);
+      excalidrawAPI.updateScene({ elements: sanitized });
+      latestDataRef.current.elements = sanitized;
+      performSave(sanitized, latestDataRef.current.appState);
+      setEditingFormulaElement(null);
+      return;
+    }
+
+    // Nếu tạo công thức mới
     let maxY = 100;
     currentElements.forEach((el) => {
       if (el && typeof el.y === "number" && typeof el.height === "number") {
@@ -637,7 +721,12 @@ export default function WhiteboardEditor({
       height: Math.max(50, height),
       scale: [1, 1],
       isDeleted: false,
-      customData: { type: "latex", rawLatex },
+      customData: {
+        type: "latex",
+        rawLatex,
+        color: formulaColor,
+        fontSize: formulaSize,
+      },
     };
 
     const nextElements = sanitizeExcalidrawElements([...currentElements, newElement]);
@@ -1315,14 +1404,21 @@ export default function WhiteboardEditor({
           initialElements={board.elements}
           initialAppState={{
             ...board.app_state,
-            viewBackgroundColor: currentTheme.viewBackgroundColor,
+            viewBackgroundColor:
+              currentTheme.pattern === "student_grid" || currentTheme.pattern === "lined_notebook"
+                ? "transparent"
+                : currentTheme.viewBackgroundColor,
             currentItemStrokeColor: currentTheme.defaultStrokeColor,
             gridSize: currentTheme.gridSize || 20,
+            gridModeEnabled: currentTheme.pattern === "student_grid",
+            theme: currentTheme.isDark ? "dark" : "light",
           }}
           initialFiles={board.files}
+          theme={currentTheme}
           isPro={isPro}
           onChange={handleCanvasChange}
           onApiReady={(api) => setExcalidrawAPI(api as unknown as ExcalidrawEditorAPI)}
+          onDoubleClickElement={handleDoubleClickElement}
         />
 
         {/* Nút thoát Zen Mode khi Topbar đang ẩn */}
@@ -1375,9 +1471,16 @@ export default function WhiteboardEditor({
         {/* 6. MODAL GÕ CÔNG THỨC TOÁN KATEX / LATEX */}
         <MathFormulaModal
           isOpen={showMathModal}
-          onClose={() => setShowMathModal(false)}
+          onClose={() => {
+            setShowMathModal(false);
+            setEditingFormulaElement(null);
+          }}
           onInsertFormula={handleInsertFormula}
-          themeTextColor={currentTheme.defaultStrokeColor}
+          initialLatex={editingFormulaElement?.rawLatex || ""}
+          initialColor={editingFormulaElement?.color}
+          initialFontSize={editingFormulaElement?.fontSize || "lg"}
+          editingElementId={editingFormulaElement?.id}
+          boardTheme={currentTheme}
         />
 
         {/* 7. MÁY TÍNH CASIO FX-580VN X ẢO NỔI */}

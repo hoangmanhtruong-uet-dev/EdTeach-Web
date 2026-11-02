@@ -8,6 +8,7 @@ export interface BoardTheme {
   penPalette: string[];
   isDark: boolean;
   gridSize?: number;
+  pattern: 'none' | 'student_grid' | 'lined_notebook' | 'chalkboard';
 }
 
 export const BOARD_THEMES: BoardTheme[] = [
@@ -20,6 +21,7 @@ export const BOARD_THEMES: BoardTheme[] = [
     defaultStrokeColor: '#ffffff',
     penPalette: ['#ffffff', '#fef08a', '#fed7aa', '#86efac', '#93c5fd', '#f472b6'],
     isDark: true,
+    pattern: 'chalkboard',
   },
   {
     id: 'matte_black',
@@ -30,6 +32,7 @@ export const BOARD_THEMES: BoardTheme[] = [
     defaultStrokeColor: '#ffffff',
     penPalette: ['#ffffff', '#fde047', '#fca5a5', '#6ee7b7', '#38bdf8', '#c084fc'],
     isDark: true,
+    pattern: 'chalkboard',
   },
   {
     id: 'student_grid',
@@ -41,6 +44,7 @@ export const BOARD_THEMES: BoardTheme[] = [
     penPalette: ['#1d4ed8', '#dc2626', '#16a34a', '#7c3aed', '#0f172a'],
     gridSize: 20,
     isDark: false,
+    pattern: 'student_grid',
   },
   {
     id: 'lined_notebook',
@@ -50,8 +54,9 @@ export const BOARD_THEMES: BoardTheme[] = [
     viewBackgroundColor: '#fcfbfa',
     defaultStrokeColor: '#1e293b',
     penPalette: ['#1e293b', '#2563eb', '#b91c1c', '#047857', '#d97706'],
-    gridSize: 24,
+    gridSize: 32,
     isDark: false,
+    pattern: 'lined_notebook',
   },
   {
     id: 'modern_white',
@@ -62,6 +67,7 @@ export const BOARD_THEMES: BoardTheme[] = [
     defaultStrokeColor: '#0f172a',
     penPalette: ['#0f172a', '#2563eb', '#dc2626', '#16a34a', '#7c3aed'],
     isDark: false,
+    pattern: 'none',
   },
 ];
 

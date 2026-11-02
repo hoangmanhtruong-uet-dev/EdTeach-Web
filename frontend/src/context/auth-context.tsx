@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { Database } from "@/types/database";
@@ -32,6 +32,8 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const userRef = useRef<User | null>(null);
+  userRef.current = user;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -128,15 +130,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
+        const nextUser = newSession?.user ?? null;
+        const prevUser = userRef.current;
+        const isSameUser = Boolean(prevUser && nextUser && prevUser.id === nextUser.id);
 
-        if (newSession?.user) {
-          await Promise.all([
-            fetchProfile(newSession.user.id),
-            fetchWallet(newSession.user.id),
-          ]);
-          autoClaimPendingReport(newSession.user.id);
+        // Luôn cập nhật session token ngầm để API call có access token mới nhất
+        setSession(newSession);
+
+        // Bỏ qua TOKEN_REFRESHED hoặc SIGNED_IN lặp lại nếu cùng user: KHÔNG thay đổi object reference của user
+        if (isSameUser && (event === "TOKEN_REFRESHED" || event === "SIGNED_IN")) {
+          return;
+        }
+
+        setUser(nextUser);
+
+        if (nextUser) {
+          if (!isSameUser) {
+            await Promise.all([
+              fetchProfile(nextUser.id),
+              fetchWallet(nextUser.id),
+            ]);
+            autoClaimPendingReport(nextUser.id);
+          }
         } else {
           setProfile(null);
           setWallet(null);
