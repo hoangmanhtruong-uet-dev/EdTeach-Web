@@ -193,8 +193,8 @@ export function FloatingClassroomTools({
             ? { left: `${position.x}px`, top: `${position.y}px`, transform: "none", bottom: "auto", right: "auto" }
             : undefined
         }
-        className={`fixed z-40 flex items-center gap-1 rounded-full border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-2 py-1.5 shadow-xl backdrop-blur-md select-none touch-none ${
-          !position ? "bottom-4 right-14 max-xl:bottom-16 max-xl:left-1/2 max-xl:-translate-x-1/2 max-xl:right-auto" : ""
+        className={`fixed z-40 flex items-center gap-1 rounded-full border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-2.5 py-1.5 shadow-xl backdrop-blur-md select-none touch-none ${
+          !position ? "bottom-3 left-1/2 -translate-x-1/2" : ""
         }`}
       >
         {/* Nút tay cầm kéo thả */}
@@ -315,7 +315,7 @@ export function FloatingClassroomTools({
               : undefined
           }
           className={`fixed z-50 w-80 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 ${
-            !position ? "bottom-16 right-14 max-xl:bottom-28 max-xl:left-1/2 max-xl:-translate-x-1/2 max-xl:right-auto" : ""
+            !position ? "bottom-32 left-1/2 -translate-x-1/2" : ""
           }`}
         >
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">

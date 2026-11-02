@@ -137,7 +137,7 @@ export function BottomSlideBar({
             : undefined
         }
         className={`fixed z-40 flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl border border-border bg-card/95 backdrop-blur-md text-card-foreground shadow-xl select-none text-xs touch-none ${
-          !position ? "bottom-4 left-1/2 -translate-x-1/2" : ""
+          !position ? "bottom-[4.25rem] left-1/2 -translate-x-1/2" : ""
         }`}
       >
         {/* Nút tay cầm kéo thả Grip */}
@@ -241,7 +241,7 @@ export function BottomSlideBar({
               : undefined
           }
           className={`fixed z-50 w-[94vw] max-w-3xl rounded-2xl border border-border bg-card/95 backdrop-blur-md shadow-2xl p-4 animate-in slide-in-from-bottom-2 duration-150 ${
-            !position ? "bottom-16 left-1/2 -translate-x-1/2" : ""
+            !position ? "bottom-[8.5rem] left-1/2 -translate-x-1/2" : ""
           }`}
         >
           <div className="flex items-center justify-between pb-3 border-b border-border mb-3">
