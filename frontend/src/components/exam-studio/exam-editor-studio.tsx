@@ -2669,7 +2669,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
             </div>
 
             {/* Menu options: Tệp, Chỉnh sửa, Xem, Chèn, Định dạng, Công cụ */}
-            <div className="flex items-center gap-0.5 sm:gap-1 text-xs text-slate-600 pt-0.5">
+            <div className="flex items-center gap-0.5 sm:gap-1 text-xs text-slate-600 pt-0.5 whitespace-nowrap overflow-x-auto scrollbar-none">
               {/* 1. Tệp */}
               <div className="relative">
                 <button
@@ -4330,6 +4330,18 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">Xuất Word</span>
+          </button>
+
+          {/* Action: Chia sẻ Đề Thi (Mở Modal chia sẻ học sinh & giáo viên) */}
+          <button
+            type="button"
+            onClick={handleShare}
+            aria-label="Chia sẻ đề thi đang soạn"
+            title="Chia sẻ đề thi đang soạn cho học sinh làm bài hoặc đồng nghiệp phản biện"
+            className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 sm:px-3.5 py-1.5 text-xs font-semibold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-blue-600 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 shrink-0"
+          >
+            <Share2 className="h-3.5 w-3.5 text-blue-600" aria-hidden="true" />
+            <span className="hidden sm:inline">Chia sẻ</span>
           </button>
 
           {/* More Actions Dropdown Menu "⋯" (Holds Chia sẻ, Mời đồng nghiệp, Xem kho đề) */}

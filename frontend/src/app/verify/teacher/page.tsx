@@ -264,12 +264,12 @@ export default function TeacherVerificationPage() {
           <div className="rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 p-4 text-xs text-blue-900 dark:text-blue-300 space-y-2">
             <div className="flex items-center gap-1.5 font-bold">
               <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span>Hướng dẫn để AI thẩm định tự động đạt 100%:</span>
+              <span>Quy trình gửi hồ sơ duyệt thủ công (qua Gmail Ban Quản Trị):</span>
             </div>
             <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
               <li>Chụp rõ 4 góc của thẻ ngành, không bị lóa đèn flash hay che khuất thông tin.</li>
               <li>Họ tên trên thẻ trùng khớp hoặc viết không dấu với họ tên tài khoản.</li>
-              <li>Chấp nhận thẻ viên chức trường phổ thông, thẻ giảng viên đại học, thẻ trung tâm luyện thi hoặc bằng tốt nghiệp sư phạm.</li>
+              <li>Sau khi gửi, thông tin được chuyển trực tiếp tới Ban Quản Trị qua Gmail để đối soát và phê duyệt thủ công trong vòng 24h.</li>
             </ul>
           </div>
 

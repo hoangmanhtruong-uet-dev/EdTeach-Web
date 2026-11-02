@@ -62,26 +62,17 @@ export function TeachingStepperBar({
 
           <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" aria-hidden="true" />
 
-          {/* Bước 2: Trộn mã đề & In Word kép */}
+          {/* Bước 2: In Word kép cho học sinh & giáo viên */}
           <div className="flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={onOpenShuffleModal}
-              title="Bước 2: Mở hộp thoại hoán vị tạo 4-12 mã đề thi độc lập"
-              className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/50 hover:bg-muted text-foreground px-2 py-1.5 font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-primary"
-            >
-              <Shuffle className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-              <span>2. Trộn đề</span>
-            </button>
             <button
               type="button"
               onClick={onExportDualTeaching}
               disabled={isExporting}
-              title="In Bộ Đề Kép Word (.docx): 1 Bản Học Sinh (dòng chấm chép bài) & 1 Bản Giáo Viên (kèm lời giải)"
-              className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-2 py-1.5 font-semibold transition-colors cursor-pointer disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-emerald-500"
+              title="Bước 2: In Bộ Đề Kép Word (.docx) - 1 Bản Học Sinh (dòng chấm chép bài) & 1 Bản Giáo Viên (kèm lời giải)"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-2.5 py-1.5 font-semibold transition-colors cursor-pointer disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-emerald-500"
             >
               <Printer className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-              <span className="hidden sm:inline">In Word kép</span>
+              <span>2. In Word kép</span>
             </button>
           </div>
 

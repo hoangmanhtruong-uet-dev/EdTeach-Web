@@ -123,6 +123,11 @@ function findAutoMatchingLab(content: string, subject?: string): LabLesson | nul
 }
 
 function TeachingStudioContent() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -811,7 +816,7 @@ function TeachingStudioContent() {
 
   const isOverallLoading = loading || authLoading;
 
-  if (isOverallLoading) {
+  if (!mounted || isOverallLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-slate-900 text-white">
         <div className="flex flex-col items-center gap-3">

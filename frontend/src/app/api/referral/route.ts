@@ -91,21 +91,37 @@ export async function POST(req: NextRequest) {
     // 1. Kiểm tra mã người mời & chống gian lận tạo vòng tròn (CRT-06 & CRT-07)
     let inviter: any = null;
 
-    // Cách 1: Tìm theo cột referral_code trực tiếp
-    const { data: directMatch } = await (adminClient.from("users") as any)
-      .select("id, name, referred_by, referral_code")
-      .eq("referral_code", cleanCode)
-      .maybeSingle();
+    // Cách 0: Thử gọi RPC lookup_referral_code (Bypass RLS an toàn tuyệt đối)
+    try {
+      const { data: rpcMatch, error: rpcError } = await (supabase.rpc as any)("lookup_referral_code", {
+        code_to_check: cleanCode,
+      });
+      if (!rpcError && rpcMatch && Array.isArray(rpcMatch) && rpcMatch.length > 0) {
+        inviter = rpcMatch[0];
+      }
+    } catch (e) {
+      console.warn("lookup_referral_code RPC note:", e);
+    }
 
-    if (directMatch) {
-      inviter = directMatch;
-    } else if (cleanCode.startsWith("EDU")) {
-      // Cách 2: Tìm theo tiền tố User ID nếu mã được sinh từ ID (như EDU0C01A)
+    // Cách 1: Tìm theo cột referral_code trực tiếp
+    if (!inviter) {
+      const { data: directMatch } = await (adminClient.from("users") as any)
+        .select("id, name, referred_by, referral_code")
+        .eq("referral_code", cleanCode)
+        .maybeSingle();
+
+      if (directMatch) {
+        inviter = directMatch;
+      }
+    }
+
+    // Cách 2: Tìm theo tiền tố User ID nếu mã được sinh từ ID (như EDU8C01A)
+    if (!inviter && cleanCode.startsWith("EDU")) {
       const hexPrefix = cleanCode.slice(3).toLowerCase();
       if (hexPrefix.length >= 4) {
+        // Query users có id bắt đầu bằng prefix
         const { data: userCandidates } = await (adminClient.from("users") as any)
-          .select("id, name, referred_by, referral_code")
-          .limit(100);
+          .select("id, name, referred_by, referral_code");
 
         if (userCandidates && userCandidates.length > 0) {
           const matched = userCandidates.find((u: any) =>
@@ -115,9 +131,13 @@ export async function POST(req: NextRequest) {
           if (matched) {
             inviter = matched;
             // Tự động lưu referral_code vào DB cho tài khoản người mời
-            await (adminClient.from("users") as any)
-              .update({ referral_code: cleanCode })
-              .eq("id", matched.id);
+            try {
+              await (adminClient.from("users") as any)
+                .update({ referral_code: cleanCode })
+                .eq("id", matched.id);
+            } catch {
+              // ignore
+            }
           }
         }
       }

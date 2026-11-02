@@ -108,7 +108,7 @@ export const CREDIT_PACKS = [
 // CHẾ ĐỘ THỬ NGHIỆM BETA: false
 // Đã kết thúc giai đoạn thử nghiệm Beta, quay về phân cấp 3 gói chuẩn: FREE, PRO, MAX.
 // ==============================================================================
-export const IS_BETA_ALL_FEATURES_UNLOCKED = false;
+export const IS_BETA_ALL_FEATURES_UNLOCKED = true;
 
 /**
  * Kiểm tra xem gói thuê bao có còn hạn sử dụng hay không.

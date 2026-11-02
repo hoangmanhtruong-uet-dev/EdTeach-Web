@@ -1426,10 +1426,10 @@ function GradingPageInner() {
             {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-border">
               <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-neutral-100 text-neutral-900">
+                <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
                   <Plus className="w-4 h-4" />
                 </span>
-                <h3 className="font-bold text-lg text-neutral-900">Tạo kỳ thi mới</h3>
+                <h3 className="font-bold text-lg text-foreground">Tạo kỳ thi mới</h3>
               </div>
               <button
                 onClick={() => setShowCreateModal(false)}
@@ -1443,7 +1443,7 @@ function GradingPageInner() {
             <div className="p-6 space-y-5">
               {/* Tên kỳ thi */}
               <div>
-                <label className="block text-xs font-bold uppercase text-neutral-600 mb-1.5">
+                <label className="block text-xs font-bold uppercase text-muted-foreground mb-1.5">
                   Tên kỳ thi
                 </label>
                 <input
@@ -1451,7 +1451,7 @@ function GradingPageInner() {
                   value={createSessionName}
                   onChange={(e) => setCreateSessionName(e.target.value)}
                   placeholder="VD: Kiểm tra 1 tiết Toán 10 - Chương 1..."
-                  className="w-full text-sm border border-neutral-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                  className="w-full text-sm border border-border bg-background text-foreground rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
@@ -2012,11 +2012,11 @@ function GradingPageInner() {
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-border">
               <div>
-                <h3 className="font-bold text-lg text-neutral-900">
+                <h3 className="font-bold text-lg text-foreground">
                   Chấm phiếu trắc nghiệm bằng AI
                 </h3>
-                <p className="text-xs text-neutral-500">
-                  Kỳ thi: <strong>{showScanModal.name}</strong> ({showScanModal.questionCount} câu)
+                <p className="text-xs text-muted-foreground">
+                  Kỳ thi: <strong className="text-foreground">{showScanModal.name}</strong> ({showScanModal.questionCount} câu)
                 </p>
               </div>
               <button
@@ -2040,7 +2040,7 @@ function GradingPageInner() {
                     value={studentNameInput}
                     onChange={(e) => setStudentNameInput(e.target.value)}
                     placeholder="Nguyễn Văn An..."
-                    className="w-full text-xs border border-neutral-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full text-xs border border-border bg-background text-foreground rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
                 <div>
@@ -2904,7 +2904,7 @@ function GradingPageInner() {
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-border">
               <div>
-                <h3 className="font-bold text-lg text-neutral-900">
+                <h3 className="font-bold text-lg text-foreground">
                   Bảng điểm kỳ thi: {showScoreboardModal.name}
                 </h3>
                 <p className="text-xs text-neutral-500">
@@ -2929,7 +2929,7 @@ function GradingPageInner() {
               ) : (
                 <div className="border border-neutral-200 rounded-xl overflow-hidden text-xs">
                   <table className="w-full text-left">
-                    <thead className="bg-neutral-50 text-neutral-600 font-bold border-b border-neutral-200">
+                    <thead className="bg-muted text-muted-foreground font-bold border-b border-border">
                       <tr>
                         <th className="py-2.5 px-3">STT</th>
                         <th className="py-2.5 px-3">SBD</th>
@@ -2946,7 +2946,7 @@ function GradingPageInner() {
                           <td className="py-2.5 px-3 font-mono font-bold text-neutral-800">
                             {std.studentCode}
                           </td>
-                          <td className="py-2.5 px-3 font-medium text-neutral-900">
+                          <td className="py-2.5 px-3 font-medium text-foreground">
                             {std.studentName}
                           </td>
                           <td className="py-2.5 px-3 text-center">
@@ -2954,7 +2954,7 @@ function GradingPageInner() {
                             {" / "}
                             <span className="text-red-500 font-semibold">{std.incorrectCount}S</span>
                           </td>
-                          <td className="py-2.5 px-3 text-right font-black text-neutral-900 text-sm">
+                          <td className="py-2.5 px-3 text-right font-black text-foreground text-sm">
                             {std.score}
                           </td>
                           <td className="py-2.5 px-3 text-right text-neutral-400 text-[11px]">
