@@ -1,3 +1,5 @@
+import { isEmailAdmin } from "@/lib/auth/admin";
+
 export interface PricingPlan {
   id: string;
   name: string;
@@ -148,15 +150,12 @@ export function isSubscriptionActive(profile: any): boolean {
 export function isMaxUser(profile: any): boolean {
   if (IS_BETA_ALL_FEATURES_UNLOCKED) return true;
   if (!profile) return false;
-  const email = (profile.email || profile.user_metadata?.email || "").toLowerCase();
-  const id = profile.id;
-  if (
-    email === "truongcri0101@gmail.com" ||
-    email.includes("truongcri0101") ||
-    id === "84493d6a-4eff-42af-bf7d-0da914f96e39"
-  ) {
+
+  // Quản trị viên hệ thống (theo database hoặc environment config) có toàn quyền gói MAX
+  if (profile.role === "admin" || isEmailAdmin(profile)) {
     return true;
   }
+
   // Nguồn chân lý là cột 'tier' trên bảng public.users
   const tier = profile.tier || (profile as any).subscription_tier;
   if (tier !== "max" && tier !== "school") {
@@ -207,15 +206,7 @@ export function getEffectiveTier(profile: any): "free" | "pro" | "max" | "school
 
 export function getTierName(profile: any): string {
   if (isMaxUser(profile)) {
-    const email = (profile?.email || profile?.user_metadata?.email || "").toLowerCase();
-    if (
-      email === "truongcri0101@gmail.com" ||
-      email.includes("truongcri0101") ||
-      profile?.tier === "school"
-    ) {
-      return "GÓI LUYỆN THI MAX";
-    }
-    return "GÓI LUYỆN THI MAX";
+    return profile?.tier === "school" ? "GÓI TRƯỜNG HỌC (SCHOOL)" : "GÓI LUYỆN THI MAX";
   }
   if (isProUser(profile)) return "GÓI GIÁO VIÊN PRO";
   if (IS_BETA_ALL_FEATURES_UNLOCKED) return "GÓI LUYỆN THI MAX (BETA)";

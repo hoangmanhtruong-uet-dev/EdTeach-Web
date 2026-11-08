@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from "r
 import { User, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { Database } from "@/types/database";
+import { isEmailAdmin } from "@/lib/auth/admin";
 
 type UserProfile = Database["public"]["Tables"]["users"]["Row"];
 type Wallet = Database["public"]["Tables"]["wallets"]["Row"];
@@ -51,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!error && data) {
         let finalProfile: any = { ...(data as any) };
         try {
-          if ((data as any)?.email === "truongcri0101@gmail.com") {
+          if (isEmailAdmin(data) || (data as any)?.role === "admin") {
             finalProfile.tier = "max";
             finalProfile.subscription_tier = "max";
           }

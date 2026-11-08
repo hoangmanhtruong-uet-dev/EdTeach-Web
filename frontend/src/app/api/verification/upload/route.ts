@@ -211,7 +211,7 @@ export async function POST(req: NextRequest) {
     // 2. Lưu hồ sơ vào cơ sở dữ liệu
     await saveVerificationRecord(verificationRecord);
 
-    // 3. Gửi email thông báo tới Ban Quản Trị (truongcri0101@gmail.com) để phê duyệt thủ công
+    // 3. Gửi email thông báo tới Ban Quản Trị để phê duyệt thủ công
     try {
       await notifyAdminNewVerification({
         userId,

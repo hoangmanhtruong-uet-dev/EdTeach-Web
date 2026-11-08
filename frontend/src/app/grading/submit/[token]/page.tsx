@@ -171,6 +171,7 @@ function StudentSubmissionContent({ params }: SubmissionPageProps) {
             imageBase64: base64,
             sheetType: linkData?.sheetType || "2025",
             answerKey: {},
+            studentToken: token,
           }),
         });
 

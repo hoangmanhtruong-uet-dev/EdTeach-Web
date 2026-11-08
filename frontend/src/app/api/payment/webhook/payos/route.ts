@@ -93,8 +93,24 @@ export async function POST(req: NextRequest) {
       else if (paidAmount === 149000 || paidAmount === 99000) creditsToAdd = 30000;
     }
 
-    // 3. Nếu tìm thấy user, cộng tiền vào ví (Wallets)
+    // 3. Nếu tìm thấy user, kiểm tra tính duy nhất (idempotency) và cộng tiền vào ví (Wallets)
     if (userId && creditsToAdd > 0) {
+      const transactionRefId = orderId; // ví dụ: "payos_12345"
+
+      // Chống nạp lặp / Replay attack: kiểm tra ref_id đã ghi nhận trong sổ cái chưa
+      const { data: existingTxn } = await (supabase.from("wallet_txns") as any)
+        .select("id")
+        .eq("ref_id", transactionRefId)
+        .maybeSingle();
+
+      if (existingTxn) {
+        console.log(`[PayOS Webhook] Giao dịch ${transactionRefId} đã được xử lý trước đó. Bỏ qua để tránh cộng tiền lặp.`);
+        return NextResponse.json({
+          success: true,
+          message: "Transaction already processed",
+        });
+      }
+
       const { data: wallet } = await (supabase.from("wallets") as any)
         .select("*")
         .eq("user_id", userId)
@@ -115,10 +131,16 @@ export async function POST(req: NextRequest) {
             amount: creditsToAdd,
             type: "purchase",
             description: `Nạp tiền tự động qua PayOS: +${creditsToAdd} Credits (Mã GD: ${orderCodeStr})`,
-            ref_id: orderId,
+            ref_id: transactionRefId,
+            metadata: {
+              provider: "payos",
+              orderCode: orderCodeStr,
+              amountVnd: paidAmount,
+              processedAt: nowIso,
+            },
           });
-        } catch {
-          // ignore
+        } catch (insertErr) {
+          console.error("[PayOS Webhook] Lỗi ghi nhận sổ cái wallet_txns:", insertErr);
         }
       }
 

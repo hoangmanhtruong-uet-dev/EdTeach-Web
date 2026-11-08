@@ -1,23 +1,36 @@
 import { User, SupabaseClient } from "@supabase/supabase-js";
 
-export const MASTER_ADMIN_EMAIL = "truongcri0101@gmail.com";
-export const ADMIN_EMAIL_DOMAIN = "@admin.edteach.vn";
+/**
+ * Danh sách email quản trị viên được nạp từ biến môi trường ADMIN_EMAILS hoặc NEXT_PUBLIC_ADMIN_EMAILS.
+ * Loại bỏ hoàn toàn email cá nhân hardcode trong mã nguồn.
+ */
+export function getAdminEmails(): string[] {
+  const envEmails =
+    process.env.ADMIN_EMAILS ||
+    process.env.NEXT_PUBLIC_ADMIN_EMAILS ||
+    process.env.ADMIN_EMAIL ||
+    "";
+  return envEmails
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
 
 /**
- * Fast synchronous check for trusted admin email formats.
+ * Kiểm tra nhanh xem email có nằm trong danh sách Quản trị viên cấu hình qua biến môi trường hay không.
  */
 export function isEmailAdmin(user: { email?: string | null } | null | undefined): boolean {
   if (!user?.email) return false;
   const email = user.email.toLowerCase().trim();
-  return email === MASTER_ADMIN_EMAIL || email.endsWith(ADMIN_EMAIL_DOMAIN);
+  const configuredAdmins = getAdminEmails();
+  return configuredAdmins.includes(email);
 }
 
 /**
- * Comprehensive admin check verifying email domain and database role.
- * Criteria:
- * 1. user exists and has email
- * 2. user.email === truongcri0101@gmail.com OR user.email.endsWith("@admin.edteach.vn")
- * 3. OR public.users.role === 'admin'
+ * Kiểm tra phân quyền Quản trị viên (Admin) toàn diện.
+ * Tiêu chí:
+ * 1. user tồn tại và có email nằm trong danh sách ADMIN_EMAILS (cấu hình môi trường)
+ * 2. HOẶC public.users.role === 'admin' trong cơ sở dữ liệu (Nguồn chân lý - SSOT)
  */
 export async function isAdmin(
   supabase: SupabaseClient | any,
@@ -25,12 +38,12 @@ export async function isAdmin(
 ): Promise<boolean> {
   if (!user || !user.email) return false;
 
-  // 1. Fast path: check admin email patterns
+  // 1. Fast path: đối soát danh sách admin cấu hình qua env
   if (isEmailAdmin(user)) {
     return true;
   }
 
-  // 2. Database path: check role in public.users
+  // 2. Database path: đối soát cột role trong bảng public.users (SSOT)
   try {
     const { data: dbUser, error } = await (supabase.from("users") as any)
       .select("role")

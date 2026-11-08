@@ -55,6 +55,7 @@ export default function OnlineExamRoomPage() {
   // Submit Modal & State
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitResult, setSubmitResult] = useState<{
     score: number;
     correctCount: number;
@@ -230,7 +231,15 @@ export default function OnlineExamRoomPage() {
   const handleSubmitExam = async (isAutoSubmit = false) => {
     try {
       setIsSubmitting(true);
+      setSubmitError(null);
       setShowConfirmModal(false);
+
+      // Sao lưu bài làm vào localStorage phòng sự cố mạng bất ngờ
+      try {
+        localStorage.setItem(`edteach_backup_${attemptId}`, JSON.stringify({ answers, savedAt: Date.now() }));
+      } catch {
+        // silent
+      }
 
       const idempotencyKey = crypto.randomUUID();
 
@@ -246,15 +255,11 @@ export default function OnlineExamRoomPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        // Fallback calculation for demo/offline test
-        const total = questions.length || 10;
-        const correct = Math.floor(total * 0.8);
-        setSubmitResult({
-          score: 8.0,
-          correctCount: correct,
-          totalQuestions: total,
-          canViewAnswers: false,
-        });
+        setSubmitError(
+          data?.error ||
+          data?.message ||
+          "Không thể nộp bài do sự cố kết nối máy chủ. Toàn bộ câu trả lời của em đã được lưu an toàn. Vui lòng bấm 'Thử nộp lại'."
+        );
         return;
       }
 
@@ -264,15 +269,18 @@ export default function OnlineExamRoomPage() {
         totalQuestions: data.totalQuestions,
         canViewAnswers: Boolean(data.canViewAnswers),
       });
+
+      // Xóa sao lưu tạm khi nộp bài thành công
+      try {
+        localStorage.removeItem(`edteach_backup_${attemptId}`);
+      } catch {
+        // silent
+      }
     } catch (err: any) {
       console.error("Submit exam error:", err);
-      // Fallback display
-      setSubmitResult({
-        score: 8.0,
-        correctCount: 8,
-        totalQuestions: 10,
-        canViewAnswers: false,
-      });
+      setSubmitError(
+        "Mất kết nối mạng khi nộp bài. Toàn bộ câu trả lời của em đã được lưu an toàn trên máy. Vui lòng kiểm tra lại mạng và bấm 'Thử nộp lại'."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -594,6 +602,55 @@ export default function OnlineExamRoomPage() {
                   </>
                 ) : (
                   <span>Nộp ngay</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3.1 SUBMIT ERROR & RETRY MODAL */}
+      {submitError && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 sm:p-7 border border-rose-200 dark:border-rose-900/60 shadow-2xl text-center space-y-4 animate-in fade-in zoom-in-95">
+            <div className="w-14 h-14 rounded-2xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                Chưa thể nộp bài thi
+              </h2>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                {submitError}
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
+              ✓ Đã lưu an toàn {answeredCount}/{questions.length} câu trả lời của em trên trình duyệt.
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setSubmitError(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 transition"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSubmitExam(false)}
+                disabled={isSubmitting}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Đang nộp...</span>
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Thử nộp lại</span>
+                  </>
                 )}
               </button>
             </div>

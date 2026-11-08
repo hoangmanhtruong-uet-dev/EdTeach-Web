@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveGeminiApiKey } from "@/lib/ai/gemini-client";
 import { isProUser } from "@/lib/payment/plans";
 import { createClient } from "@/lib/supabase/server";
+import { getStudentSubmissionLink } from "@/lib/grading/student-submission-store";
 
 const AI_SERVICE_BASE =
   process.env.INTERNAL_AI_SERVICE_URL ||
@@ -59,32 +60,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Kiểm tra phân quyền: Chấm tự động chỉ dành cho người dùng trả phí (PRO & MAX)
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      const { data: profile } = await supabase
-        .from("users")
-        .select("tier, subscription_expires_at, email")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      const userProfile = profile || { email: user.email, tier: "free" };
-      if (!isProUser(userProfile)) {
-        return NextResponse.json(
-          {
-            error: "TIER_UPGRADE_REQUIRED",
-            message:
-              "Tính năng Chấm phiếu trắc nghiệm tự động bằng OMR / Camera dành riêng cho Gói Giáo Viên PRO. Vui lòng nâng cấp gói để tiếp tục.",
-          },
-          { status: 403 }
-        );
-      }
-    }
-
     const body = await req.json();
 
     // Size cap guard: 10MB base64
@@ -95,6 +70,85 @@ export async function POST(req: NextRequest) {
       );
     }
     const action = body.action || "grade_single";
+
+    // Action download_pdf cho phép người dùng tải tự do mẫu phiếu trắc nghiệm
+    if (action !== "download_pdf") {
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (action === "grade_batch") {
+        if (!user) {
+          return NextResponse.json(
+            {
+              error: "UNAUTHORIZED",
+              message: "Vui lòng đăng nhập tài khoản Giáo viên PRO để sử dụng chức năng chấm bài hàng loạt.",
+            },
+            { status: 401 }
+          );
+        }
+        const { data: profile } = await supabase
+          .from("users")
+          .select("tier, subscription_expires_at, email")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        const userProfile = profile || { email: user.email, tier: "free" };
+        if (!isProUser(userProfile)) {
+          return NextResponse.json(
+            {
+              error: "TIER_UPGRADE_REQUIRED",
+              message: "Chấm phiếu hàng loạt dành riêng cho Gói Giáo Viên PRO. Vui lòng nâng cấp gói.",
+            },
+            { status: 403 }
+          );
+        }
+      } else if (action === "grade_single") {
+        if (user) {
+          const { data: profile } = await supabase
+            .from("users")
+            .select("tier, subscription_expires_at, email")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          const userProfile = profile || { email: user.email, tier: "free" };
+          if (!isProUser(userProfile)) {
+            return NextResponse.json(
+              {
+                error: "TIER_UPGRADE_REQUIRED",
+                message:
+                  "Tính năng Chấm phiếu trắc nghiệm tự động bằng OMR / Camera dành riêng cho Gói Giáo Viên PRO. Vui lòng nâng cấp gói để tiếp tục.",
+              },
+              { status: 403 }
+            );
+          }
+        } else {
+          // Đối với học sinh nộp bài: Bắt buộc kèm mã token phiên nộp bài hợp lệ
+          const studentToken = body.studentToken || body.token;
+          if (!studentToken) {
+            return NextResponse.json(
+              {
+                error: "UNAUTHORIZED",
+                message: "Yêu cầu đăng nhập tài khoản Giáo viên PRO hoặc cung cấp mã phiên nộp bài hợp lệ để quét phiếu.",
+              },
+              { status: 401 }
+            );
+          }
+
+          const link = await getStudentSubmissionLink(studentToken);
+          if (!link || link.isClosed) {
+            return NextResponse.json(
+              {
+                error: "INVALID_SESSION_TOKEN",
+                message: "Mã phiên nộp bài không hợp lệ hoặc phòng thi đã đóng.",
+              },
+              { status: 403 }
+            );
+          }
+        }
+      }
+    }
 
     if (action === "download_pdf") {
       const sheetType = body.sheetType === "2025" ? "bgd_2025" : "classic_50";

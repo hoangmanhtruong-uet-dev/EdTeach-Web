@@ -57,25 +57,33 @@ export async function POST(req: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Rào cản phân quyền: Gói Free bị khóa hoàn toàn chức năng chấm tự động
-    if (user) {
-      const { data: profile } = await supabase
-        .from("users")
-        .select("tier, subscription_expires_at, email")
-        .eq("id", user.id)
-        .maybeSingle();
+    // Rào cản phân quyền: Bắt buộc đăng nhập và yêu cầu Gói Giáo Viên PRO
+    if (!user) {
+      return NextResponse.json(
+        {
+          error: "UNAUTHORIZED",
+          message: "Vui lòng đăng nhập tài khoản Giáo viên để khởi tạo phiên quét chấm liên tục.",
+        },
+        { status: 401 }
+      );
+    }
 
-      const userProfile = profile || { email: user.email, tier: "free" };
-      if (!isProUser(userProfile)) {
-        return NextResponse.json(
-          {
-            error: "TIER_UPGRADE_REQUIRED",
-            message:
-              "Tính năng Chấm phiếu trắc nghiệm tự động bằng AI / Phiên quét liên tục dành riêng cho Gói Giáo Viên PRO. Vui lòng nâng cấp gói để sử dụng.",
-          },
-          { status: 403 }
-        );
-      }
+    const { data: profile } = await supabase
+      .from("users")
+      .select("tier, subscription_expires_at, email")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const userProfile = profile || { email: user.email, tier: "free" };
+    if (!isProUser(userProfile)) {
+      return NextResponse.json(
+        {
+          error: "TIER_UPGRADE_REQUIRED",
+          message:
+            "Tính năng Chấm phiếu trắc nghiệm tự động bằng AI / Phiên quét liên tục dành riêng cho Gói Giáo Viên PRO. Vui lòng nâng cấp gói để sử dụng.",
+        },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();

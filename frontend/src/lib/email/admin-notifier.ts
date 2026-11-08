@@ -11,7 +11,7 @@ interface TeacherVerificationNotificationParams {
 }
 
 /**
- * Gửi email thông báo trực tiếp đến Quản trị viên (truongcri0101@gmail.com)
+ * Gửi email thông báo trực tiếp đến Quản trị viên (qua biến môi trường ADMIN_NOTIFY_EMAIL)
  * khi có giáo viên nộp hồ sơ thẻ ngành để phê duyệt thủ công.
  */
 export async function notifyAdminNewVerification(params: TeacherVerificationNotificationParams): Promise<{ success: boolean; message: string }> {
