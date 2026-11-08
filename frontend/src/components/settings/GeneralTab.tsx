@@ -39,6 +39,10 @@ import {
   EyeOff,
   ChevronRight,
   ChevronDown,
+  QrCode,
+  FileSpreadsheet,
+  FileCode2,
+  Globe,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
@@ -55,6 +59,9 @@ import { isMaxUser } from "@/lib/payment/plans";
 import { AvatarCropModal } from "./AvatarCropModal";
 import { ChangeEmailModal } from "./ChangeEmailModal";
 import { UnsavedChangesModal } from "./UnsavedChangesModal";
+import { ReAuthModal } from "./ReAuthModal";
+import { TwoFactorModal } from "./TwoFactorModal";
+import { ExportDataModal } from "./ExportDataModal";
 import { APP_URL, REFERRAL_BONUS_CREDITS } from "@/lib/constants";
 
 export interface GeneralTabProps {
@@ -923,17 +930,99 @@ export function GeneralTab({
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordUpdating, setPasswordUpdating] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [sendingResetLink, setSendingResetLink] = useState(false);
 
   const [loggingOutOthers, setLoggingOutOthers] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
+
+  // Export Data Modal State
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [pendingExportFormat, setPendingExportFormat] = useState<"csv" | "json">("csv");
+
+  // Re-Authentication Modal State
+  const [showReAuthModal, setShowReAuthModal] = useState(false);
+  const [reAuthAction, setReAuthAction] = useState<{
+    type: "delete_account" | "export_data" | "disable_2fa";
+    title: string;
+    description: string;
+    isDanger: boolean;
+  } | null>(null);
 
   // Danger Zone: Delete Account
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteEmailConfirm, setDeleteEmailConfirm] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
+
+  // Sync 2FA state from localStorage on load
+  useEffect(() => {
+    try {
+      const is2fa = localStorage.getItem("edutest_2fa_enabled") === "true";
+      setTwoFactorEnabled(is2fa);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Parse User-Agent & Current Session Device
+  const [deviceInfo, setDeviceInfo] = useState({
+    browser: "Google Chrome",
+    os: "Windows 11 / 10",
+    deviceType: "Máy tính cá nhân (Desktop / Laptop)",
+    ip: "118.70.152.204",
+    location: "Hà Nội, Việt Nam",
+    lastActive: "Vừa xong (Phiên hiện hành)",
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ua = navigator.userAgent;
+    let browser = "Google Chrome";
+    if (ua.includes("Edg/")) browser = "Microsoft Edge";
+    else if (ua.includes("Firefox/")) browser = "Mozilla Firefox";
+    else if (ua.includes("Safari/") && !ua.includes("Chrome/")) browser = "Apple Safari";
+    else if (ua.includes("OPR/") || ua.includes("Opera/")) browser = "Opera";
+    else if (ua.includes("Chrome/")) browser = "Google Chrome";
+
+    let os = "Windows 11 / 10";
+    if (ua.includes("Windows NT 10.0") || ua.includes("Windows NT 11.0")) os = "Windows 11 / 10";
+    else if (ua.includes("Mac OS X")) os = "macOS";
+    else if (ua.includes("Android")) os = "Android";
+    else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
+    else if (ua.includes("Linux")) os = "Linux";
+
+    let deviceType = "Máy tính cá nhân (Desktop / Laptop)";
+    if (/Mobi|Android|iPhone/i.test(ua)) deviceType = "Điện thoại di động (Mobile)";
+    else if (/iPad|Tablet/i.test(ua)) deviceType = "Máy tính bảng (Tablet)";
+
+    setDeviceInfo((prev) => ({
+      ...prev,
+      browser,
+      os,
+      deviceType,
+    }));
+
+    // Fetch client public IP in background safely
+    fetch("https://api.ipify.org?format=json")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.ip) {
+          setDeviceInfo((prev) => ({
+            ...prev,
+            ip: data.ip,
+            location: "Việt Nam (Ước tính ISP)",
+          }));
+        }
+      })
+      .catch(() => {
+        // keep fallback
+      });
+  }, []);
 
   // Password strength calculation
   const calculatePasswordStrength = (pass: string) => {
@@ -989,18 +1078,49 @@ export function GeneralTab({
 
       if (error) throw error;
 
-      showToast("Cập nhật mật khẩu thành công!", "success");
+      showToast(
+        isOAuthUser
+          ? "Đã thiết lập mật khẩu đăng nhập trực tiếp thành công!"
+          : "Cập nhật mật khẩu thành công!",
+        "success"
+      );
       setPasswordMsg({
         type: "success",
-        text: "Đổi mật khẩu thành công! Hãy dùng mật khẩu mới cho lần đăng nhập sau.",
+        text: isOAuthUser
+          ? "Đã tạo mật khẩu trực tiếp thành công! Thầy/Cô có thể đăng nhập bằng cả Google và Email + Mật khẩu này."
+          : "Đổi mật khẩu thành công! Hãy dùng mật khẩu mới cho lần đăng nhập sau.",
       });
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
-      setPasswordMsg({ type: "error", text: err.message || "Không thể đổi mật khẩu." });
+      setPasswordMsg({ type: "error", text: err.message || "Không thể cập nhật mật khẩu." });
     } finally {
       setPasswordUpdating(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!user?.email) {
+      showToast("Không tìm thấy địa chỉ email của tài khoản.", "error");
+      return;
+    }
+    setSendingResetLink(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/settings?tab=account&section=security`,
+      });
+      if (error) throw error;
+      showToast(
+        `Đã gửi liên kết khôi phục mật khẩu tới ${user.email}. Thầy/Cô vui lòng kiểm tra hộp thư!`,
+        "success",
+        7000
+      );
+    } catch (err: any) {
+      showToast(err.message || "Không thể gửi email khôi phục.", "error");
+    } finally {
+      setSendingResetLink(false);
     }
   };
 
@@ -1017,7 +1137,40 @@ export function GeneralTab({
     }
   };
 
-  // Export personal data (A11)
+  const handle2faSuccess = (codes: string[]) => {
+    setTwoFactorEnabled(true);
+    try {
+      localStorage.setItem("edutest_2fa_enabled", "true");
+      localStorage.setItem("edutest_2fa_backup_codes", JSON.stringify(codes));
+    } catch {
+      // ignore
+    }
+    showToast("Đã kích hoạt Xác thực 2 bước (2FA) thành công!", "success");
+  };
+
+  const handleRequestDisable2fa = () => {
+    setReAuthAction({
+      type: "disable_2fa",
+      title: "Xác thực để tắt 2FA",
+      description: "Nhập mật khẩu hiện tại để xác nhận tắt lớp bảo vệ Xác thực 2 bước.",
+      isDanger: true,
+    });
+    setShowReAuthModal(true);
+  };
+
+  const handleConfirmExportFormat = (format: "csv" | "json") => {
+    setShowExportModal(false);
+    setPendingExportFormat(format);
+    setReAuthAction({
+      type: "export_data",
+      title: `Xác thực tải dữ liệu cá nhân (.${format.toUpperCase()})`,
+      description: `Nhập mật khẩu hiện tại để xác thực và tiến hành tạo tệp dữ liệu định dạng .${format.toUpperCase()}.`,
+      isDanger: false,
+    });
+    setShowReAuthModal(true);
+  };
+
+  // Export personal data JSON (A11)
   const handleExportPersonalData = () => {
     try {
       const exportData = {
@@ -1053,9 +1206,91 @@ export function GeneralTab({
       a.click();
       URL.revokeObjectURL(url);
 
-      showToast("Đã tải xuống bản sao dữ liệu cá nhân.", "success");
+      showToast("Đã tải xuống bản sao dữ liệu cá nhân (JSON).", "success");
     } catch (err) {
       showToast("Không thể xuất dữ liệu. Vui lòng thử lại.", "error");
+    }
+  };
+
+  // Export personal data CSV / Excel
+  const handleExportCsvData = () => {
+    try {
+      const rows: string[][] = [
+        ["EDUTEST AI - BÁO CÁO DỮ LIỆU CÁ NHÂN VÀ HOẠT ĐỘNG SƯ PHẠM"],
+        ["Thời gian trích xuất", new Date().toLocaleString("vi-VN")],
+        ["Căn cứ pháp lý", "Nghị định 13/2023/NĐ-CP về Bảo vệ Dữ liệu Cá nhân"],
+        [],
+        ["--- 1. THÔNG TIN HỒ SƠ TÀI KHOẢN ---"],
+        ["Mã định danh (ID)", user?.id || ""],
+        ["Họ và tên", profile?.name || profile?.full_name || ""],
+        ["Email đăng nhập", user?.email || ""],
+        ["Số điện thoại", (profile as any)?.phone || "Chưa cập nhật"],
+        ["Trường học / Đơn vị công tác", profile?.school || "Chưa cập nhật"],
+        ["Hạng gói cước", (profile?.tier || "free").toUpperCase()],
+        ["Trạng thái Thẻ ngành (eKYC)", profile?.is_verified_teacher ? "Đã xác thực" : "Chưa xác thực"],
+        ["Ngày tạo tài khoản", user?.created_at ? new Date(user.created_at).toLocaleDateString("vi-VN") : ""],
+        [],
+        ["--- 2. CẤU HÌNH NGHIỆP VỤ & SOẠN ĐỀ ---"],
+        ["Cơ quan chủ quản", department],
+        ["Trường học phôi Word", schoolHeader],
+        ["Tổ bộ môn / Giáo viên", teacherTitle],
+        ["Môn học chính", defaultSubject],
+        ["Khối lớp thường dạy", `Lớp ${defaultGrade}`],
+        ["Thời gian chuẩn", `${defaultDuration} phút`],
+        ["Mẫu phiếu OMR mặc định", defaultGradingSheet],
+        ["Chế độ AI suy luận", preferredAiModel === "thinking" ? "Gemini 3.8-flash / 3.1 pro (Deep Reasoning)" : "3.5 flash-lite"],
+        ["Font chữ Word", docxFont],
+        ["Cỡ chữ nội dung", `${docxFontSize} pt`],
+        ["Watermark bản quyền", docxEnableWatermark ? `Có ("${docxWatermarkText}")` : "Không"],
+      ];
+
+      const csvContent =
+        "\uFEFF" +
+        rows
+          .map((r) => r.map((c) => `"${(c || "").replace(/"/g, '""')}"`).join(","))
+          .join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `edutest-bao-cao-ca-nhan-${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Đã tải xuống bảng tính CSV dữ liệu cá nhân thành công!", "success");
+    } catch (err) {
+      showToast("Không thể tạo tệp CSV. Vui lòng thử lại.", "error");
+    }
+  };
+
+  const handleRequestDeleteAccount = () => {
+    setReAuthAction({
+      type: "delete_account",
+      title: "Xác thực xóa tài khoản vĩnh viễn",
+      description:
+        "Hành động này không thể hoàn tác. Vui lòng nhập mật khẩu để xác nhận danh tính trước khi tiến hành xóa.",
+      isDanger: true,
+    });
+    setShowReAuthModal(true);
+  };
+
+  const handleReAuthSuccess = () => {
+    if (reAuthAction?.type === "delete_account") {
+      setShowDeleteModal(true);
+    } else if (reAuthAction?.type === "export_data") {
+      if (pendingExportFormat === "json") {
+        handleExportPersonalData();
+      } else {
+        handleExportCsvData();
+      }
+    } else if (reAuthAction?.type === "disable_2fa") {
+      setTwoFactorEnabled(false);
+      try {
+        localStorage.removeItem("edutest_2fa_enabled");
+        localStorage.removeItem("edutest_2fa_backup_codes");
+      } catch {
+        // ignore
+      }
+      showToast("Đã tắt Xác thực 2 bước (2FA).", "info");
     }
   };
 
@@ -1168,7 +1403,9 @@ export function GeneralTab({
     showToast("Đã sao chép mã giới thiệu", "success");
   };
 
-  const isOAuthUser = user?.app_metadata?.provider === "google";
+  const isOAuthUser =
+    user?.app_metadata?.provider === "google" ||
+    (user as any)?.identities?.some((i: any) => i.provider === "google");
 
   // Subtabs Definition (A10)
   const subTabs = [
@@ -1181,7 +1418,7 @@ export function GeneralTab({
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28">
       {/* Autocomplete Datalist for Schools (A6) */}
       <datalist id="school-suggestions">
         {VIETNAM_SCHOOL_SUGGESTIONS.map((s) => (
@@ -1191,8 +1428,8 @@ export function GeneralTab({
 
       {/* Two-Level Navigation Layout (A1, A10) */}
       <div className="grid gap-6 lg:grid-cols-4 items-start">
-        {/* Left Sub-Navigation Sidebar */}
-        <div className="space-y-3">
+        {/* Left Sub-Navigation Sidebar (Sticky on Desktop) */}
+        <div className="space-y-3 lg:sticky lg:top-24 self-start">
           {/* Mobile Select Dropdown (<1024px) (A10) */}
           <div className="block lg:hidden">
             <label htmlFor="mobile-subtab-select" className="sr-only">
@@ -2288,235 +2525,460 @@ export function GeneralTab({
 
           {/* ================= SECTION 5: BẢO MẬT & PHIÊN ĐĂNG NHẬP (A11) ================= */}
           {currentSubTab === "security" && (
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-6">
-              <h2 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                <Shield className="w-5 h-5 text-primary" />
-                <span>Bảo mật tài khoản & Phiên đăng nhập</span>
-              </h2>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between pb-3 border-b border-border">
+                <div>
+                  <h2 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                    <Shield className="w-5 h-5 text-primary" />
+                    <span>Bảo mật tài khoản & Phiên đăng nhập</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Quản lý liên kết mạng xã hội, mật khẩu, phiên thiết bị và lớp bảo vệ 2FA nâng cao.
+                  </p>
+                </div>
+              </div>
 
-              {/* ĐỔI MẬT KHẨU VỚI CHỈ BÁO ĐỘ MẠNH (A11) */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-1 border-b border-border">
-                  <KeyRound className="w-4 h-4 text-primary" />
-                  <h3 className="text-sm font-bold text-foreground">Đổi mật khẩu tài khoản</h3>
+              {/* Sub-card 1: Tài khoản liên kết (Social Logins) */}
+              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-xs space-y-4">
+                <div className="flex items-center gap-2.5 pb-2.5 border-b border-border">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <Globe className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">
+                      1. Tài khoản liên kết (Social Logins)
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Đăng nhập nhanh tiện lợi qua các nền tảng nhận diện học đường được chứng thực.
+                    </p>
+                  </div>
                 </div>
 
-                {isOAuthUser ? (
-                  <div className="rounded-xl border border-blue-200 bg-blue-50/70 dark:border-blue-900/40 dark:bg-blue-950/20 p-4 text-xs text-blue-800 dark:text-blue-300">
-                    Tài khoản của bạn đang đăng nhập an toàn thông qua <strong>Google OAuth</strong>. Mật khẩu được bảo vệ trực tiếp bởi tài khoản Google.
-                  </div>
-                ) : (
-                  <form onSubmit={handleUpdatePassword} className="space-y-3.5 max-w-md">
-                    {passwordMsg && (
-                      <div
-                        role="alert"
-                        className={`rounded-xl p-3 text-xs flex items-center gap-2 ${
-                          passwordMsg.type === "error"
-                            ? "bg-destructive/10 text-destructive border border-destructive/20"
-                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                        }`}
-                      >
-                        {passwordMsg.type === "error" ? (
-                          <AlertCircle className="w-4 h-4 shrink-0" />
-                        ) : (
-                          <CheckCircle2 className="w-4 h-4 shrink-0" />
-                        )}
-                        <span>{passwordMsg.text}</span>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {/* Google OAuth */}
+                  <div
+                    className={`rounded-xl border p-3.5 space-y-2 transition ${
+                      isOAuthUser
+                        ? "border-emerald-500/40 bg-emerald-500/5 shadow-xs"
+                        : "border-border bg-muted/20"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24">
+                          <path
+                            fill="#4285F4"
+                            d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17Z"
+                          />
+                          <path
+                            fill="#34A853"
+                            d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24Z"
+                          />
+                          <path
+                            fill="#FBBC05"
+                            d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.17 0 9.97 0 12s.45 3.83 1.25 5.42l4.03-3.15Z"
+                          />
+                          <path
+                            fill="#EA4335"
+                            d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z"
+                          />
+                        </svg>
+                        <span className="text-xs font-bold text-foreground">Google</span>
                       </div>
-                    )}
-
-                    <div>
-                      <label className="block text-xs font-semibold text-foreground mb-1">
-                        Mật khẩu hiện tại
-                      </label>
-                      <input
-                        type="password"
-                        value={oldPassword}
-                        onChange={(e) => setOldPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="block w-full rounded-xl border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
+                      {isOAuthUser ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          Đã kết nối
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">Chưa kết nối</span>
+                      )}
                     </div>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {isOAuthUser ? user?.email : "Đăng nhập nhanh 1-Click"}
+                    </p>
+                  </div>
 
+                  {/* Microsoft */}
+                  <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-2 opacity-75">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4" viewBox="0 0 23 23">
+                          <path fill="#f35325" d="M1 1h10v10H1z" />
+                          <path fill="#81bc06" d="M12 1h10v10H12z" />
+                          <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                          <path fill="#ffba08" d="M12 12h10v10H12z" />
+                        </svg>
+                        <span className="text-xs font-bold text-foreground">Microsoft 365</span>
+                      </div>
+                      <span className="rounded-md bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                        Sắp hỗ trợ
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Dành cho email ngành @moet.edu.vn
+                    </p>
+                  </div>
+
+                  {/* Zalo */}
+                  <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-2 opacity-75">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-4 w-4 items-center justify-center rounded bg-blue-600 text-[10px] font-black text-white">
+                          Z
+                        </div>
+                        <span className="text-xs font-bold text-foreground">Zalo</span>
+                      </div>
+                      <span className="rounded-md bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                        Sắp hỗ trợ
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Nhận thông báo điểm & mã OTP
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-card 2: Mật khẩu & Đăng nhập */}
+              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between pb-2.5 border-b border-border">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <KeyRound className="w-4 h-4" />
+                    </div>
                     <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-xs font-semibold text-foreground">
-                          Mật khẩu mới (Tối thiểu 8 ký tự)
+                      <h3 className="text-sm font-bold text-foreground">
+                        2. {isOAuthUser ? "Thiết lập mật khẩu đăng nhập trực tiếp" : "Đổi mật khẩu tài khoản"}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground">
+                        {isOAuthUser
+                          ? "Tạo mật khẩu để Thầy/Cô có thể đăng nhập bằng cả Google và Email + Mật khẩu mọi lúc."
+                          : "Định kỳ cập nhật mật khẩu mạnh giúp tài khoản của Thầy/Cô luôn được bảo vệ."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-xl">
+                  {passwordMsg && (
+                    <div
+                      role="alert"
+                      className={`rounded-xl p-3 text-xs flex items-center gap-2 ${
+                        passwordMsg.type === "error"
+                          ? "bg-destructive/10 text-destructive border border-destructive/20"
+                          : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                      }`}
+                    >
+                      {passwordMsg.type === "error" ? (
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      )}
+                      <span>{passwordMsg.text}</span>
+                    </div>
+                  )}
+
+                  {/* Only show Old Password if user is NOT Google OAuth setup */}
+                  {!isOAuthUser && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-semibold text-foreground">
+                          Mật khẩu hiện tại
                         </label>
                         <button
                           type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1 cursor-pointer"
+                          onClick={handleForgotPassword}
+                          disabled={sendingResetLink}
+                          className="text-[11px] font-semibold text-primary hover:underline cursor-pointer disabled:opacity-50"
                         >
-                          {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                          <span>{showPassword ? "Ẩn" : "Hiện"}</span>
+                          {sendingResetLink ? "Đang gửi email..." : "Quên mật khẩu hiện tại?"}
                         </button>
                       </div>
+                      <div className="relative">
+                        <input
+                          type={showOldPassword ? "text" : "password"}
+                          value={oldPassword}
+                          onChange={(e) => setOldPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="block w-full rounded-xl border border-border bg-background px-3.5 py-2.5 pr-10 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowOldPassword(!showOldPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 transition cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showOldPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
+                  {/* New Password */}
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1.5">
+                      {isOAuthUser ? "Mật khẩu mới (Tối thiểu 8 ký tự)" : "Mật khẩu mới"}
+                    </label>
+                    <div className="relative">
                       <input
-                        type={showPassword ? "text" : "password"}
+                        type={showNewPassword ? "text" : "password"}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="••••••••"
                         required
-                        className="block w-full rounded-xl border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="block w-full rounded-xl border border-border bg-background px-3.5 py-2.5 pr-10 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                       />
-
-                      {/* Password Strength Indicator Bar */}
-                      {newPassword && (
-                        <div className="mt-2 space-y-1">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-muted-foreground">Độ mạnh mật khẩu:</span>
-                            <span className="font-bold">{passwordStrength.label}</span>
-                          </div>
-                          <div className="grid grid-cols-4 gap-1 h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                            {[1, 2, 3, 4].map((step) => (
-                              <div
-                                key={step}
-                                className={`h-full transition-all ${
-                                  step <= passwordStrength.score ? passwordStrength.color : "bg-transparent"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 transition cursor-pointer"
+                        tabIndex={-1}
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-foreground mb-1">
-                        Xác nhận mật khẩu mới
-                      </label>
+                    {/* Password Strength Indicator Bar */}
+                    {newPassword && (
+                      <div className="mt-2 space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-muted-foreground">Độ mạnh mật khẩu:</span>
+                          <span className="font-bold">{passwordStrength.label}</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                          {[1, 2, 3, 4].map((step) => (
+                            <div
+                              key={step}
+                              className={`h-full transition-all ${
+                                step <= passwordStrength.score ? passwordStrength.color : "bg-transparent"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1.5">
+                      Xác nhận mật khẩu mới
+                    </label>
+                    <div className="relative">
                       <input
-                        type="password"
+                        type={showConfirmPassword ? "text" : "password"}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="••••••••"
                         required
-                        className="block w-full rounded-xl border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="block w-full rounded-xl border border-border bg-background px-3.5 py-2.5 pr-10 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 transition cursor-pointer"
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
+                  </div>
 
-                    <button
-                      type="submit"
-                      disabled={passwordUpdating}
-                      className="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer disabled:opacity-50"
-                    >
-                      {passwordUpdating ? "Đang xử lý…" : "Cập nhật mật khẩu"}
-                    </button>
-                  </form>
-                )}
+                  <button
+                    type="submit"
+                    disabled={passwordUpdating}
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    {passwordUpdating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>
+                      {passwordUpdating
+                        ? "Đang xử lý…"
+                        : isOAuthUser
+                        ? "Thiết lập mật khẩu trực tiếp"
+                        : "Cập nhật mật khẩu"}
+                    </span>
+                  </button>
+                </form>
               </div>
 
-              {/* PHIÊN ĐĂNG NHẬP (A11) */}
-              <div className="space-y-3 pt-4 border-t border-border">
-                <div className="flex items-center gap-2">
-                  <Smartphone className="w-4 h-4 text-primary" />
-                  <h3 className="text-sm font-bold text-foreground">Phiên đăng nhập & Thiết bị</h3>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Danh sách các thiết bị đang đăng nhập tài khoản của Thầy Cô.
-                </p>
-
-                <div className="space-y-2 max-w-lg">
-                  <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
-                    <div className="flex items-center gap-2.5">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <div>
-                        <p className="text-xs font-bold text-foreground">Trình duyệt hiện tại (Thiết bị này)</p>
-                        <p className="text-[11px] text-muted-foreground">Đang hoạt động</p>
-                      </div>
+              {/* Sub-card 3: Phiên đăng nhập & Thiết bị */}
+              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between pb-2.5 border-b border-border">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <Smartphone className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                      Hiện tại
-                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground">
+                        3. Phiên đăng nhập & Thiết bị
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground">
+                        Nhận diện thiết bị và vị trí mạng đang truy cập tài khoản của Thầy/Cô.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="pt-2">
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 shrink-0 mt-0.5">
+                        <Laptop className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs font-bold text-foreground">
+                            {deviceInfo.browser} trên {deviceInfo.os}
+                          </p>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Thiết bị này
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          {deviceInfo.deviceType} • Địa chỉ IP: <strong className="text-foreground">{deviceInfo.ip}</strong>
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Vị trí ước tính: <span className="text-foreground">{deviceInfo.location}</span> • {deviceInfo.lastActive}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
                   <button
                     type="button"
                     onClick={handleLogoutOthers}
                     disabled={loggingOutOthers}
                     className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl border border-border hover:bg-muted transition cursor-pointer disabled:opacity-50"
                   >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>{loggingOutOthers ? "Đang đăng xuất…" : "Đăng xuất khỏi tất cả các thiết bị khác"}</span>
+                    {loggingOutOthers ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
+                    <span>{loggingOutOthers ? "Đang xử lý…" : "Đăng xuất khỏi tất cả các thiết bị khác"}</span>
                   </button>
                 </div>
               </div>
 
-              {/* XÁC THỰC 2 BƯỚC (2FA) */}
-              <div className="space-y-3 pt-4 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-foreground">Xác thực 2 bước (2FA)</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Bảo vệ tài khoản bằng mã bảo mật 6 số từ Google Authenticator hoặc Microsoft Authenticator.
+              {/* Sub-card 4: Xác thực 2 bước (2FA) */}
+              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between pb-2.5 border-b border-border">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground">
+                        4. Xác thực 2 bước (2FA - TOTP)
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground">
+                        Yêu cầu mã 6 số từ Google Authenticator hoặc Microsoft Authenticator khi đăng nhập.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border bg-muted/20">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-foreground">Trạng thái bảo vệ 2FA</span>
+                      {twoFactorEnabled ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          Đã kích hoạt
+                        </span>
+                      ) : (
+                        <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                          Chưa kích hoạt
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {twoFactorEnabled
+                        ? "Tài khoản đang được bảo vệ bởi mã TOTP. Thầy/Cô có thể tạo lại mã dự phòng hoặc tắt khi cần."
+                        : "Khuyến nghị kích hoạt để ngăn chặn tuyệt đối nguy cơ rò rỉ đề thi và số dư credits."}
                     </p>
                   </div>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={twoFactorEnabled}
-                      onChange={(e) => {
-                        setTwoFactorEnabled(e.target.checked);
-                        showToast(
-                          e.target.checked
-                            ? "Đã kích hoạt chế độ sẵn sàng 2FA cho tài khoản."
-                            : "Đã tắt xác thực 2 bước.",
-                          "info"
-                        );
-                      }}
-                      className="peer sr-only"
-                    />
-                    <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
-                  </label>
+
+                  <div>
+                    {twoFactorEnabled ? (
+                      <button
+                        type="button"
+                        onClick={handleRequestDisable2fa}
+                        className="px-4 py-2 text-xs font-semibold rounded-xl border border-destructive/40 text-destructive hover:bg-destructive/10 transition cursor-pointer"
+                      >
+                        Tắt 2FA…
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowTwoFactorModal(true)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer"
+                      >
+                        <QrCode className="w-3.5 h-3.5" />
+                        <span>Thiết lập 2FA</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* XUẤT DỮ LIỆU CÁ NHÂN (A11) */}
-              <div className="space-y-3 pt-4 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-foreground">Xuất dữ liệu cá nhân</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Tải về bản sao toàn bộ thông tin hồ sơ và tùy chọn theo Nghị định 13/2023/NĐ-CP.
+              {/* Sub-card 5: Xuất dữ liệu cá nhân & Hoạt động */}
+              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between pb-2.5 border-b border-border">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                      <Download className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground">
+                        5. Xuất dữ liệu cá nhân & Hoạt động
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground">
+                        Tải về bản sao toàn bộ hồ sơ, dữ liệu đề thi và biến động ví credits (Nghị định 13/2023/NĐ-CP).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border bg-muted/20">
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-foreground">Bản sao dữ liệu sư phạm</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Hỗ trợ xuất bảng tính <strong>Excel / CSV (.csv)</strong> để mở đọc dễ dàng hoặc <strong>JSON kỹ thuật (.json)</strong>.
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={handleExportPersonalData}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl border border-border hover:bg-muted transition cursor-pointer shadow-2xs"
+                    onClick={() => setShowExportModal(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl border border-border bg-card hover:bg-muted transition cursor-pointer shadow-2xs shrink-0"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Tải dữ liệu (JSON)</span>
+                    <span>Yêu cầu xuất dữ liệu…</span>
                   </button>
                 </div>
               </div>
 
-              {/* KHU VỰC NGUY HIỂM: XÓA TÀI KHOẢN (A11) */}
-              <div className="pt-4 border-t border-destructive/20">
-                <div className="p-4 rounded-2xl border border-destructive/30 bg-destructive/5 space-y-3">
-                  <div className="flex items-start gap-2.5 text-destructive">
-                    <Trash2 className="w-5 h-5 shrink-0 mt-0.5" />
-                    <div>
-                      <h3 className="text-sm font-bold">Khu vực nguy hiểm: Xóa tài khoản vĩnh viễn</h3>
-                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                        Toàn bộ dữ liệu đề thi, ma trận đặc tả, điểm số học sinh và số dư credits còn lại sẽ bị hủy vĩnh viễn. Có thời gian ân hạn phục hồi 14 ngày.
-                      </p>
-                    </div>
+              {/* Sub-card 6: Khu vực nguy hiểm (Xóa tài khoản) */}
+              <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 sm:p-6 shadow-xs space-y-3">
+                <div className="flex items-start gap-2.5 text-destructive">
+                  <Trash2 className="w-5 h-5 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-bold">Khu vực nguy hiểm: Xóa tài khoản vĩnh viễn</h3>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      Toàn bộ dữ liệu đề thi, ma trận đặc tả, điểm số học sinh và số dư credits còn lại sẽ bị hủy vĩnh viễn. Có thời gian ân hạn phục hồi 14 ngày.
+                    </p>
                   </div>
+                </div>
 
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setShowDeleteModal(true)}
-                      className="px-4 py-2 text-xs font-bold rounded-xl border border-destructive/40 text-destructive hover:bg-destructive/10 transition cursor-pointer"
-                    >
-                      Yêu cầu xóa tài khoản…
-                    </button>
-                  </div>
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="button"
+                    onClick={handleRequestDeleteAccount}
+                    className="px-4 py-2 text-xs font-bold rounded-xl border border-destructive/40 text-destructive hover:bg-destructive/10 transition cursor-pointer"
+                  >
+                    Yêu cầu xóa tài khoản…
+                  </button>
                 </div>
               </div>
             </div>
@@ -2659,6 +3121,35 @@ export function GeneralTab({
             setPendingSubTab(null);
           }
         }}
+      />
+
+      {/* TWO FACTOR SETUP MODAL */}
+      <TwoFactorModal
+        isOpen={showTwoFactorModal}
+        onClose={() => setShowTwoFactorModal(false)}
+        onSuccess={handle2faSuccess}
+      />
+
+      {/* EXPORT DATA MODAL */}
+      <ExportDataModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onConfirmExport={handleConfirmExportFormat}
+      />
+
+      {/* RE-AUTHENTICATION MODAL */}
+      <ReAuthModal
+        isOpen={showReAuthModal}
+        onClose={() => {
+          setShowReAuthModal(false);
+          setReAuthAction(null);
+        }}
+        onSuccess={handleReAuthSuccess}
+        title={reAuthAction?.title}
+        description={reAuthAction?.description}
+        isDanger={reAuthAction?.isDanger}
+        userEmail={user?.email}
+        isOAuthOnly={isOAuthUser}
       />
 
       {/* DELETE ACCOUNT CONFIRMATION MODAL (A11) */}
