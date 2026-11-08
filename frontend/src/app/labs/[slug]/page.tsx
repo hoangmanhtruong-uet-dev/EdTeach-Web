@@ -18,7 +18,7 @@ export async function generateMetadata({
   const lab = getLab(slug);
   if (!lab) return {};
   return {
-    title: `${lab.titleVi} — Phòng thí nghiệm 3D | EduTest AI`,
+    title: `${lab.titleVi} — Phòng thí nghiệm 3D | EduTest`,
     description: lab.questionVi ?? `Thí nghiệm 3D tương tác: ${lab.titleVi}`,
   };
 }

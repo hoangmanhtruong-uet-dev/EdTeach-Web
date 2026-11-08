@@ -18,7 +18,7 @@ export function Navbar() {
           <Link href="/" className="flex items-center gap-2 py-1">
             <BookOpen className="h-7 w-7 text-blue-600 dark:text-blue-500" />
             <span className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">
-              Edu<span className="text-blue-600 dark:text-blue-400">Test</span> AI
+              Edu<span className="text-blue-600 dark:text-blue-400">Test</span>
             </span>
           </Link>
           <Link

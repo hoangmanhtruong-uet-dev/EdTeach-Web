@@ -1045,7 +1045,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
       detectedSubject = "Tin học";
     }
 
-    const gradeMatch = lower.match(/(?:lớp|khối)\s*(\d{1,2})/i);
+    const gradeMatch = lower.match(/(?:lớp|khối)\s*(\d{1,2})(?:\b|\D|$)/i);
     if (gradeMatch && gradeMatch[1]) {
       const gNum = parseInt(gradeMatch[1]);
       if (gNum >= 1 && gNum <= 12) {
@@ -1053,16 +1053,42 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
       }
     }
 
-    // Parse question count (e.g. 15 câu, 4 câu, 6 câu)
+    // Bóc tách cấu trúc số câu hỏi chi tiết từ câu lệnh giáo viên (Prompt Intent Parser)
+    let parsedMcq = 0;
+    let parsedTf = 0;
+    let parsedSa = 0;
+    let parsedEssay = 0;
+
+    const mcqMatch = lower.match(/(\d+)\s*câu\s*(?:trắc\s*nghiệm|mcq|nhiều\s*lựa\s*chọn)/i) ||
+                     lower.match(/(?:trắc\s*nghiệm|mcq|nhiều\s*lựa\s*chọn)[^,;.\d]{0,15}(\d+)\s*câu/i);
+    if (mcqMatch && mcqMatch[1]) parsedMcq = parseInt(mcqMatch[1], 10);
+
+    const tfMatch = lower.match(/(\d+)\s*câu\s*(?:đúng\s*[-/]?\s*sai|true\s*[-/]?\s*false)/i) ||
+                    lower.match(/(?:đúng\s*[-/]?\s*sai|true\s*[-/]?\s*false)[^,;.\d]{0,15}(\d+)\s*câu/i);
+    if (tfMatch && tfMatch[1]) parsedTf = parseInt(tfMatch[1], 10);
+
+    const saMatch = lower.match(/(\d+)\s*câu\s*(?:trả\s*lời\s*ngắn|điền\s*khuyết|short\s*answer)/i) ||
+                    lower.match(/(?:trả\s*lời\s*ngắn|điền\s*khuyết|short\s*answer)[^,;.\d]{0,15}(\d+)\s*câu/i);
+    if (saMatch && saMatch[1]) parsedSa = parseInt(saMatch[1], 10);
+
+    const essayMatch = lower.match(/(\d+)\s*câu\s*(?:tự\s*luận|bài\s*toán\s*có\s*lời\s*văn|essay)/i) ||
+                       lower.match(/(?:tự\s*luận|bài\s*toán\s*có\s*lời\s*văn|essay)[^,;.\d]{0,15}(\d+)\s*câu/i);
+    if (essayMatch && essayMatch[1]) parsedEssay = parseInt(essayMatch[1], 10);
+
     let totalQuestions = 10;
-    const countMatches = lower.match(/(\d+)\s*câu/g);
-    if (countMatches) {
-      let sum = 0;
-      for (const m of countMatches) {
-        const val = parseInt(m);
-        if (!isNaN(val) && val > 0 && val <= 50) sum += val;
+    const structureSum = parsedMcq + parsedTf + parsedSa + parsedEssay;
+    if (structureSum > 0) {
+      totalQuestions = Math.min(structureSum, 40);
+    } else {
+      const countMatches = lower.match(/(\d+)\s*câu/g);
+      if (countMatches) {
+        let sum = 0;
+        for (const m of countMatches) {
+          const val = parseInt(m, 10);
+          if (!isNaN(val) && val > 0 && val <= 50) sum += val;
+        }
+        if (sum > 0) totalQuestions = Math.min(sum, 30);
       }
-      if (sum > 0) totalQuestions = Math.min(sum, 30);
     }
 
     setSubject(detectedSubject);
@@ -1089,6 +1115,10 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
           topic: finalTopic,
           question_type: "MCQ",
           num_questions: totalQuestions,
+          mcq_count: parsedMcq || undefined,
+          true_false_count: parsedTf || undefined,
+          short_answer_count: parsedSa || undefined,
+          essay_count: parsedEssay || undefined,
           difficulty: 2,
           thinking_effort: aiThinkingEffort,
           additional_context: promptToUse,
