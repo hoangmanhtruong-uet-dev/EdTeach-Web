@@ -70,6 +70,22 @@ export async function POST(req: NextRequest) {
     const filePath = `${user.id}/avatar.${fileExt}`;
     let finalAvatarUrl = "";
 
+    // Đảm bảo bucket 'avatars' tồn tại và được cấu hình public: true
+    try {
+      const { data: bucketData } = await adminClient.storage.getBucket("avatars");
+      if (!bucketData) {
+        await adminClient.storage.createBucket("avatars", {
+          public: true,
+          fileSizeLimit: 5242880,
+          allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+        });
+      } else if (!bucketData.public) {
+        await adminClient.storage.updateBucket("avatars", { public: true });
+      }
+    } catch (bErr) {
+      console.warn("Storage bucket check warning:", bErr);
+    }
+
     // 3. Tải ảnh lên Supabase Storage bucket 'avatars'
     const { error: uploadError } = await adminClient.storage
       .from("avatars")

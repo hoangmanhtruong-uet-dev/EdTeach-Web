@@ -399,6 +399,7 @@ export function DashboardSidebar() {
                 >
                   {profile?.avatar_url ? (
                     <img
+                      key={profile.avatar_url}
                       src={profile.avatar_url}
                       alt="Avatar"
                       width={32}

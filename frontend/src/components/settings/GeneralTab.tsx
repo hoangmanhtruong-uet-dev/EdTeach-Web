@@ -116,7 +116,7 @@ export function GeneralTab({
   onNavigateToPartner,
   initialSubTab,
 }: GeneralTabProps) {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, updateProfileLocal } = useAuth();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
 
@@ -273,7 +273,12 @@ export function GeneralTab({
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [avatarImgError, setAvatarImgError] = useState(false);
   const [isDragOverAvatar, setIsDragOverAvatar] = useState(false);
+
+  useEffect(() => {
+    setAvatarImgError(false);
+  }, [profile?.avatar_url]);
 
   const initials = profile?.name
     ? profile.name
@@ -328,6 +333,9 @@ export function GeneralTab({
         throw new Error(result.error || "Không thể cập nhật ảnh đại diện.");
       }
 
+      if (result.avatar_url) {
+        updateProfileLocal({ avatar_url: result.avatar_url });
+      }
       await refreshProfile();
       showToast(result.message || "Cập nhật ảnh đại diện thành công!", "success");
     } catch (err: any) {
@@ -361,6 +369,7 @@ export function GeneralTab({
         throw new Error(result.error || "Không thể xóa ảnh.");
       }
 
+      updateProfileLocal({ avatar_url: null });
       await refreshProfile();
       showToast(result.message || "Đã xóa ảnh đại diện.", "info");
     } catch (err: any) {
@@ -426,15 +435,33 @@ export function GeneralTab({
         payload.phone = null;
       }
 
-      const { error } = await (supabase.from("users") as any)
-        .update(payload)
-        .eq("id", user.id);
-
-      if (error) {
-        // Fallback without phone if DB column isn't migrated
-        delete payload.phone;
+      try {
+        const res = await fetch("/api/user/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          // Fallback client update if API fails
+          const { error } = await (supabase.from("users") as any)
+            .update(payload)
+            .eq("id", user.id);
+          if (error) {
+            delete payload.phone;
+            await (supabase.from("users") as any).update(payload).eq("id", user.id);
+          }
+        }
+      } catch {
+        // Fallback
         await (supabase.from("users") as any).update(payload).eq("id", user.id);
       }
+
+      updateProfileLocal({
+        name: cleanName,
+        school: cleanSchool,
+        phone: cleanPhone,
+        preferences: updatedPreferences as any,
+      });
 
       // Update initial values to reset dirty state
       setInitialName(cleanName);
@@ -1024,11 +1051,13 @@ export function GeneralTab({
                   }`}
                 >
                   <div className="relative group shrink-0">
-                    {profile?.avatar_url ? (
+                    {profile?.avatar_url && !avatarImgError ? (
                       <img
+                        key={profile.avatar_url}
                         src={profile.avatar_url}
                         alt={`Ảnh đại diện của ${name || "giáo viên"}`}
                         className="h-24 w-24 rounded-full object-cover border-2 border-primary shadow-sm"
+                        onError={() => setAvatarImgError(true)}
                       />
                     ) : (
                       <div

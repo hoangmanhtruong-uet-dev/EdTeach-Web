@@ -18,6 +18,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   refreshWallet: () => Promise<void>;
+  updateProfileLocal: (updates: Partial<UserProfile>) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -29,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
   refreshProfile: async () => {},
   refreshWallet: async () => {},
+  updateProfileLocal: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -42,8 +44,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const supabase = createClient();
 
+  const updateProfileLocal = (updates: Partial<UserProfile>) => {
+    setProfile((prev) => (prev ? ({ ...prev, ...updates } as UserProfile) : null));
+  };
+
   const fetchProfile = async (userId: string) => {
     try {
+      // 1. Ưu tiên Server API route: Sử dụng Admin Client ở server, miễn dịch 100% với lỗi RLS ở client
+      try {
+        const res = await fetch("/api/user/profile");
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.profile) {
+            let finalProfile: any = { ...json.profile };
+            try {
+              if (isEmailAdmin(finalProfile) || finalProfile?.role === "admin") {
+                finalProfile.tier = "max";
+                finalProfile.subscription_tier = "max";
+              }
+            } catch {
+              // ignore
+            }
+            setProfile(finalProfile);
+            return;
+          }
+        }
+      } catch {
+        // Fallback sang client SDK bên dưới nếu request API thất bại
+      }
+
+      // 2. Client query dự phòng
       const { data, error } = await supabase
         .from("users")
         .select("*")
@@ -199,6 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signOut,
         refreshProfile,
         refreshWallet,
+        updateProfileLocal,
       }}
     >
       {children}
