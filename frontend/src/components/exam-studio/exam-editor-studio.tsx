@@ -836,6 +836,23 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
       if (prefs.teaching.defaultDuration) setDuration(String(prefs.teaching.defaultDuration));
       if (prefs.export.docxFont) setFontFamily(prefs.export.docxFont);
 
+      // AI Model & Reasoning Mode Wiring from Settings
+      const preferredModel = prefs.gradingAndAi?.preferredAiModel;
+      const userIsMax = isMaxUser(profile) || isMaxUser(user);
+      if (preferredModel === "thinking") {
+        if (userIsMax) {
+          setAiModelTier("high");
+          setAiThinkingEffort("high");
+        } else {
+          // If non-MAX account, safe fallback to 3.5 flash-lite
+          setAiModelTier("medium");
+          setAiThinkingEffort("medium");
+        }
+      } else {
+        setAiModelTier("medium");
+        setAiThinkingEffort("low");
+      }
+
       // CRT-03: Khôi phục bản nháp chưa lưu gần nhất từ localStorage
       try {
         const localDraft = localStorage.getItem("edutest_exam_draft");
@@ -6519,16 +6536,21 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                       value={`${aiModelTier}-${aiThinkingEffort}`}
                       onChange={(e) => {
                         const [m, t] = e.target.value.split("-") as ["medium" | "high", "low" | "medium" | "high"];
+                        if (m === "high" && !isMaxUser(profile) && !isMaxUser(user)) {
+                          setShowUpgradeModal("max");
+                          showToast("Chế độ Gemini 3.8-flash / 3.1 pro yêu cầu Gói MAX", "info");
+                          return;
+                        }
                         setAiModelTier(m);
                         setAiThinkingEffort(t);
                       }}
                       aria-label="Cấu hình mô hình AI"
                       className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shadow-2xs"
                     >
-                      <option value="medium-medium">⚡ Flash · Cân bằng (500 cr)</option>
-                      <option value="medium-low">⚡ Flash · Siêu tốc (500 cr)</option>
-                      <option value="high-medium">✨ Pro · Chuẩn ma trận (1.600 cr)</option>
-                      <option value="high-high">🧠 Pro · Suy luận sâu (1.600 cr)</option>
+                      <option value="medium-medium">⚡ 3.5 flash-lite · Cân bằng (500 cr)</option>
+                      <option value="medium-low">⚡ 3.5 flash-lite · Siêu tốc (500 cr)</option>
+                      <option value="high-medium">✨ 3.8-flash / 3.1 pro · Chuẩn ma trận (1.600 cr) [MAX]</option>
+                      <option value="high-high">🧠 3.8-flash / 3.1 pro · Suy luận sâu (1.600 cr) [MAX]</option>
                     </select>
 
                     <button

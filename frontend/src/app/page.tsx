@@ -725,7 +725,7 @@ export default function LandingPage() {
                       <>
                         <span className="text-4xl font-extrabold text-slate-950 dark:text-white">229.000₫</span>
                         <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">/tháng</span>
-                        <p className="text-xs font-bold text-amber-700 mt-1">+100.000 credits/tháng (Gemini 2.0 Thinking & Deep Reasoning)</p>
+                        <p className="text-xs font-bold text-amber-700 mt-1">+100.000 credits/tháng (Gemini 3.8-flash / 3.1 pro Deep Reasoning)</p>
                       </>
                     ) : (
                       <>

@@ -51,6 +51,7 @@ import {
 } from "@/lib/preferences";
 import { TeacherVerificationCard } from "@/components/verification/teacher-verification-card";
 import { PlanStatusCard } from "./PlanStatusCard";
+import { isMaxUser } from "@/lib/payment/plans";
 import { AvatarCropModal } from "./AvatarCropModal";
 import { ChangeEmailModal } from "./ChangeEmailModal";
 import { UnsavedChangesModal } from "./UnsavedChangesModal";
@@ -315,6 +316,7 @@ export function GeneralTab({
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const supabase = createClient();
+  const isMax = isMaxUser(profile) || isMaxUser(user);
 
   // Determine current active subtab (supporting "verification" alias to "ekyc")
   const currentSubTab =
@@ -784,21 +786,44 @@ export function GeneralTab({
 
     if (user) {
       try {
-        const supabase = createClient();
-        await (supabase.from("users") as any)
-          .update({
+        const { data: { session: curSession } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (curSession?.access_token) {
+          headers["Authorization"] = `Bearer ${curSession.access_token}`;
+        }
+
+        const res = await fetch("/api/user/profile", {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({
             preferences: updatedPreferences,
             updated_at: new Date().toISOString(),
-          })
-          .eq("id", user.id);
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Không thể đồng bộ cài đặt nghiệp vụ lên máy chủ.");
+        }
+
+        const updated = data.profile || {
+          ...profile,
+          preferences: updatedPreferences as any,
+        };
+        updateProfileLocal(updated);
         await refreshProfile();
+        showToast("Đã lưu cài đặt nghiệp vụ thành công!", "success");
       } catch (err: any) {
         console.warn("Could not sync preferences to DB, saved locally:", err);
+        showToast(err.message || "Đã lưu cài đặt nghiệp vụ.", "info");
       }
+    } else {
+      showToast("Đã lưu cài đặt nghiệp vụ vào máy!", "success");
     }
 
     setSavingTeaching(false);
-    showToast("Đã lưu cài đặt nghiệp vụ thành công!", "success");
   };
 
   // ================= 5. NOTIFICATIONS MATRIX (A13) =================
@@ -854,21 +879,44 @@ export function GeneralTab({
 
     if (user) {
       try {
-        const supabase = createClient();
-        await (supabase.from("users") as any)
-          .update({
+        const { data: { session: curSession } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (curSession?.access_token) {
+          headers["Authorization"] = `Bearer ${curSession.access_token}`;
+        }
+
+        const res = await fetch("/api/user/profile", {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({
             preferences: updatedPreferences,
             updated_at: new Date().toISOString(),
-          })
-          .eq("id", user.id);
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Không thể đồng bộ tùy chọn thông báo lên máy chủ.");
+        }
+
+        const updated = data.profile || {
+          ...profile,
+          preferences: updatedPreferences as any,
+        };
+        updateProfileLocal(updated);
         await refreshProfile();
+        showToast("Đã lưu cài đặt thông báo thành công!", "success");
       } catch (err: any) {
         console.warn("Could not sync notifications to DB, saved locally:", err);
+        showToast(err.message || "Đã lưu tùy chọn thông báo.", "info");
       }
+    } else {
+      showToast("Đã lưu tùy chọn thông báo vào máy!", "success");
     }
 
     setSavingNotif(false);
-    showToast("Đã lưu cài đặt thông báo thành công!", "success");
   };
 
   // ================= 6. SECURITY STATE & PASSWORD STRENGTH (A11) =================
@@ -1660,308 +1708,434 @@ export function GeneralTab({
           {/* ================= SECTION 3: NGHIỆP VỤ & SOẠN ĐỀ (A1, A7) ================= */}
           {currentSubTab === "teaching" && (
             <form onSubmit={handleSaveTeachingPreferences} className="space-y-6">
-              <h2 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                <GraduationCap className="w-5 h-5 text-primary" />
-                <span>Nghiệp vụ & Quy cách soạn đề thi</span>
-              </h2>
-
-              {/* Block 1: Header Word */}
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b border-border">
-                  <FileText className="w-5 h-5 text-primary" />
-                  <div>
-                    <h3 className="text-sm font-bold text-foreground">
-                      1. Thông tin đầu trang đề thi (Header file Word)
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Tự động điền góc trái đầu trang của file Word (.docx) xuất ra theo quy chuẩn Bộ GD&ĐT.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-muted-foreground mb-1">
-                      Sở Giáo dục & Đào tạo / Cơ quan chủ quản
-                    </label>
-                    <input
-                      type="text"
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      placeholder="VD: SỞ GIÁO DỤC VÀ ĐÀO TẠO HÀ NỘI"
-                      className="block w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-muted-foreground mb-1">
-                      Tên trường học / Trung tâm đào tạo
-                    </label>
-                    <input
-                      type="text"
-                      value={schoolHeader}
-                      onChange={(e) => setSchoolHeader(e.target.value)}
-                      placeholder="VD: TRƯỜNG THPT CHUYÊN HÀ NỘI - AMSTERDAM"
-                      className="block w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border">
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-muted-foreground mb-1">
-                    Tổ bộ môn / Tên giáo viên biên soạn
-                  </label>
-                  <input
-                    type="text"
-                    value={teacherTitle}
-                    onChange={(e) => setTeacherTitle(e.target.value)}
-                    placeholder="VD: Tổ Toán - Tin | Thầy Nguyễn Văn A"
-                    className="block w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
+                  <h2 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                    <GraduationCap className="w-5 h-5 text-primary" />
+                    <span>Nghiệp vụ & Quy cách soạn đề thi</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Tùy chỉnh phôi đề Word (.docx), barem chấm OMR và động cơ AI suy luận theo đặc thù môn dạy.
+                  </p>
                 </div>
-              </div>
-
-              {/* Block 2: Môn & Thời gian */}
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b border-border">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                  <div>
-                    <h3 className="text-sm font-bold text-foreground">
-                      2. Môn dạy & Khối lớp mặc định khi khởi tạo đề
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Tự động chọn sẵn khi thầy cô mở Exam Studio tạo đề mới.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-muted-foreground mb-1">
-                      Môn học chính
-                    </label>
-                    <select
-                      value={defaultSubject}
-                      onChange={(e) => setDefaultSubject(e.target.value)}
-                      className="block w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-                    >
-                      {SUBJECT_OPTIONS.map((sub) => (
-                        <option key={sub} value={sub}>
-                          {sub}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-muted-foreground mb-1">
-                      Khối lớp thường dạy
-                    </label>
-                    <select
-                      value={defaultGrade}
-                      onChange={(e) => setDefaultGrade(e.target.value)}
-                      className="block w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-                    >
-                      {["12", "11", "10", "9", "8", "7", "6"].map((g) => (
-                        <option key={g} value={g}>
-                          Lớp {g}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-muted-foreground mb-1">
-                      Thời gian làm bài chuẩn
-                    </label>
-                    <select
-                      value={defaultDuration}
-                      onChange={(e) => setDefaultDuration(Number(e.target.value))}
-                      className="block w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-                    >
-                      <option value={15}>15 phút (Kiểm tra 15p)</option>
-                      <option value={45}>45 phút (1 tiết)</option>
-                      <option value={50}>50 phút (Chuẩn GDPT 2025)</option>
-                      <option value={60}>60 phút</option>
-                      <option value={90}>90 phút (Học kỳ / Tốt nghiệp)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Block 3: Định dạng Word & Watermark */}
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b border-border">
-                  <Sliders className="w-5 h-5 text-primary" />
-                  <div>
-                    <h3 className="text-sm font-bold text-foreground">
-                      3. Định dạng xuất Word (.docx) & Watermark
-                    </h3>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-muted-foreground mb-1">
-                      Font chữ văn bản Word
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { id: "Times New Roman" as const, label: "Times New Roman", desc: "Chuẩn Bộ GD" },
-                        { id: "Arial" as const, label: "Arial", desc: "Hiện đại, rõ nét" },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setDocxFont(item.id)}
-                          className={`rounded-xl border p-3 text-left transition cursor-pointer ${
-                            docxFont === item.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary font-bold"
-                              : "border-border hover:bg-muted"
-                          }`}
-                        >
-                          <p className="text-xs font-bold">{item.label}</p>
-                          <p className="text-[11px] text-muted-foreground">{item.desc}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-muted-foreground mb-1">
-                      Cỡ chữ nội dung câu hỏi
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { size: 13 as const, label: "13 pt", desc: "Chuẩn in ấn rõ ràng" },
-                        { size: 12 as const, label: "12 pt", desc: "Tiết kiệm giấy in" },
-                      ].map((item) => (
-                        <button
-                          key={item.size}
-                          type="button"
-                          onClick={() => setDocxFontSize(item.size)}
-                          className={`rounded-xl border p-3 text-left transition cursor-pointer ${
-                            docxFontSize === item.size
-                              ? "border-primary bg-primary/5 ring-1 ring-primary font-bold"
-                              : "border-border hover:bg-muted"
-                          }`}
-                        >
-                          <p className="text-xs font-bold">{item.label}</p>
-                          <p className="text-[11px] text-muted-foreground">{item.desc}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Watermark toggle */}
-                <div className="rounded-xl border border-border p-4 bg-muted/20 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-foreground">Chèn Watermark bản quyền giáo viên</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        Hiển thị dòng ghi chú bản quyền ở chân trang file Word xuất ra.
-                      </p>
-                    </div>
-                    <label className="relative inline-flex cursor-pointer items-center">
-                      <input
-                        type="checkbox"
-                        checked={docxEnableWatermark}
-                        onChange={(e) => setDocxEnableWatermark(e.target.checked)}
-                        className="peer sr-only"
-                      />
-                      <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
-                    </label>
-                  </div>
-
-                  {docxEnableWatermark && (
-                    <input
-                      type="text"
-                      value={docxWatermarkText}
-                      onChange={(e) => setDocxWatermarkText(e.target.value)}
-                      placeholder="VD: Biên soạn: Thầy Nguyễn Văn A - Hotline/Zalo: 0987.xxx.xxx"
-                      className="block w-full rounded-xl border border-border bg-background px-4 py-2 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
+                <button
+                  type="submit"
+                  disabled={savingTeaching}
+                  className="self-start sm:self-auto inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  {savingTeaching ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Đang lưu…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Lưu cài đặt nghiệp vụ</span>
+                    </>
                   )}
-                </div>
+                </button>
               </div>
 
-              {/* Block 4: Phiếu chấm OMR & AI Model */}
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b border-border">
-                  <Cpu className="w-5 h-5 text-primary" />
-                  <div>
-                    <h3 className="text-sm font-bold text-foreground">
-                      4. Mẫu phiếu chấm OMR & Chế độ AI phân tích
-                    </h3>
+              {/* 2-COLUMN MODERN COMPACT GRID */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                {/* LEFT COLUMN: SOẠN ĐỀ & CẤU HÌNH AI (6 cols) */}
+                <div className="lg:col-span-6 space-y-5">
+                  {/* Card 1: Môn & Khối mặc định */}
+                  <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
+                    <div className="flex items-center gap-2.5 pb-2.5 border-b border-border">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <BookOpen className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-foreground">
+                          1. Môn dạy & Khối lớp mặc định
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          Tự động chọn sẵn khi Thầy/Cô mở Exam Studio khởi tạo đề mới.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                          Môn học chính
+                        </label>
+                        <select
+                          value={defaultSubject}
+                          onChange={(e) => setDefaultSubject(e.target.value)}
+                          className="block w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                        >
+                          {SUBJECT_OPTIONS.map((sub) => (
+                            <option key={sub} value={sub}>
+                              {sub}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                          Khối lớp thường dạy
+                        </label>
+                        <select
+                          value={defaultGrade}
+                          onChange={(e) => setDefaultGrade(e.target.value)}
+                          className="block w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                        >
+                          {["12", "11", "10", "9", "8", "7", "6"].map((g) => (
+                            <option key={g} value={g}>
+                              Lớp {g}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                          Thời gian chuẩn
+                        </label>
+                        <select
+                          value={defaultDuration}
+                          onChange={(e) => setDefaultDuration(Number(e.target.value))}
+                          className="block w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                        >
+                          <option value={15}>15 phút (Kiểm tra 15p)</option>
+                          <option value={45}>45 phút (1 tiết)</option>
+                          <option value={50}>50 phút (Chuẩn GDPT 2025)</option>
+                          <option value={60}>60 phút</option>
+                          <option value={90}>90 phút (Học kỳ / TN)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Chế độ AI suy luận ưu tiên */}
+                  <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between pb-2.5 border-b border-border">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-foreground">
+                            2. Chế độ AI suy luận ưu tiên
+                          </h3>
+                          <p className="text-[11px] text-muted-foreground">
+                            Động cơ AI mặc định khi mở Exam Studio sinh câu hỏi & ma trận đề.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {/* Model 1: Gemini 3.8-flash hoặc 3.1 pro */}
+                      <div
+                        onClick={() => setPreferredAiModel("thinking")}
+                        className={`relative rounded-xl border p-3.5 cursor-pointer transition ${
+                          preferredAiModel === "thinking"
+                            ? "border-purple-500 bg-purple-500/5 ring-1 ring-purple-500 shadow-xs"
+                            : "border-border hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold text-foreground">
+                                Gemini 3.8-flash hoặc 3.1 pro
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-md bg-gradient-to-r from-amber-500/15 to-purple-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-extrabold text-amber-700 dark:text-amber-300">
+                                ✨ GÓI MAX • 1.600 cr
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground leading-relaxed">
+                              Suy luận đa bước chuyên sâu (Deep Reasoning). Kiểm tra chéo ma trận kiến thức, bẫy logic vận dụng cao, tự động sinh lời giải chi tiết.
+                            </p>
+                          </div>
+                          <div className={`mt-0.5 h-4 w-4 rounded-full border flex items-center justify-center shrink-0 ${
+                            preferredAiModel === "thinking"
+                              ? "border-purple-600 bg-purple-600 text-white"
+                              : "border-muted-foreground/30"
+                          }`}>
+                            {preferredAiModel === "thinking" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                          </div>
+                        </div>
+
+                        {!isMax && (
+                          <div className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                            <Info className="w-3.5 h-3.5 shrink-0" />
+                            <span>
+                              Tài khoản chưa nâng cấp Gói MAX: hệ thống sẽ ưu tiên lưu và tự động dùng 3.5 flash-lite khi tạo đề.
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Model 2: 3.5 flash-lite */}
+                      <div
+                        onClick={() => setPreferredAiModel("gemini")}
+                        className={`relative rounded-xl border p-3.5 cursor-pointer transition ${
+                          preferredAiModel === "gemini"
+                            ? "border-blue-500 bg-blue-500/5 ring-1 ring-blue-500 shadow-xs"
+                            : "border-border hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold text-foreground">
+                                3.5 flash-lite
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+                                ⚡ MỌI TÀI KHOẢN • 500 cr
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground leading-relaxed">
+                              Phản hồi siêu tốc 2–3s, tối ưu ngân sách credits. Sinh nhanh ngân hàng câu hỏi nhận biết, thông hiểu và đề trắc nghiệm chuẩn.
+                            </p>
+                          </div>
+                          <div className={`mt-0.5 h-4 w-4 rounded-full border flex items-center justify-center shrink-0 ${
+                            preferredAiModel === "gemini"
+                              ? "border-blue-600 bg-blue-600 text-white"
+                              : "border-muted-foreground/30"
+                          }`}>
+                            {preferredAiModel === "gemini" && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-muted-foreground mb-2">
-                      Mẫu phiếu trả lời trắc nghiệm mặc định
-                    </label>
+                {/* RIGHT COLUMN: TIÊU ĐỀ WORD, IN ẤN & MẪU PHIẾU CHẤM OMR (6 cols) */}
+                <div className="lg:col-span-6 space-y-5">
+                  {/* Card 3: Tiêu đề đầu trang đề thi (Header file Word) */}
+                  <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
+                    <div className="flex items-center gap-2.5 pb-2.5 border-b border-border">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-foreground">
+                          3. Tiêu đề hành chính & Trường học (Header Word)
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          Tự động điền góc trái đầu trang của file Word (.docx) xuất ra theo quy chuẩn Bộ GD&ĐT.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                          Sở Giáo dục & Đào tạo / Cơ quan chủ quản
+                        </label>
+                        <input
+                          type="text"
+                          value={department}
+                          onChange={(e) => setDepartment(e.target.value)}
+                          placeholder="VD: SỞ GIÁO DỤC VÀ ĐÀO TẠO HÀ NỘI"
+                          className="block w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                            Trường học / Đơn vị công tác
+                          </label>
+                          <input
+                            type="text"
+                            value={schoolHeader}
+                            onChange={(e) => setSchoolHeader(e.target.value)}
+                            placeholder="VD: THPT CHUYÊN HÀ NỘI - AMSTERDAM"
+                            className="block w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                            Tổ bộ môn / Giáo viên biên soạn
+                          </label>
+                          <input
+                            type="text"
+                            value={teacherTitle}
+                            onChange={(e) => setTeacherTitle(e.target.value)}
+                            placeholder="VD: Tổ Toán - Tin | Thầy Nguyễn Văn A"
+                            className="block w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Quy chuẩn in ấn & Watermark bản quyền */}
+                  <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
+                    <div className="flex items-center gap-2.5 pb-2.5 border-b border-border">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                        <Sliders className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-foreground">
+                          4. Quy chuẩn in ấn & Watermark (.docx)
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          Font chữ, cỡ chữ & đóng dấu bản quyền giáo viên khi xuất file Word.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                          Font chữ Word
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { id: "Times New Roman" as const, label: "Times New Roman", desc: "Chuẩn Bộ GD" },
+                            { id: "Arial" as const, label: "Arial", desc: "Hiện đại, rõ nét" },
+                          ].map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => setDocxFont(item.id)}
+                              className={`rounded-xl border p-2.5 text-left transition cursor-pointer ${
+                                docxFont === item.id
+                                  ? "border-primary bg-primary/5 ring-1 ring-primary font-bold"
+                                  : "border-border hover:bg-muted/50"
+                              }`}
+                            >
+                              <p className="text-xs font-bold leading-none">{item.label}</p>
+                              <p className="text-[10px] text-muted-foreground mt-1">{item.desc}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                          Cỡ chữ nội dung
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { size: 13 as const, label: "13 pt", desc: "Chuẩn in ấn rõ ràng" },
+                            { size: 12 as const, label: "12 pt", desc: "Tiết kiệm giấy in" },
+                          ].map((item) => (
+                            <button
+                              key={item.size}
+                              type="button"
+                              onClick={() => setDocxFontSize(item.size)}
+                              className={`rounded-xl border p-2.5 text-left transition cursor-pointer ${
+                                docxFontSize === item.size
+                                  ? "border-primary bg-primary/5 ring-1 ring-primary font-bold"
+                                  : "border-border hover:bg-muted/50"
+                              }`}
+                            >
+                              <p className="text-xs font-bold leading-none">{item.label}</p>
+                              <p className="text-[10px] text-muted-foreground mt-1">{item.desc}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Watermark toggle */}
+                    <div className="rounded-xl border border-border p-3.5 bg-muted/20 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-bold text-foreground">Chèn Watermark chân trang đề thi</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Ghi chú bản quyền và số điện thoại liên hệ ở chân trang file Word xuất ra.
+                          </p>
+                        </div>
+                        <label className="relative inline-flex cursor-pointer items-center shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={docxEnableWatermark}
+                            onChange={(e) => setDocxEnableWatermark(e.target.checked)}
+                            className="peer sr-only"
+                          />
+                          <div className="h-5 w-9 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
+                        </label>
+                      </div>
+
+                      {docxEnableWatermark && (
+                        <input
+                          type="text"
+                          value={docxWatermarkText}
+                          onChange={(e) => setDocxWatermarkText(e.target.value)}
+                          placeholder="VD: Biên soạn: Thầy Nguyễn Văn A - Hotline/Zalo: 0987.xxx.xxx"
+                          className="block w-full rounded-xl border border-border bg-background px-3 py-1.5 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Card 5: Mẫu phiếu chấm OMR mặc định */}
+                  <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-3.5">
+                    <div className="flex items-center gap-2.5 pb-2.5 border-b border-border">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                        <Cpu className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-foreground">
+                          5. Mẫu phiếu chấm OMR mặc định
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          Khung nhận diện phiếu thi khi dùng công cụ Chấm trắc nghiệm.
+                        </p>
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
                       {[
                         {
                           id: "gdpt_2025" as const,
                           label: "Chuẩn GDPT 2025 (Bộ GD&ĐT)",
-                          desc: "Phần I: 12 MCQ, Phần II: 4 Đúng/Sai, Phần III: 6 Trả lời ngắn",
+                          desc: "Phần I: 12 MCQ (3đ), Phần II: 4 Đúng/Sai (4đ), Phần III: 6 Trả lời ngắn (3đ)",
+                          badge: "Khuyên dùng",
                         },
-                        { id: "sheet_40" as const, label: "Phiếu 40 câu trắc nghiệm", desc: "4 phương án A-B-C-D" },
-                        { id: "sheet_50" as const, label: "Phiếu 50 câu trắc nghiệm", desc: "Dành cho thi THPT truyền thống" },
+                        {
+                          id: "sheet_40" as const,
+                          label: "Phiếu 40 câu trắc nghiệm",
+                          desc: "40 câu trắc nghiệm 4 phương án A-B-C-D truyền thống",
+                          badge: null,
+                        },
+                        {
+                          id: "sheet_50" as const,
+                          label: "Phiếu 50 câu trắc nghiệm",
+                          desc: "50 câu trắc nghiệm A-B-C-D cho kì thi THPT cũ",
+                          badge: null,
+                        },
                       ].map((sheet) => (
                         <div
                           key={sheet.id}
                           onClick={() => setDefaultGradingSheet(sheet.id)}
-                          className={`rounded-xl border p-3 cursor-pointer transition ${
+                          className={`rounded-xl border p-3 cursor-pointer transition flex items-center justify-between gap-3 ${
                             defaultGradingSheet === sheet.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-border hover:bg-muted"
+                              ? "border-primary bg-primary/5 ring-1 ring-primary shadow-xs"
+                              : "border-border hover:bg-muted/50"
                           }`}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold">{sheet.label}</span>
-                            {defaultGradingSheet === sheet.id && <Check className="w-3.5 h-3.5 text-primary" />}
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-foreground">{sheet.label}</span>
+                              {sheet.badge && (
+                                <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                                  {sheet.badge}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">{sheet.desc}</p>
                           </div>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">{sheet.desc}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-muted-foreground mb-2">
-                      Chế độ AI suy luận ưu tiên
-                    </label>
-                    <div className="space-y-2">
-                      {[
-                        {
-                          id: "thinking" as const,
-                          label: "Gemini 2.0 Thinking (Deep Reasoning)",
-                          desc: "Suy luận đa tác tử, kiểm tra ma trận logic bài toán vận dụng cao.",
-                        },
-                        {
-                          id: "gemini" as const,
-                          label: "Gemini 2.0 Flash (Tốc độ cao)",
-                          desc: "Phản hồi siêu tốc 2–3s, sinh nhanh ngân hàng câu hỏi nhận biết.",
-                        },
-                      ].map((ai) => (
-                        <div
-                          key={ai.id}
-                          onClick={() => setPreferredAiModel(ai.id)}
-                          className={`rounded-xl border p-3 cursor-pointer transition ${
-                            preferredAiModel === ai.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-border hover:bg-muted"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold">{ai.label}</span>
-                            {preferredAiModel === ai.id && <Check className="w-3.5 h-3.5 text-primary" />}
+                          <div className={`h-4 w-4 rounded-full border flex items-center justify-center shrink-0 ${
+                            defaultGradingSheet === sheet.id
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-muted-foreground/30"
+                          }`}>
+                            {defaultGradingSheet === sheet.id && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                           </div>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">{ai.desc}</p>
                         </div>
                       ))}
                     </div>
@@ -1969,13 +2143,27 @@ export function GeneralTab({
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2">
+              {/* Bottom Sticky Save Bar */}
+              <div className="flex items-center justify-between pt-3 border-t border-border">
+                <p className="text-xs text-muted-foreground">
+                  Cài đặt sẽ tự động áp dụng cho Exam Studio, phiếu chấm OMR và các bản xuất Word.
+                </p>
                 <button
                   type="submit"
                   disabled={savingTeaching}
-                  className="rounded-xl bg-primary px-8 py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
                 >
-                  {savingTeaching ? "Đang lưu…" : "Lưu cài đặt nghiệp vụ"}
+                  {savingTeaching ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Đang lưu…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Lưu cài đặt nghiệp vụ</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -2001,7 +2189,14 @@ export function GeneralTab({
                       <tr>
                         <th className="p-3.5 font-bold">Loại thông báo</th>
                         <th className="p-3.5 text-center font-bold">Email</th>
-                        <th className="p-3.5 text-center font-bold">Zalo / SMS</th>
+                        <th className="p-3.5 text-center font-bold">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span>Zalo / SMS</span>
+                            <span className="rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.5 text-[9px] font-bold">
+                              Sắp ra mắt
+                            </span>
+                          </div>
+                        </th>
                         <th className="p-3.5 text-center font-bold">Trong App</th>
                       </tr>
                     </thead>
@@ -2069,6 +2264,13 @@ export function GeneralTab({
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-3 text-[11px] text-muted-foreground">
+                  <Info className="w-4 h-4 text-primary shrink-0" />
+                  <span>
+                    Kênh thông báo qua Email và Trong App đã hoạt động thực tế. Kênh Zalo ZNS / SMS tự động đang trong tiến trình kiểm thử và kết nối đối tác viễn thông.
+                  </span>
                 </div>
 
                 <div className="flex justify-end pt-3">
