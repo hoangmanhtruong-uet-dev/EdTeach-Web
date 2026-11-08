@@ -9,23 +9,31 @@ const AI_SERVICE_URL =
   process.env.NEXT_PUBLIC_AI_SERVICE_URL ||
   "http://localhost:8000";
 
-// Simple in-memory IP rate limiter: max 5 requests per IP per day
-const ipRateLimits = new Map<string, { count: number; date: string }>();
-const freeUserDailyCounts = new Map<string, number>();
-
-function checkIpRateLimit(ip: string): boolean {
-  const today = new Date().toISOString().slice(0, 10);
-  const record = ipRateLimits.get(ip);
-  if (!record || record.date !== today) {
-    ipRateLimits.set(ip, { count: 1, date: today });
-    return true;
+// Quản lý hạn ngạch và Rate Limit bền vững qua PostgreSQL RPC (chống reset khi restart serverless container)
+async function checkPersistentQuota(
+  supabase: any,
+  key: string,
+  userId: string | null,
+  action: string,
+  limit: number
+): Promise<{ allowed: boolean; count: number; limit: number; remaining: number }> {
+  try {
+    const { data, error } = await (supabase.rpc as any)("check_and_increment_quota", {
+      p_key: key,
+      p_user_id: userId,
+      p_action: action,
+      p_limit: limit,
+    });
+    if (!error && data) {
+      return data;
+    }
+  } catch (err) {
+    console.warn("[Quota Check Warning]:", err);
   }
-  if (record.count >= 6) {
-    return false; // Exceeded 5 requests/day limit
-  }
-  record.count += 1;
-  return true;
+  return { allowed: true, count: 1, limit, remaining: limit - 1 };
 }
+// persistent quotas active
+function checkIpRateLimit(_ip: string): boolean { return true; }
 
 // Ngân hàng câu hỏi dự phòng chuyên sâu theo cấu trúc chuẩn Bộ GD&ĐT 2025 (Phần I, II, III)
 function getSubjectQuestions(subject: string, grade: string | number, count: number): any[] {
@@ -174,7 +182,16 @@ export async function POST(req: NextRequest) {
       req.headers.get("x-real-ip") ||
       "127.0.0.1";
 
-    if (!checkIpRateLimit(clientIp)) {
+    const supabase = await createClient();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const ipQuota = await checkPersistentQuota(
+      supabase,
+      `ip_exam_gen:${clientIp}:${todayStr}`,
+      null,
+      "ip_exam_generation",
+      6
+    );
+    if (!ipQuota.allowed) {
       return NextResponse.json(
         {
           error: "IP_RATE_LIMITED",
@@ -184,7 +201,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    // supabase client initialized above
 
     // 1. Xác thực user session
     const {
@@ -298,8 +315,8 @@ export async function POST(req: NextRequest) {
     if (!isProUser(userProfile)) {
       const today = new Date().toISOString().slice(0, 10);
       const userLimitKey = `free_exam_gen:${user.id}:${today}`;
-      const currentCount = freeUserDailyCounts.get(userLimitKey) || 0;
-      if (currentCount >= 3) {
+      const userQuota = await checkPersistentQuota(db, userLimitKey, user.id, "free_exam_generation", 3);
+      if (!userQuota.allowed) {
         return NextResponse.json(
           {
             error: "DAILY_LIMIT_EXCEEDED",
@@ -308,7 +325,7 @@ export async function POST(req: NextRequest) {
           { status: 429 }
         );
       }
-      freeUserDailyCounts.set(userLimitKey, currentCount + 1);
+      // quota updated atomically in postgres
     }
 
     let wallet: any = null;
