@@ -48,11 +48,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile((prev) => (prev ? ({ ...prev, ...updates } as UserProfile) : null));
   };
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, tokenOverride?: string) => {
     try {
       // 1. Ưu tiên Server API route: Sử dụng Admin Client ở server, miễn dịch 100% với lỗi RLS ở client
       try {
-        const res = await fetch("/api/user/profile");
+        const activeToken = tokenOverride || session?.access_token;
+        const headers: Record<string, string> = {};
+        if (activeToken) {
+          headers["Authorization"] = `Bearer ${activeToken}`;
+        }
+        const res = await fetch("/api/user/profile", { headers });
         if (res.ok) {
           const json = await res.json();
           if (json.success && json.profile) {
@@ -69,8 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
           }
         }
-      } catch {
-        // Fallback sang client SDK bên dưới nếu request API thất bại
+      } catch (err) {
+        console.warn("fetchProfile via API failed, attempting client fallback:", err);
       }
 
       // 2. Client query dự phòng
@@ -112,7 +117,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id);
+    if (user) {
+      const { data: { session: curSession } } = await supabase.auth.getSession();
+      await fetchProfile(user.id, curSession?.access_token);
+    }
   };
 
   
@@ -149,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (session?.user) {
         await Promise.all([
-          fetchProfile(session.user.id),
+          fetchProfile(session.user.id, session.access_token),
           fetchWallet(session.user.id),
         ]);
         autoClaimPendingReport(session.user.id);
@@ -178,7 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (nextUser) {
           if (!isSameUser) {
             await Promise.all([
-              fetchProfile(nextUser.id),
+              fetchProfile(nextUser.id, newSession?.access_token),
               fetchWallet(nextUser.id),
             ]);
             autoClaimPendingReport(nextUser.id);

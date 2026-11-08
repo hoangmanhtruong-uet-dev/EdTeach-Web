@@ -1,34 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthenticatedUser } from "@/lib/auth/server-user";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const { user, dbClient, error: authError } = await getAuthenticatedUser(req);
 
     if (authError || !user) {
       return NextResponse.json(
-        { success: false, error: "Yêu cầu đăng nhập." },
+        { success: false, error: "Yêu cầu đăng nhập để xem thông tin hồ sơ." },
         { status: 401 }
       );
     }
 
-    const adminClient = createAdminClient() || supabase;
-
-    // 1. Fetch user profile bypassing Client RLS
-    let { data: profile, error } = await (adminClient.from("users") as any)
+    // 1. Fetch user profile bypassing Client RLS via Admin Client
+    let { data: profile, error } = await (dbClient.from("users") as any)
       .select("*")
       .eq("id", user.id)
       .maybeSingle();
 
     if (error) {
-      console.error("Error fetching user profile from admin client:", error);
+      console.error("[/api/user/profile GET] DB error:", error);
       return NextResponse.json(
         { success: false, error: error.message },
         { status: 500 }
@@ -45,17 +38,21 @@ export async function GET(req: NextRequest) {
         "Thầy Cô";
       const refCode = "EDU" + user.id.replace(/-/g, "").substring(0, 5).toUpperCase();
 
-      const { data: newProfile, error: insertError } = await (adminClient.from("users") as any)
-        .insert({
-          id: user.id,
-          email,
-          name: defaultName,
-          role: "teacher",
-          tier: "free",
-          referral_code: refCode,
-        })
+      const { data: newProfile, error: insertError } = await (dbClient.from("users") as any)
+        .upsert(
+          {
+            id: user.id,
+            email,
+            name: defaultName,
+            role: "teacher",
+            tier: "free",
+            referral_code: refCode,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" }
+        )
         .select()
-        .single();
+        .maybeSingle();
 
       if (!insertError && newProfile) {
         profile = newProfile;
@@ -67,7 +64,7 @@ export async function GET(req: NextRequest) {
       profile,
     });
   } catch (error: any) {
-    console.error("API /api/user/profile GET error:", error);
+    console.error("[/api/user/profile GET] Exception:", error);
     return NextResponse.json(
       { success: false, error: error.message || "Lỗi máy chủ khi tải hồ sơ." },
       { status: 500 }
@@ -77,15 +74,11 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const { user, dbClient, error: authError } = await getAuthenticatedUser(req);
 
     if (authError || !user) {
       return NextResponse.json(
-        { success: false, error: "Yêu cầu đăng nhập." },
+        { success: false, error: "Yêu cầu đăng nhập để lưu hồ sơ." },
         { status: 401 }
       );
     }
@@ -93,9 +86,9 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const { name, phone, school, preferences } = body;
 
-    const adminClient = createAdminClient() || supabase;
-
     const payload: any = {
+      id: user.id,
+      email: user.email,
       updated_at: new Date().toISOString(),
     };
 
@@ -104,14 +97,25 @@ export async function PUT(req: NextRequest) {
     if (school !== undefined) payload.school = school ? String(school).trim() : null;
     if (preferences !== undefined) payload.preferences = preferences;
 
-    const { data: updatedProfile, error } = await (adminClient.from("users") as any)
-      .update(payload)
-      .eq("id", user.id)
+    let { data: updatedProfile, error } = await (dbClient.from("users") as any)
+      .upsert(payload, { onConflict: "id" })
       .select()
       .maybeSingle();
 
+    // Dự phòng an toàn nếu môi trường DB chưa chạy migration thêm cột phone
+    if (error && error.message?.includes("phone")) {
+      console.warn("[/api/user/profile PUT] Column 'phone' not found, retrying without phone column...");
+      delete payload.phone;
+      const retry = await (dbClient.from("users") as any)
+        .upsert(payload, { onConflict: "id" })
+        .select()
+        .maybeSingle();
+      updatedProfile = retry.data;
+      error = retry.error;
+    }
+
     if (error) {
-      console.error("Error updating user profile via admin client:", error);
+      console.error("[/api/user/profile PUT] DB update error:", error);
       return NextResponse.json(
         { success: false, error: error.message },
         { status: 500 }
@@ -124,7 +128,7 @@ export async function PUT(req: NextRequest) {
       message: "Cập nhật hồ sơ thành công!",
     });
   } catch (error: any) {
-    console.error("API /api/user/profile PUT error:", error);
+    console.error("[/api/user/profile PUT] Exception:", error);
     return NextResponse.json(
       { success: false, error: error.message || "Lỗi máy chủ khi lưu hồ sơ." },
       { status: 500 }

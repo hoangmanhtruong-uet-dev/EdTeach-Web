@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthenticatedUser } from "@/lib/auth/server-user";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Kiểm tra session đăng nhập bắt buộc
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. Kiểm tra xác thực (hỗ trợ Bearer Token & Session Cookie)
+    const { user, dbClient, error: authError } = await getAuthenticatedUser(req);
 
     if (authError || !user) {
       return NextResponse.json(
@@ -20,7 +15,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const adminClient = createAdminClient() || supabase;
+    const adminClient = dbClient;
 
     // 2. Nhận dữ liệu FormData
     const formData = await req.formData();
@@ -160,11 +155,7 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const { user, dbClient, error: authError } = await getAuthenticatedUser(req);
 
     if (authError || !user) {
       return NextResponse.json(
@@ -173,7 +164,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const adminClient = createAdminClient() || supabase;
+    const adminClient = dbClient;
 
     // 1. Cập nhật avatar_url về null trong bảng public.users
     const { error: dbError } = await (adminClient.from("users") as any)

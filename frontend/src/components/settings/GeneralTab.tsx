@@ -116,9 +116,10 @@ export function GeneralTab({
   onNavigateToPartner,
   initialSubTab,
 }: GeneralTabProps) {
-  const { user, profile, refreshProfile, updateProfileLocal } = useAuth();
+  const { user, profile, session, refreshProfile, updateProfileLocal } = useAuth();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const supabase = createClient();
 
   // Determine current active subtab (supporting "verification" alias to "ekyc")
   const currentSubTab =
@@ -323,8 +324,15 @@ export function GeneralTab({
         formData.append("dataUrl", dataUrl);
       }
 
+      const { data: { session: curSession } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (curSession?.access_token) {
+        headers["Authorization"] = `Bearer ${curSession.access_token}`;
+      }
+
       const res = await fetch("/api/user/avatar", {
         method: "POST",
+        headers,
         body: formData,
       });
 
@@ -360,8 +368,15 @@ export function GeneralTab({
     setUploadingAvatar(true);
     setAvatarError(null);
     try {
+      const { data: { session: curSession } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (curSession?.access_token) {
+        headers["Authorization"] = `Bearer ${curSession.access_token}`;
+      }
+
       const res = await fetch("/api/user/avatar", {
         method: "DELETE",
+        headers,
       });
 
       const result = await res.json();
@@ -405,8 +420,6 @@ export function GeneralTab({
       const cleanName = name.trim();
       const cleanSchool = school.trim() || null;
 
-      const supabase = createClient();
-
       // Update preferences with teaching defaults
       const currentPrefs = getUserPreferences(profile);
       const updatedPreferences: UserPreferences = {
@@ -435,33 +448,34 @@ export function GeneralTab({
         payload.phone = null;
       }
 
-      try {
-        const res = await fetch("/api/user/profile", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-          // Fallback client update if API fails
-          const { error } = await (supabase.from("users") as any)
-            .update(payload)
-            .eq("id", user.id);
-          if (error) {
-            delete payload.phone;
-            await (supabase.from("users") as any).update(payload).eq("id", user.id);
-          }
-        }
-      } catch {
-        // Fallback
-        await (supabase.from("users") as any).update(payload).eq("id", user.id);
+      const { data: { session: curSession } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (curSession?.access_token) {
+        headers["Authorization"] = `Bearer ${curSession.access_token}`;
       }
 
-      updateProfileLocal({
+      const res = await fetch("/api/user/profile", {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Không thể lưu hồ sơ vào máy chủ.");
+      }
+
+      const updated = data.profile || {
+        ...profile,
         name: cleanName,
         school: cleanSchool,
         phone: cleanPhone,
         preferences: updatedPreferences as any,
-      });
+      };
+
+      updateProfileLocal(updated);
 
       // Update initial values to reset dirty state
       setInitialName(cleanName);
@@ -471,7 +485,7 @@ export function GeneralTab({
       setInitialGradeLevel(selectedGradeLevel);
 
       await refreshProfile();
-      showToast("Đã lưu hồ sơ", "success");
+      showToast("Đã lưu hồ sơ thành công!", "success");
       setProfileSuccessMsg("Đã lưu hồ sơ thành công!");
       setTimeout(() => setProfileSuccessMsg(null), 4000);
     } catch (err: any) {
