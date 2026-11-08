@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import {
   MessageSquarePlus,
@@ -32,6 +32,18 @@ export function FeedbackModal({ defaultOpen = false }: FeedbackModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen]);
 
   const categories = [
     { id: "feature_request", label: "Góp ý tính năng mới", icon: Sparkles },
@@ -100,8 +112,18 @@ export function FeedbackModal({ defaultOpen = false }: FeedbackModalProps) {
 
       {/* Feedback Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 space-y-5">
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsOpen(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="feedback-modal-title"
+            className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 space-y-5"
+          >
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -109,7 +131,7 @@ export function FeedbackModal({ defaultOpen = false }: FeedbackModalProps) {
                   <MessageSquarePlus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  <h3 id="feedback-modal-title" className="text-base font-bold text-slate-900 dark:text-white">
                     Hòm Thư Góp Ý & Báo Lỗi
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -119,8 +141,10 @@ export function FeedbackModal({ defaultOpen = false }: FeedbackModalProps) {
               </div>
 
               <button
+                type="button"
                 onClick={() => setIsOpen(false)}
-                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center transition cursor-pointer"
+                aria-label="Đóng hòm thư góp ý"
+                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 flex items-center justify-center transition cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <X className="w-4 h-4" />
               </button>

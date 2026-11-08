@@ -219,50 +219,74 @@ export default function LoginPage() {
           )}
 
           {/* ======================================================== */}
-          {/* UIVERSE FORM CONTAINER: BY AKSHAT-PATEL28                */}
+          {/* UIVERSE FORM CONTAINER                                   */}
           {/* ======================================================== */}
           <div className="form-container">
-            <p className="title">Welcome back</p>
+            <h2 className="title">Chào mừng trở lại</h2>
 
             <form className="form" onSubmit={handleEmailLogin}>
-              <input
-                type="email"
-                className="input"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <div>
+                <label htmlFor="login-email" className="sr-only">
+                  Email
+                </label>
+                <input
+                  id="login-email"
+                  type="email"
+                  className="input"
+                  placeholder="Địa chỉ Email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
 
-              <input
-                type="password"
-                className="input"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div>
+                <label htmlFor="login-password" className="sr-only">
+                  Mật khẩu
+                </label>
+                <input
+                  id="login-password"
+                  type="password"
+                  className="input"
+                  placeholder="Mật khẩu"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
 
               <p className="page-link">
-                <Link href="/forgot-password">
-                  <span className="page-link-label">Forgot Password?</span>
+                <Link href="/forgot-password" className="focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded">
+                  <span className="page-link-label">Quên mật khẩu?</span>
                 </Link>
               </p>
 
-              <button className="form-btn" type="submit" disabled={isLoading}>
-                {isLoading ? "Logging in..." : "Log in"}
+              <button
+                className="form-btn focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                type="submit"
+                disabled={isLoading}
+              >
+                {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
               </button>
             </form>
 
             <p className="sign-up-label">
-              Don&apos;t have an account?
-              <Link href="/register" className="sign-up-link">
-                Sign up
+              Chưa có tài khoản?
+              <Link href="/register" className="sign-up-link focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded">
+                Đăng ký ngay
               </Link>
             </p>
 
             <div className="buttons-container">
-              <div className="apple-login-button" onClick={handleAppleLogin}>
+              <button
+                type="button"
+                className="apple-login-button focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                onClick={handleAppleLogin}
+                disabled={isLoading}
+                aria-label="Đăng nhập bằng tài khoản Apple"
+              >
                 <svg
                   stroke="currentColor"
                   fill="currentColor"
@@ -272,13 +296,20 @@ export default function LoginPage() {
                   height="1em"
                   width="1em"
                   xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
                 >
                   <path d="M747.4 535.7c-.4-68.2 30.5-119.6 92.9-157.5-34.9-50-87.7-77.5-157.3-82.8-65.9-5.2-138 38.4-164.4 38.4-27.9 0-91.7-36.6-141.9-36.6C273.1 298.8 163 379.8 163 544.6c0 48.7 8.9 99 26.7 150.8 23.8 68.2 109.6 235.3 199.1 232.6 46.8-1.1 79.9-33.2 140.8-33.2 59.1 0 89.7 33.2 141.9 33.2 90.3-1.3 167.9-153.2 190.5-221.6-121.1-57.1-114.6-167.2-114.6-170.7zm-105.1-305c50.7-60.2 46.1-115 44.6-134.7-44.8 2.6-96.6 30.5-126.1 64.8-32.5 36.8-51.6 82.3-47.5 133.6 48.4 3.7 92.6-21.2 129-63.7z" />
                 </svg>
-                <span>Log in with Apple</span>
-              </div>
+                <span>Đăng nhập với Apple</span>
+              </button>
 
-              <div className="google-login-button" onClick={handleGoogleLogin}>
+              <button
+                type="button"
+                className="google-login-button focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                onClick={handleGoogleLogin}
+                disabled={isLoading}
+                aria-label="Đăng nhập bằng tài khoản Google"
+              >
                 <svg
                   stroke="currentColor"
                   fill="currentColor"
@@ -291,6 +322,7 @@ export default function LoginPage() {
                   height="1em"
                   width="1em"
                   xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
                 >
                   <path
                     fill="#FFC107"
@@ -309,8 +341,8 @@ export default function LoginPage() {
                     d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571 c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
                   />
                 </svg>
-                <span>Log in with Google</span>
-              </div>
+                <span>Đăng nhập với Google</span>
+              </button>
             </div>
           </div>
         </div>

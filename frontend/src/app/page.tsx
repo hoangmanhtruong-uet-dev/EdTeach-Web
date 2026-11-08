@@ -499,8 +499,8 @@ export default function LandingPage() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-xl font-black text-white shadow-md">
                   1
                 </div>
-                <h3 className="text-lg font-bold text-slate-950">Soạn Đề Chuẩn Ma Trận 2025</h3>
-                <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                <h3 className="text-lg font-bold text-slate-950 dark:text-white">Soạn Đề Chuẩn Ma Trận 2025</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
                   Nhập chủ đề hoặc dán link web, tải PDF cũ lên để AI tự động xây dựng đề thi theo ma trận 3 phần của Bộ GD&ĐT, trộn 4-12 mã đề kèm đáp án.
                 </p>
               </div>
@@ -509,8 +509,8 @@ export default function LandingPage() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-xl font-black text-white shadow-md">
                   2
                 </div>
-                <h3 className="text-lg font-bold text-slate-950">Chiếu Lên Bục Giảng Số</h3>
-                <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                <h3 className="text-lg font-bold text-slate-950 dark:text-white">Chiếu Lên Bục Giảng Số</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
                   Bật Bục Giảng Số Split-Screen để trình chiếu: Cột trái câu hỏi phông lớn mở từng lớp lời giải, cột phải vẽ nháp Excalidraw, bung Phòng TN 3D và đẻ câu tương tự tại chỗ.
                 </p>
               </div>
@@ -519,8 +519,8 @@ export default function LandingPage() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-xl font-black text-white shadow-md">
                   3
                 </div>
-                <h3 className="text-lg font-bold text-slate-950">Chấm OMR 0đ & Chữa Nóng</h3>
-                <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                <h3 className="text-lg font-bold text-slate-950 dark:text-white">Chấm OMR 0đ & Chữa Nóng</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
                   Quét camera chấm nhanh cả lớp trong 3 phút, tự động thống kê câu sai nhiều nhất và đẩy ngược lại Bục Giảng Số để chữa dứt điểm ngay trong tiết học.
                 </p>
               </div>
@@ -585,18 +585,18 @@ export default function LandingPage() {
                     <span className="text-xs font-semibold text-slate-500">Dùng vĩnh viễn</span>
                   </div>
 
-                  <h3 className="text-xl font-bold text-slate-950">Gói Miễn Phí</h3>
-                  <p className="text-xs text-slate-600">
+                  <h3 className="text-xl font-bold text-slate-950 dark:text-white">Gói Miễn Phí</h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
                     Phù hợp cho Thầy/Cô làm quen với AI soạn đề và chấm trắc nghiệm cơ bản.
                   </p>
 
                   <div className="pt-2">
-                    <span className="text-4xl font-extrabold text-slate-950">0₫</span>
-                    <span className="text-xs text-slate-500 ml-1">/tháng</span>
+                    <span className="text-4xl font-extrabold text-slate-950 dark:text-white">0₫</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">/tháng</span>
                     <p className="text-xs font-bold text-blue-600 mt-1">Tặng 5.000 credits khi đăng ký</p>
                   </div>
 
-                  <ul className="space-y-3 pt-4 border-t border-slate-100 text-xs text-slate-700">
+                  <ul className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300">
                     <li className="flex items-start gap-2.5">
                       <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                       <span>Tặng 5.000 credits (soạn ~10 đề Flash hoặc ~3 đề Pro)</span>
@@ -622,7 +622,7 @@ export default function LandingPage() {
 
                 <Link
                   href="/register"
-                  className="w-full rounded-xl border-2 border-slate-300 py-3 text-center text-xs font-bold text-slate-800 hover:bg-slate-50 hover:border-slate-400 transition block"
+                  className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-700 py-3 text-center text-xs font-bold text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-600 transition block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   Bắt đầu Miễn phí
                 </Link>
@@ -642,22 +642,22 @@ export default function LandingPage() {
                     <span className="text-xs font-bold text-emerald-600">Tiêu chuẩn</span>
                   </div>
 
-                  <h3 className="text-xl font-bold text-slate-950">Gói Giáo Viên PRO</h3>
-                  <p className="text-xs text-slate-600">
+                  <h3 className="text-xl font-bold text-slate-950 dark:text-white">Gói Giáo Viên PRO</h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
                     Biến máy chiếu lớp học thành Bục Giảng Số tương tác đỉnh cao & 54+ Phòng TN 3D.
                   </p>
 
                   <div className="pt-2">
                     {billingCycle === "monthly" ? (
                       <>
-                        <span className="text-4xl font-extrabold text-slate-950">149.000₫</span>
-                        <span className="text-xs text-slate-500 ml-1">/tháng</span>
+                        <span className="text-4xl font-extrabold text-slate-950 dark:text-white">149.000₫</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">/tháng</span>
                         <p className="text-xs font-bold text-blue-600 mt-1">+30.000 credits/tháng vào ví</p>
                       </>
                     ) : (
                       <>
-                        <span className="text-4xl font-extrabold text-slate-950">599.000₫</span>
-                        <span className="text-xs text-slate-500 ml-1">/học kỳ (5 tháng)</span>
+                        <span className="text-4xl font-extrabold text-slate-950 dark:text-white">599.000₫</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">/học kỳ (5 tháng)</span>
                         <p className="text-xs font-bold text-emerald-600 mt-1">
                           +150.000 credits • Tiết kiệm 146.000₫
                         </p>
@@ -665,7 +665,7 @@ export default function LandingPage() {
                     )}
                   </div>
 
-                  <ul className="space-y-3 pt-4 border-t border-slate-100 text-xs text-slate-700">
+                  <ul className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300">
                     <li className="flex items-start gap-2.5">
                       <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                       <span><strong>Bục Giảng Số Split-Screen:</strong> Chiếu đề phông lớn + Bảng nháp Excalidraw tự lưu nét vẽ</span>
@@ -695,7 +695,7 @@ export default function LandingPage() {
 
                 <Link
                   href="/register?plan=pro"
-                  className="w-full rounded-xl bg-blue-600 py-3 text-center text-xs font-bold text-white hover:bg-blue-700 transition shadow-md shadow-blue-500/25 block"
+                  className="w-full rounded-xl bg-blue-600 py-3 text-center text-xs font-bold text-white hover:bg-blue-700 transition shadow-md shadow-blue-500/25 block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 >
                   Nâng cấp Gói PRO
                 </Link>
@@ -715,22 +715,22 @@ export default function LandingPage() {
                     <span className="text-xs font-bold text-amber-700">Cao cấp VIP</span>
                   </div>
 
-                  <h3 className="text-xl font-bold text-slate-950">Gói Luyện Thi MAX</h3>
-                  <p className="text-xs text-slate-600">
+                  <h3 className="text-xl font-bold text-slate-950 dark:text-white">Gói Luyện Thi MAX</h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
                     Giải pháp tối thượng cho giáo viên dạy đội tuyển, dạy thêm và trung tâm luyện thi.
                   </p>
 
                   <div className="pt-2">
                     {billingCycle === "monthly" ? (
                       <>
-                        <span className="text-4xl font-extrabold text-slate-950">229.000₫</span>
-                        <span className="text-xs text-slate-500 ml-1">/tháng</span>
+                        <span className="text-4xl font-extrabold text-slate-950 dark:text-white">229.000₫</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">/tháng</span>
                         <p className="text-xs font-bold text-amber-700 mt-1">+100.000 credits/tháng (Gemini 2.0 Thinking & Deep Reasoning)</p>
                       </>
                     ) : (
                       <>
-                        <span className="text-4xl font-extrabold text-slate-950">899.000₫</span>
-                        <span className="text-xs text-slate-500 ml-1">/học kỳ (5 tháng)</span>
+                        <span className="text-4xl font-extrabold text-slate-950 dark:text-white">899.000₫</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">/học kỳ (5 tháng)</span>
                         <p className="text-xs font-bold text-emerald-600 mt-1">
                           +500.000 credits • Tiết kiệm 246.000₫
                         </p>
@@ -738,8 +738,8 @@ export default function LandingPage() {
                     )}
                   </div>
 
-                  <ul className="space-y-3 pt-4 border-t border-slate-100 text-xs text-slate-700">
-                    <li className="flex items-start gap-2.5 font-bold text-slate-950">
+                  <ul className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300">
+                    <li className="flex items-start gap-2.5 font-bold text-slate-950 dark:text-white">
                       <Crown className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                       <span>Bao gồm TOÀN BỘ đặc quyền của Gói PRO</span>
                     </li>
@@ -772,7 +772,7 @@ export default function LandingPage() {
 
                 <Link
                   href="/register?plan=max"
-                  className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-center text-xs font-black text-slate-950 hover:brightness-105 transition shadow-md shadow-amber-500/20 block"
+                  className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-center text-xs font-black text-slate-950 hover:brightness-105 transition shadow-md shadow-amber-500/20 block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
                 >
                   Nâng cấp Gói MAX VIP
                 </Link>

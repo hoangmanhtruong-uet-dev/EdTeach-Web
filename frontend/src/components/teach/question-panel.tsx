@@ -394,18 +394,22 @@ export function QuestionPanel({
                     onClick={() => onGoToQuestion(idx)}
                     title={`Chuyển tới Câu ${idx + 1}${hasDraw ? " (Có nháp)" : ""}${hasClone ? " (Có câu luyện tập)" : ""}`}
                     aria-label={`Chuyển tới Câu ${idx + 1}`}
-                    className={`relative rounded-full transition-all cursor-pointer shrink-0 ${
-                      isCur
-                        ? "h-2 w-5 bg-blue-500 shadow-md ring-2 ring-blue-400"
-                        : "h-2 w-2 bg-slate-700 hover:bg-slate-500"
-                    }`}
+                    className="group relative flex items-center justify-center p-1.5 cursor-pointer shrink-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-400 rounded-full"
                   >
-                    {hasDraw && !isCur && (
-                      <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-amber-400" />
-                    )}
-                    {hasClone && !isCur && (
-                      <span className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-blue-400" />
-                    )}
+                    <span
+                      className={`relative rounded-full transition-all block ${
+                        isCur
+                          ? "h-2 w-5 bg-blue-500 shadow-md ring-2 ring-blue-400"
+                          : "h-2 w-2 bg-slate-700 group-hover:bg-slate-500"
+                      }`}
+                    >
+                      {hasDraw && !isCur && (
+                        <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-amber-400" />
+                      )}
+                      {hasClone && !isCur && (
+                        <span className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-blue-400" />
+                      )}
+                    </span>
                   </button>
                 );
               })}

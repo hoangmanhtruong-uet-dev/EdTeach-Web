@@ -25,6 +25,7 @@ import {
   FileText,
   Square,
   Pin,
+  Presentation,
   ChevronDown,
   Loader2,
 } from "lucide-react";
@@ -443,7 +444,7 @@ export function TeachTopbar({
             onClick={() => onSetFontSizeMultiplier(0.9)}
             title="Cỡ chữ nhỏ (0.9x)"
             aria-label="Cỡ chữ nhỏ 0.9x"
-            className={`rounded-lg px-1.5 py-0.5 text-xs font-bold transition cursor-pointer ${
+            className={`rounded-lg px-2.5 py-1 min-h-[30px] text-xs font-bold transition cursor-pointer ${
               fontSizeMultiplier === 0.9
                 ? "bg-slate-800 text-blue-400 shadow-xs"
                 : "text-slate-400 hover:text-white"
@@ -456,7 +457,7 @@ export function TeachTopbar({
             onClick={() => onSetFontSizeMultiplier(1.0)}
             title="Cỡ chữ chuẩn (1.0x)"
             aria-label="Cỡ chữ chuẩn 1.0x"
-            className={`rounded-lg px-1.5 py-0.5 text-xs font-bold transition cursor-pointer ${
+            className={`rounded-lg px-2.5 py-1 min-h-[30px] text-xs font-bold transition cursor-pointer ${
               fontSizeMultiplier === 1.0
                 ? "bg-slate-800 text-blue-400 shadow-xs"
                 : "text-slate-400 hover:text-white"
@@ -469,7 +470,7 @@ export function TeachTopbar({
             onClick={() => onSetFontSizeMultiplier(1.2)}
             title="Cỡ chữ to (1.2x)"
             aria-label="Cỡ chữ to 1.2x"
-            className={`rounded-lg px-1.5 py-0.5 text-xs font-bold transition cursor-pointer ${
+            className={`rounded-lg px-2.5 py-1 min-h-[30px] text-xs font-bold transition cursor-pointer ${
               fontSizeMultiplier === 1.2
                 ? "bg-slate-800 text-amber-400 shadow-xs"
                 : "text-slate-400 hover:text-white"
@@ -482,7 +483,7 @@ export function TeachTopbar({
             onClick={() => onSetFontSizeMultiplier(1.4)}
             title="Cỡ chữ cực đại cho máy chiếu xa (1.4x)"
             aria-label="Cỡ chữ cực đại 1.4x"
-            className={`rounded-lg px-1.5 py-0.5 text-xs font-bold transition cursor-pointer ${
+            className={`rounded-lg px-2.5 py-1 min-h-[30px] text-xs font-bold transition cursor-pointer ${
               fontSizeMultiplier === 1.4
                 ? "bg-slate-800 text-amber-400 shadow-xs"
                 : "text-slate-400 hover:text-white"
@@ -526,6 +527,63 @@ export function TeachTopbar({
               role="menu"
               className="absolute right-0 top-full mt-1.5 w-64 rounded-2xl border border-slate-800 bg-slate-900/98 p-1.5 shadow-2xl backdrop-blur-md z-50 animate-in fade-in zoom-in-95 duration-150"
             >
+              <div className="md:hidden px-2.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1">
+                Bục Giảng & Công Cụ Sư Phạm
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onSelectRightTab("whiteboard");
+                  if (splitRatio === 100) onSetSplitRatio(50);
+                  setMoreDropdownOpen(false);
+                }}
+                className={`md:hidden flex w-full items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-xs text-left transition ${
+                  activeRightTab === "whiteboard"
+                    ? "bg-blue-600/20 text-blue-300 font-bold"
+                    : "text-slate-300 hover:bg-slate-800"
+                }`}
+              >
+                <Presentation className="w-3.5 h-3.5 text-blue-400" />
+                <span>Bảng nháp Excalidraw</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onSelectRightTab("lab3d");
+                  if (splitRatio === 100) onSetSplitRatio(50);
+                  setMoreDropdownOpen(false);
+                }}
+                className={`md:hidden flex w-full items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-xs text-left transition ${
+                  activeRightTab === "lab3d"
+                    ? "bg-indigo-600/20 text-indigo-300 font-bold"
+                    : "text-slate-300 hover:bg-slate-800"
+                }`}
+              >
+                <FlaskConical className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Phòng thí nghiệm 3D</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onTriggerLiveClone();
+                  setMoreDropdownOpen(false);
+                }}
+                disabled={isCloning}
+                className="md:hidden flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-xs text-left text-slate-300 hover:bg-slate-800 transition disabled:opacity-50"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Wand2 className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Đẻ câu tương tự 2 phút</span>
+                </span>
+                <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-black text-amber-400">
+                  MAX
+                </span>
+              </button>
+              <div className="md:hidden border-b border-slate-800 my-1" />
+
               <div className="px-2.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1">
                 Công cụ Trình chiếu
               </div>

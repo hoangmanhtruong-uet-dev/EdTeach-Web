@@ -571,8 +571,9 @@ export default function RegisterPage() {
                   className="uiverse-input"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
+                  autoComplete="given-name"
                 />
-                <span>Firstname</span>
+                <span>Họ & tên đệm</span>
               </label>
 
               <label>
@@ -583,8 +584,9 @@ export default function RegisterPage() {
                   className="uiverse-input"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
+                  autoComplete="family-name"
                 />
-                <span>Lastname</span>
+                <span>Tên</span>
               </label>
             </div>
 
@@ -597,8 +599,9 @@ export default function RegisterPage() {
                 className="uiverse-input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
               />
-              <span>Email</span>
+              <span>Địa chỉ Email</span>
             </label>
 
             {/* Password */}
@@ -610,8 +613,9 @@ export default function RegisterPage() {
                 className="uiverse-input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
               />
-              <span>Password</span>
+              <span>Mật khẩu</span>
             </label>
 
             {/* Confirm password */}
@@ -623,19 +627,20 @@ export default function RegisterPage() {
                 className="uiverse-input"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
               />
-              <span>Confirm password</span>
+              <span>Xác nhận mật khẩu</span>
             </label>
 
             {/* Terms Checkbox */}
-            <label className="flex items-start gap-2 text-xs cursor-pointer select-none py-0.5">
+            <label className="flex items-start gap-2 text-xs cursor-pointer select-none py-1">
               <input
                 type="checkbox"
                 checked={agreeTerms}
                 onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary cursor-pointer"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary cursor-pointer shrink-0"
               />
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] leading-tight">
+              <span className="text-slate-500 dark:text-slate-400 text-xs leading-normal">
                 Tôi đồng ý với{" "}
                 <Link href="/terms" className="text-primary hover:underline font-bold">
                   Điều khoản
@@ -650,7 +655,7 @@ export default function RegisterPage() {
 
             {/* Loading step */}
             {isLoading && loadingStep && (
-              <div className="rounded-lg bg-primary/10 p-2 text-xs text-primary font-medium flex items-center gap-2">
+              <div className="rounded-lg bg-primary/10 p-2.5 text-xs text-primary font-medium flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 animate-spin shrink-0" />
                 <span>{loadingStep}</span>
               </div>
@@ -660,16 +665,16 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="uiverse-submit"
+              className="uiverse-submit min-h-[44px] cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              <span>{isLoading ? "Đang xử lý..." : "Submit"}</span>
+              <span>{isLoading ? "Đang xử lý..." : "Tạo tài khoản"}</span>
             </button>
 
             {/* Signin Link */}
             <p className="uiverse-signin">
-              Already have an acount ?{" "}
-              <Link href="/login">
-                Signin
+              Đã có tài khoản?{" "}
+              <Link href="/login" className="font-bold hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded">
+                Đăng nhập ngay
               </Link>
             </p>
           </form>

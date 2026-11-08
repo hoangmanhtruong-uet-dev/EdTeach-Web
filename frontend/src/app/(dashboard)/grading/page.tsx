@@ -1206,10 +1206,10 @@ function GradingPageInner() {
             {/* Top Header */}
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
               <div>
-                <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight">
                   Chấm phiếu trắc nghiệm
                 </h1>
-                <p className="mt-1.5 text-sm text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1.5 text-sm text-muted-foreground max-w-2xl leading-relaxed">
                   Tạo kỳ thi, in phiếu cho học sinh tô, rồi chụp phiếu để chấm. Hỗ trợ chuẩn GDPT 2025 (3 phần), phiếu 20, 40, 50 câu và đa mã đề.
                 </p>
                 <div className="mt-2 flex items-center gap-2 text-xs text-emerald-400 font-semibold">
@@ -1223,7 +1223,7 @@ function GradingPageInner() {
                 <button
                   type="button"
                   onClick={() => setShowDownloadOMRModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-900/80 hover:bg-slate-800 hover:border-slate-600 text-slate-200 text-xs font-bold transition shadow-sm cursor-pointer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground text-xs font-bold transition shadow-2xs cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
                   title="Tải mẫu phiếu trả lời trắc nghiệm chuẩn PDF A4 của Bộ GD&ĐT"
                 >
                   <Download className="w-4 h-4 text-blue-400" />
@@ -1244,11 +1244,11 @@ function GradingPageInner() {
 
             {/* Quick Stats Bar */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm backdrop-blur-sm">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng Kỳ Thi</span>
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-2xs backdrop-blur-xs">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Tổng Kỳ Thi</span>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-white">{sessions.length}</span>
-                  <span className="text-xs text-slate-400">kỳ thi</span>
+                  <span className="text-2xl font-black text-foreground">{sessions.length}</span>
+                  <span className="text-xs text-muted-foreground">kỳ thi</span>
                 </div>
                 <p className="text-[11px] text-emerald-400 font-medium mt-1 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -1256,19 +1256,19 @@ function GradingPageInner() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm backdrop-blur-sm">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Bài Đã Chấm OMR</span>
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-2xs backdrop-blur-xs">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Bài Đã Chấm OMR</span>
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className="text-2xl font-black text-blue-400">
                     {sessions.reduce((acc, s) => acc + s.gradedStudents.length, 0)}
                   </span>
-                  <span className="text-xs text-slate-400">bài thi</span>
+                  <span className="text-xs text-muted-foreground">bài thi</span>
                 </div>
                 <p className="text-[11px] text-blue-400/80 font-medium mt-1">Không tốn credit AI</p>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm backdrop-blur-sm">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Điểm Trung Bình</span>
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-2xs backdrop-blur-xs">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Điểm Trung Bình</span>
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className="text-2xl font-black text-purple-400">
                     {(() => {
@@ -1278,23 +1278,23 @@ function GradingPageInner() {
                       return avg.toFixed(1);
                     })()}
                   </span>
-                  <span className="text-xs text-slate-400">/ 10</span>
+                  <span className="text-xs text-muted-foreground">/ 10</span>
                 </div>
                 <p className="text-[11px] text-purple-400/80 font-medium mt-1">Phổ điểm toàn khóa</p>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm backdrop-blur-sm">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Độ Chính Xác OMR</span>
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-2xs backdrop-blur-xs">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Độ Chính Xác OMR</span>
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className="text-2xl font-black text-emerald-400">99.2%</span>
-                  <span className="text-xs text-slate-400">tự động</span>
+                  <span className="text-xs text-muted-foreground">tự động</span>
                 </div>
                 <p className="text-[11px] text-emerald-400/80 font-medium mt-1">Hỗ trợ sửa tay Review</p>
               </div>
             </div>
 
             {/* Thanh công cụ: Ô tìm kiếm & Bộ lọc trạng thái */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-3 rounded-2xl border border-border shadow-2xs">
               {/* Ô tìm kiếm */}
               <div className="relative flex-1 max-w-md">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -1303,7 +1303,7 @@ function GradingPageInner() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="🔍 Tìm tên kỳ thi, môn học, lớp..."
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-700 bg-slate-950/80 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className="w-full pl-9 pr-3 py-2 text-xs border border-border bg-background rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-primary transition"
                 />
               </div>
 
@@ -1323,8 +1323,8 @@ function GradingPageInner() {
                       onClick={() => setStatusFilter(tab.id as any)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                         isActive
-                          ? "bg-blue-600 text-white shadow-sm shadow-blue-500/20"
-                          : "text-slate-400 hover:text-white hover:bg-slate-800/80"
+                          ? "bg-primary text-primary-foreground shadow-2xs"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       }`}
                     >
                       <span>{tab.label}</span>
@@ -1345,16 +1345,16 @@ function GradingPageInner() {
             {/* TRẠNG THÁI 1: CHƯA CÓ KỲ THI NÀO (EMPTY STATE) */}
             {/* ======================================================== */}
             {sessions.length === 0 ? (
-              <div className="bg-slate-900/60 rounded-2xl border border-slate-800 p-12 md:p-16 flex flex-col items-center justify-center text-center shadow-md">
+              <div className="bg-card rounded-2xl border border-border p-12 md:p-16 flex flex-col items-center justify-center text-center shadow-xs">
                 <div className="w-16 h-16 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-5">
                   <FileText className="w-8 h-8" />
                 </div>
 
-                <h2 className="text-lg font-bold text-white mb-2">
+                <h2 className="text-lg font-bold text-foreground mb-2">
                   Chưa có kỳ thi nào
                 </h2>
 
-                <p className="text-xs text-slate-400 max-w-md mb-6 leading-relaxed">
+                <p className="text-xs text-muted-foreground max-w-md mb-6 leading-relaxed">
                   Tạo kỳ thi mới theo chuẩn GDPT 2025, in phiếu A4 cho học sinh tô, rồi chụp hoặc quét phiếu bằng điện thoại/webcam để AI chấm điểm tức thì.
                 </p>
 
@@ -1378,7 +1378,7 @@ function GradingPageInner() {
               </div>
             ) : filteredSessions.length === 0 ? (
               /* TRẠNG THÁI KHÔNG TÌM THẤY KẾT QUẢ THEO BỘ LỌC */
-              <div className="bg-slate-900/40 rounded-2xl border border-slate-800 p-10 text-center">
+              <div className="bg-card rounded-2xl border border-border p-10 text-center shadow-2xs">
                 <p className="text-sm font-semibold text-slate-300">
                   Không tìm thấy kỳ thi nào phù hợp với từ khóa & bộ lọc đã chọn.
                 </p>
@@ -1423,7 +1423,7 @@ function GradingPageInner() {
                   return (
                     <div
                       key={session.id}
-                      className="bg-slate-900/90 rounded-2xl border border-slate-800 hover:border-slate-700/80 p-5 shadow-lg shadow-black/20 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                      className="bg-card rounded-2xl border border-border hover:border-primary/50 p-5 shadow-2xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
                     >
                       <div className="space-y-2.5 flex-1">
                         {/* Hàng Badges Thông Tin */}
@@ -1468,7 +1468,7 @@ function GradingPageInner() {
                         {/* Tiêu đề kỳ thi */}
                         <h3
                           onClick={() => setActiveSessionId(session.id)}
-                          className="text-lg font-bold text-white hover:text-blue-400 transition cursor-pointer"
+                          className="text-lg font-bold text-foreground hover:text-primary transition cursor-pointer"
                         >
                           {session.name}
                         </h3>
