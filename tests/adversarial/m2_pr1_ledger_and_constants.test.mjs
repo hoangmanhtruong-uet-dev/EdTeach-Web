@@ -61,9 +61,9 @@ function getAppUrl(path = "") {
 }
 
 const MINIMUM_PAYOUT_VND = 200000;
-const SUPPORT_EMAIL = "support@edutest.ai";
+const SUPPORT_EMAIL = "developerhoangtruong@gmail.com";
 const REFERRAL_BONUS_CREDITS = 2000;
-const PLATFORM_NAME = "EduTest AI";
+const PLATFORM_NAME = "EduTest";
 const MARKETPLACE_CREDIT_RATE_VND = 100;
 
 // =============================================================================
@@ -75,8 +75,8 @@ test("1.1 Centralized constants values meet business specifications", () => {
   assert.equal(MINIMUM_PAYOUT_VND, 200000, "Minimum payout must be 200.000 VNĐ");
   assert.equal(MARKETPLACE_CREDIT_RATE_VND, 100, "Marketplace credit rate must be 100 VNĐ / credit");
   assert.equal(REFERRAL_BONUS_CREDITS, 2000, "Referral bonus must be 2.000 credits");
-  assert.equal(SUPPORT_EMAIL, "support@edutest.ai", "Support email must be canonical");
-  assert.equal(PLATFORM_NAME, "EduTest AI", "Platform name must be canonical");
+  assert.equal(SUPPORT_EMAIL, "developerhoangtruong@gmail.com", "Support email must be canonical");
+  assert.equal(PLATFORM_NAME, "EduTest", "Platform name must be canonical");
   assert.equal(DEFAULT_APP_URL, "https://ed-teach-rust.vercel.app");
 });
 

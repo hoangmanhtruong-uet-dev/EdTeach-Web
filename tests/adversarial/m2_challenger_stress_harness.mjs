@@ -603,9 +603,9 @@ test("5.1 lib/constants.ts defines standard system values", async () => {
   assert.equal(DEFAULT_APP_URL, "https://ed-teach-rust.vercel.app");
   assert.ok(APP_URL.startsWith("http"));
   assert.equal(MINIMUM_PAYOUT_VND, 200000, "Minimum payout must be 200.000 VNĐ");
-  assert.equal(SUPPORT_EMAIL, "support@edutest.ai");
+  assert.equal(SUPPORT_EMAIL, "developerhoangtruong@gmail.com");
   assert.equal(REFERRAL_BONUS_CREDITS, 2000, "Referral reward must be 2.000 credits");
-  assert.equal(PLATFORM_NAME, "EduTest AI");
+  assert.equal(PLATFORM_NAME, "EduTest");
 
   // Test getBaseUrl helper with request mock
   const mockReqHeaders = new Headers({
