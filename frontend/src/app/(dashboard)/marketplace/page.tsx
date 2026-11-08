@@ -5,7 +5,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { MarketplaceItem } from "@/types/marketplace";
-import { exportMarketplaceExamToDocx } from "@/lib/marketplace/export-docx";
+// docx exporter loaded dynamically on demand
 import { getUserExams, Exam } from "@/lib/api/exams";
 import { isProUser, isMaxUser } from "@/lib/payment/plans";
 
@@ -284,6 +284,7 @@ function MarketplaceInner() {
           targetItem = data.item;
         }
       }
+      const { exportMarketplaceExamToDocx } = await import("@/lib/marketplace/export-docx");
       await exportMarketplaceExamToDocx(targetItem);
       showToast("Đã tải xuống file Word (.docx) thành công!", "success");
     } catch (err: any) {

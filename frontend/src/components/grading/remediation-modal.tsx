@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { GradedStudent, ExamSession } from "./session-detail-view";
 import { RemediationSheetData } from "@/lib/remediation/remediation-store";
-import { exportRemediationToDocx } from "@/lib/remediation/remediation-docx";
+// remediation docx exporter loaded dynamically on demand
 
 interface RemediationModalProps {
   isOpen: boolean;
@@ -380,7 +380,10 @@ export function RemediationModal({
 
                 <button
                   type="button"
-                  onClick={() => exportRemediationToDocx(sheet, true)}
+                  onClick={async () => {
+                    const { exportRemediationToDocx } = await import("@/lib/remediation/remediation-docx");
+                    exportRemediationToDocx(sheet, true);
+                  }}
                   className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-slate-700 hover:bg-neutral-100 text-neutral-800 dark:text-slate-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                   title="Tải file Word (.docx) sạch 100% kèm barem lời giải & mẹo Casio"
                 >

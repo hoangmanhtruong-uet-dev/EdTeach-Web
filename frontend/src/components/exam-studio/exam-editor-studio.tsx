@@ -1,4 +1,5 @@
 "use client";
+import dynamic from "next/dynamic";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
@@ -92,10 +93,9 @@ import { clsx } from "clsx";
 import { useAuth } from "@/context/auth-context";
 import { useConfirm } from "@/context/confirm-dialog-context";
 import { LatexRenderer } from "@/components/ui/latex-renderer";
-import { exportExamToDocx, exportDualTeachingDocx } from "@/lib/export/docx-exporter";
+// docx exporter loaded dynamically on demand
 import { getUserPreferences } from "@/lib/preferences";
 import { ExamWithQuestions, Question, createExam, updateExam, getExamById } from "@/lib/api/exams";
-import { QuotaExhaustedModal } from "@/components/modals/quota-exhausted-modal";
 import {
   SheetBoxSvg,
   HeaterCircuitSvg,
@@ -105,35 +105,26 @@ import {
   StatisticsChartSvg,
   GeometryDiagramSvg,
 } from "./svg-illustrations";
-import { FormulaEditorModal } from "./formula-editor-modal";
-import { FindReplaceModal } from "./find-replace-modal";
-import { ShuffleExamModal } from "./shuffle-exam-modal";
-import { ShareExamModal } from "./share-exam-modal";
 import { isProUser, isMaxUser, PricingPlan } from "@/lib/payment/plans";
-import { UpgradeTierModal } from "@/components/modals/upgrade-tier-modal";
-import { PaymentCheckoutModal } from "@/components/modals/payment-checkout-modal";
 import { APP_URL } from "@/lib/constants";
-import {
-  VariationTableModal,
-  VariationTableRenderer,
-  VariationTableData,
-} from "./variation-table-modal";
-import {
-  FunctionGraphModal,
-  FunctionGraphRenderer,
-  FunctionGraphData,
-} from "./function-graph-modal";
-import {
-  ChartEditorModal,
-  ChartSvgRenderer,
-  ChartConfigData,
-} from "./chart-editor-modal";
+import { VariationTableRenderer, VariationTableData } from "./variation-table-modal";
+import { FunctionGraphRenderer, FunctionGraphData } from "./function-graph-modal";
+import { ChartSvgRenderer, ChartConfigData } from "./chart-editor-modal";
+import { GeometrySvgRenderer, GeometryConfigData } from "./geometry-editor-modal";
 import { TeachingStepperBar } from "./teaching-stepper-bar";
-import {
-  GeometryEditorModal,
-  GeometrySvgRenderer,
-  GeometryConfigData,
-} from "./geometry-editor-modal";
+
+// Dynamic lazy imports for heavy studio modals (Performance Optimization P2)
+const QuotaExhaustedModal = dynamic(() => import("@/components/modals/quota-exhausted-modal").then((m) => m.QuotaExhaustedModal), { ssr: false });
+const FormulaEditorModal = dynamic(() => import("./formula-editor-modal").then((m) => m.FormulaEditorModal), { ssr: false });
+const FindReplaceModal = dynamic(() => import("./find-replace-modal").then((m) => m.FindReplaceModal), { ssr: false });
+const ShuffleExamModal = dynamic(() => import("./shuffle-exam-modal").then((m) => m.ShuffleExamModal), { ssr: false });
+const ShareExamModal = dynamic(() => import("./share-exam-modal").then((m) => m.ShareExamModal), { ssr: false });
+const UpgradeTierModal = dynamic(() => import("@/components/modals/upgrade-tier-modal").then((m) => m.UpgradeTierModal), { ssr: false });
+const PaymentCheckoutModal = dynamic(() => import("@/components/modals/payment-checkout-modal").then((m) => m.PaymentCheckoutModal), { ssr: false });
+const VariationTableModal = dynamic(() => import("./variation-table-modal").then((m) => m.VariationTableModal), { ssr: false });
+const FunctionGraphModal = dynamic(() => import("./function-graph-modal").then((m) => m.FunctionGraphModal), { ssr: false });
+const ChartEditorModal = dynamic(() => import("./chart-editor-modal").then((m) => m.ChartEditorModal), { ssr: false });
+const GeometryEditorModal = dynamic(() => import("./geometry-editor-modal").then((m) => m.GeometryEditorModal), { ssr: false });
 import { parseDocumentFile } from "@/lib/utils/document-parser";
 import { saveToOfflineStore } from "@/lib/storage/indexed-db";
 
@@ -2236,6 +2227,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
       questions: questions as any,
     };
     const isPro = isProUser(profile) || isProUser(user);
+    const { exportExamToDocx } = await import("@/lib/export/docx-exporter");
     await exportExamToDocx(examData, teacherMode, isPro, fontFamily);
   };
 
@@ -2257,6 +2249,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
       questions: questions as any,
     };
     const isPro = isProUser(profile) || isProUser(user);
+    const { exportDualTeachingDocx } = await import("@/lib/export/docx-exporter");
     await exportDualTeachingDocx(examData, isPro, fontFamily);
   };
 

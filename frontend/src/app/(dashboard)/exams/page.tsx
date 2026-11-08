@@ -27,7 +27,7 @@ import Link from "next/link";
 import { getUserExams, deleteExam, Exam, getExamById } from "@/lib/api/exams";
 import { useAuth } from "@/context/auth-context";
 import { isMaxUser, isProUser, PricingPlan } from "@/lib/payment/plans";
-import { exportDualTeachingDocx } from "@/lib/export/docx-exporter";
+// docx exporter loaded dynamically on demand
 import { UpgradeTierModal } from "@/components/modals/upgrade-tier-modal";
 import { PaymentCheckoutModal } from "@/components/modals/payment-checkout-modal";
 import { useToast } from "@/context/toast-context";
@@ -195,6 +195,7 @@ export default function ExamsPage() {
       setExportingId(id);
       const fullExam = await getExamById(id);
       if (fullExam) {
+        const { exportDualTeachingDocx } = await import("@/lib/export/docx-exporter");
         await exportDualTeachingDocx(fullExam, isPro);
       }
       showToast("Đã xuất thành công bộ đề kép giảng dạy (.docx)!", "success");

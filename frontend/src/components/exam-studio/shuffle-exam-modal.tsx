@@ -17,7 +17,7 @@ import {
   Sparkles,
   Crown,
 } from "lucide-react";
-import { exportShuffledExamsToDocx } from "@/lib/export/docx-exporter";
+// docx exporter loaded dynamically on demand
 import { UpgradeTierModal } from "@/components/modals/upgrade-tier-modal";
 import { PaymentCheckoutModal } from "@/components/modals/payment-checkout-modal";
 import { PricingPlan } from "@/lib/payment/plans";
@@ -242,6 +242,7 @@ export function ShuffleExamModal({
   async function handleExportDocx() {
     setIsExporting(true);
     try {
+      const { exportShuffledExamsToDocx } = await import("@/lib/export/docx-exporter");
       await exportShuffledExamsToDocx(
         examName,
         subject,

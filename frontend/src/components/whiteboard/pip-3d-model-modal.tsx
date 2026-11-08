@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
 import {
   X,
   Minimize2,
@@ -12,6 +13,7 @@ import {
   Upload,
   Sparkles,
   FileCode,
+  Loader2,
 } from "lucide-react";
 import {
   EDUCATIONAL_3D_MODELS,
@@ -20,7 +22,19 @@ import {
   MODEL_SUBJECT_LABEL,
   MODEL_SUBJECT_BADGE,
 } from "@/data/models-3d";
-import { Interactive3DViewer } from "./interactive-3d-viewer";
+
+const Interactive3DViewer = dynamic(
+  () => import("./interactive-3d-viewer").then((mod) => mod.Interactive3DViewer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full min-h-[280px] flex flex-col items-center justify-center p-8 bg-slate-900 text-white space-y-3 rounded-2xl">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+        <p className="text-xs text-slate-400 font-medium">Đang khởi tạo không gian 3D Three.js...</p>
+      </div>
+    ),
+  }
+);
 
 interface Pip3DModelModalProps {
   isOpen: boolean;
