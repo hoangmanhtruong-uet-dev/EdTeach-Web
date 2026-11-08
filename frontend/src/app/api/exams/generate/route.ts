@@ -4,6 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 const AI_SERVICE_URL =
   process.env.AI_SERVICE_URL ||
   process.env.NEXT_PUBLIC_AI_SERVICE_URL ||
@@ -651,10 +654,11 @@ export async function POST(req: NextRequest) {
             "gemini-3-flash-preview",
           ];
 
+          console.log(`[Exam Generator] Invoking AI for ${subject} Lớp ${safeGradeNum}, Key: ${geminiKey ? geminiKey.slice(0, 8) + "..." : "NONE"}`);
           for (const model of modelsToTry) {
             try {
               const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 20000);
+              const timeoutId = setTimeout(() => controller.abort(), 45000);
 
               const geminiRes = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
