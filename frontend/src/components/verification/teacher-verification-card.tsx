@@ -172,7 +172,7 @@ export function TeacherVerificationCard() {
             Xác thực Thẻ ngành Giáo viên (eKYC)
           </h2>
           <p className="text-xs md:text-sm text-muted-foreground mt-1">
-            Định danh sư phạm chính chủ bằng AI Vision OCR và kích hoạt Tích Xanh bảo chứng.
+            Định danh sư phạm chính chủ và kích hoạt Tích Xanh bảo chứng.
           </p>
         </div>
 
@@ -465,10 +465,10 @@ export function TeacherVerificationCard() {
               {uploading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Xác thực tự động bằng AI...</span>
+                  <span>Đang gửi hồ sơ xác thực...</span>
                 </>
               ) : (
-                <span>Xác thực tự động bằng AI</span>
+                <span>Gửi hồ sơ xác thực</span>
               )}
             </button>
           </div>
