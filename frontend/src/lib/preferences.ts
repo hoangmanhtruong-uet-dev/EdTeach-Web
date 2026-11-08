@@ -7,6 +7,7 @@ export interface TeachingPreferences {
   defaultDuration: number;
   subjects?: string[];
   gradeLevel?: string;
+  gradeLevels?: string[];
 }
 
 export interface ExportPreferences {

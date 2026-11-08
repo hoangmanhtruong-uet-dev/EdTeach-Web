@@ -38,6 +38,7 @@ import {
   Eye,
   EyeOff,
   ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
@@ -103,11 +104,205 @@ const SUBJECT_OPTIONS = [
 ];
 
 const GRADE_LEVEL_OPTIONS = [
+  "Tiểu học (Khối 1–5)",
   "THCS (Khối 6–9)",
   "THPT (Khối 10–12)",
   "Luyện thi Đại học / ĐGNL",
   "Khác",
 ];
+
+interface MultiSelectDropdownProps {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (newSelected: string[]) => void;
+  placeholder?: string;
+  icon?: React.ReactNode;
+  hint?: string;
+  badgeLimit?: number;
+}
+
+function MultiSelectDropdown({
+  label,
+  options,
+  selected,
+  onChange,
+  placeholder = "Chọn các mục...",
+  icon,
+  hint,
+  badgeLimit = 3,
+}: MultiSelectDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const toggleOption = (option: string) => {
+    if (selected.includes(option)) {
+      onChange(selected.filter((item) => item !== option));
+    } else {
+      onChange([...selected, option]);
+    }
+  };
+
+  const selectAll = () => {
+    onChange([...options]);
+  };
+
+  const clearAll = () => {
+    onChange([]);
+  };
+
+  const isAllSelected = options.length > 0 && selected.length === options.length;
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+          {icon}
+          <span>{label}</span>
+          <span className="text-[11px] font-normal text-muted-foreground">
+            ({selected.length} đã chọn)
+          </span>
+        </label>
+        {selected.length > 0 && (
+          <button
+            type="button"
+            onClick={clearAll}
+            className="text-[11px] text-muted-foreground hover:text-destructive transition cursor-pointer"
+          >
+            Xóa chọn
+          </button>
+        )}
+      </div>
+
+      {/* Trigger Box */}
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        aria-expanded={isOpen}
+        className={`min-h-[42px] w-full rounded-xl border bg-background px-3 py-2 text-xs transition cursor-pointer flex items-center justify-between gap-2 text-left ${
+          isOpen
+            ? "border-primary ring-1 ring-primary shadow-xs"
+            : "border-border hover:border-primary/50"
+        }`}
+      >
+        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0 py-0.5">
+          {selected.length === 0 ? (
+            <span className="text-muted-foreground">{placeholder}</span>
+          ) : (
+            <>
+              {selected.slice(0, badgeLimit).map((item) => (
+                <span
+                  key={item}
+                  className="inline-flex items-center gap-1 rounded-lg bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-xs font-medium"
+                >
+                  {item}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleOption(item);
+                    }}
+                    className="hover:bg-primary/20 rounded-full p-0.5 transition cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </span>
+                </span>
+              ))}
+              {selected.length > badgeLimit && (
+                <span className="inline-flex items-center rounded-lg bg-muted text-muted-foreground px-2 py-0.5 text-xs font-semibold">
+                  +{selected.length - badgeLimit} nữa
+                </span>
+              )}
+            </>
+          )}
+        </div>
+
+        <ChevronDown
+          className={`w-4 h-4 shrink-0 transition-transform duration-200 ${
+            isOpen ? "rotate-180 text-primary" : "text-muted-foreground"
+          }`}
+          aria-hidden="true"
+        />
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute top-full left-0 right-0 mt-1.5 z-40 rounded-xl border border-border bg-card shadow-2xl overflow-hidden backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-150">
+          <div className="flex items-center justify-between p-2.5 border-b border-border bg-muted/30">
+            <span className="text-[11px] font-medium text-muted-foreground">
+              Đã chọn <strong className="text-foreground">{selected.length}</strong> / {options.length} mục
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={isAllSelected ? clearAll : selectAll}
+                className="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+              >
+                {isAllSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+              </button>
+            </div>
+          </div>
+
+          <div className="max-h-60 overflow-y-auto p-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            {options.map((opt) => {
+              const isChecked = selected.includes(opt);
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => toggleOption(opt)}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-left border ${
+                    isChecked
+                      ? "bg-primary/10 text-primary border-primary/30 font-bold"
+                      : "bg-background text-foreground border-transparent hover:bg-muted"
+                  }`}
+                >
+                  <div
+                    className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition ${
+                      isChecked
+                        ? "bg-primary border-primary text-primary-foreground"
+                        : "border-muted-foreground/30 bg-card"
+                    }`}
+                  >
+                    {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <span className="truncate">{opt}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="p-2 border-t border-border bg-muted/20 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="px-3 py-1 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition cursor-pointer"
+            >
+              Hoàn tất
+            </button>
+          </div>
+        </div>
+      )}
+
+      {hint && <p className="text-[11px] text-muted-foreground mt-1.5">{hint}</p>}
+    </div>
+  );
+}
 
 export function GeneralTab({
   activeSection = "profile",
@@ -165,8 +360,8 @@ export function GeneralTab({
   const [initialSchool, setInitialSchool] = useState("");
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [initialSubjects, setInitialSubjects] = useState<string[]>([]);
-  const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>("THPT (Khối 10–12)");
-  const [initialGradeLevel, setInitialGradeLevel] = useState<string>("THPT (Khối 10–12)");
+  const [selectedGradeLevels, setSelectedGradeLevels] = useState<string[]>(["THPT (Khối 10–12)"]);
+  const [initialGradeLevels, setInitialGradeLevels] = useState<string[]>(["THPT (Khối 10–12)"]);
 
   const [touched, setTouched] = useState<{ name?: boolean; phone?: boolean; school?: boolean }>({});
   const [fieldErrors, setFieldErrors] = useState<{
@@ -225,8 +420,8 @@ export function GeneralTab({
     name.trim() !== initialName.trim() ||
     phone.trim() !== initialPhone.trim() ||
     school.trim() !== initialSchool.trim() ||
-    selectedGradeLevel !== initialGradeLevel ||
-    JSON.stringify(selectedSubjects.sort()) !== JSON.stringify(initialSubjects.sort());
+    JSON.stringify([...selectedGradeLevels].sort()) !== JSON.stringify([...initialGradeLevels].sort()) ||
+    JSON.stringify([...selectedSubjects].sort()) !== JSON.stringify([...initialSubjects].sort());
 
   const hasFormErrors = Boolean(
     validateName(name) || validatePhone(phone) || validateSchool(school)
@@ -260,12 +455,20 @@ export function GeneralTab({
 
       const prefs = getUserPreferences(profile);
       const subjects = prefs.teaching.subjects || [prefs.teaching.defaultSubject || "Toán"];
-      const gradeLevel = prefs.teaching.gradeLevel || "THPT (Khối 10–12)";
+      
+      let gradeLevels: string[] = [];
+      if (Array.isArray((prefs.teaching as any).gradeLevels) && (prefs.teaching as any).gradeLevels.length > 0) {
+        gradeLevels = (prefs.teaching as any).gradeLevels;
+      } else if (prefs.teaching.gradeLevel) {
+        gradeLevels = [prefs.teaching.gradeLevel];
+      } else {
+        gradeLevels = ["THPT (Khối 10–12)"];
+      }
 
       setSelectedSubjects(subjects);
       setInitialSubjects(subjects);
-      setSelectedGradeLevel(gradeLevel);
-      setInitialGradeLevel(gradeLevel);
+      setSelectedGradeLevels(gradeLevels);
+      setInitialGradeLevels(gradeLevels);
     }
   }, [profile]);
 
@@ -428,7 +631,8 @@ export function GeneralTab({
           ...currentPrefs.teaching,
           school: cleanSchool || "",
           subjects: selectedSubjects,
-          gradeLevel: selectedGradeLevel,
+          gradeLevel: selectedGradeLevels[0] || "THPT (Khối 10–12)",
+          gradeLevels: selectedGradeLevels,
           defaultSubject: selectedSubjects[0] || currentPrefs.teaching.defaultSubject || "Toán",
         },
       };
@@ -482,7 +686,7 @@ export function GeneralTab({
       setInitialPhone(phone.trim());
       setInitialSchool(school.trim());
       setInitialSubjects([...selectedSubjects]);
-      setInitialGradeLevel(selectedGradeLevel);
+      setInitialGradeLevels([...selectedGradeLevels]);
 
       await refreshProfile();
       showToast("Đã lưu hồ sơ thành công!", "success");
@@ -500,7 +704,7 @@ export function GeneralTab({
     setPhone(initialPhone);
     setSchool(initialSchool);
     setSelectedSubjects([...initialSubjects]);
-    setSelectedGradeLevel(initialGradeLevel);
+    setSelectedGradeLevels([...initialGradeLevels]);
     setFieldErrors({});
     setTouched({});
     showToast("Đã hủy các thay đổi chưa lưu.", "info");
@@ -1309,67 +1513,31 @@ export function GeneralTab({
                       </span>
                     </div>
 
-                    {/* Môn dạy (Multi-select pills) */}
-                    <div>
-                      <label className="block text-xs font-semibold text-foreground mb-2">
-                        Môn học phụ trách giảng dạy (Chọn một hoặc nhiều môn):
-                      </label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {SUBJECT_OPTIONS.map((sub) => {
-                          const isSelected = selectedSubjects.includes(sub);
-                          return (
-                            <button
-                              key={sub}
-                              type="button"
-                              onClick={() => {
-                                if (isSelected) {
-                                  setSelectedSubjects((prev) => prev.filter((s) => s !== sub));
-                                } else {
-                                  setSelectedSubjects((prev) => [...prev, sub]);
-                                }
-                              }}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
-                                isSelected
-                                  ? "bg-primary text-primary-foreground border-primary shadow-2xs font-bold"
-                                  : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
-                              }`}
-                            >
-                              {isSelected ? "✓ " : ""}
-                              {sub}
-                            </button>
-                          );
-                        })}
-                      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Môn dạy (Multi-select dropdown dạng ẩn) */}
+                      <MultiSelectDropdown
+                        label="Môn học phụ trách giảng dạy"
+                        options={SUBJECT_OPTIONS}
+                        selected={selectedSubjects}
+                        onChange={setSelectedSubjects}
+                        placeholder="Chọn một hoặc nhiều môn học..."
+                        badgeLimit={2}
+                      />
+
+                      {/* Cấp / Khối lớp (Multi-select dropdown dạng ẩn) */}
+                      <MultiSelectDropdown
+                        label="Cấp / Khối lớp thường dạy"
+                        options={GRADE_LEVEL_OPTIONS}
+                        selected={selectedGradeLevels}
+                        onChange={setSelectedGradeLevels}
+                        placeholder="Chọn một hoặc nhiều cấp / khối..."
+                        badgeLimit={2}
+                      />
                     </div>
 
-                    {/* Cấp / Khối lớp */}
-                    <div>
-                      <label className="block text-xs font-semibold text-foreground mb-2">
-                        Cấp / Khối lớp thường dạy:
-                      </label>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {GRADE_LEVEL_OPTIONS.map((lvl) => {
-                          const isSelected = selectedGradeLevel === lvl;
-                          return (
-                            <button
-                              key={lvl}
-                              type="button"
-                              onClick={() => setSelectedGradeLevel(lvl)}
-                              className={`p-2.5 rounded-xl text-xs font-semibold text-center border transition cursor-pointer ${
-                                isSelected
-                                  ? "bg-primary/10 text-primary border-primary ring-1 ring-primary font-bold shadow-2xs"
-                                  : "bg-card text-muted-foreground border-border hover:bg-muted"
-                              }`}
-                            >
-                              {lvl}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-2">
-                        Hệ thống sẽ dùng môn và cấp lớp này làm mặc định khi Thầy Cô mở trình Soạn đề thi và cá nhân hóa bảng trắng.
-                      </p>
-                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Hệ thống sẽ dùng môn và cấp lớp này làm mặc định khi Thầy Cô mở trình Soạn đề thi và cá nhân hóa bảng trắng.
+                    </p>
                   </div>
 
                   {/* Row 4: Hạng tài khoản (A8: Thay nhãn tĩnh bằng PlanStatusCard S2) */}
