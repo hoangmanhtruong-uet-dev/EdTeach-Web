@@ -2644,7 +2644,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
       {/* ============================================================== */}
       {/* 1. TOP HEADER (GOOGLE DOCS STYLE)                              */}
       {/* ============================================================== */}
-      <header className="flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-4 gap-2">
+      <header className="relative z-50 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-4 gap-2">
         {/* Left: Document Icon & Title & File Menus */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <Link
@@ -2694,11 +2694,12 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
             </div>
 
             {/* Menu options: Tệp, Chỉnh sửa, Xem, Chèn, Định dạng, Công cụ */}
-            <div className="flex items-center gap-0.5 sm:gap-1 text-xs text-slate-600 pt-0.5 whitespace-nowrap overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-0.5 sm:gap-1 text-xs text-slate-600 pt-0.5 whitespace-nowrap">
               {/* 1. Tệp */}
               <div className="relative">
                 <button
                   onClick={() => setShowActiveMenu(showActiveMenu === "file" ? null : "file")}
+                  onMouseEnter={() => { if (showActiveMenu) setShowActiveMenu("file"); }}
                   className={`rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer leading-normal ${showActiveMenu === "file" ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-700 hover:bg-slate-100"}`}
                 >
                   Tệp
@@ -2760,6 +2761,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               <div className="relative">
                 <button
                   onClick={() => setShowActiveMenu(showActiveMenu === "edit" ? null : "edit")}
+                  onMouseEnter={() => { if (showActiveMenu) setShowActiveMenu("edit"); }}
                   className={`rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer leading-normal ${showActiveMenu === "edit" ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-700 hover:bg-slate-100"}`}
                 >
                   Chỉnh sửa
@@ -2871,6 +2873,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               <div className="relative">
                 <button
                   onClick={() => setShowActiveMenu(showActiveMenu === "view" ? null : "view")}
+                  onMouseEnter={() => { if (showActiveMenu) setShowActiveMenu("view"); }}
                   className={`rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer leading-normal ${showActiveMenu === "view" ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-700 hover:bg-slate-100"}`}
                 >
                   Xem
@@ -2974,6 +2977,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               <div className="relative">
                 <button
                   onClick={() => setShowActiveMenu(showActiveMenu === "insert" ? null : "insert")}
+                  onMouseEnter={() => { if (showActiveMenu) setShowActiveMenu("insert"); }}
                   className={`rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer leading-normal ${showActiveMenu === "insert" ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-700 hover:bg-slate-100"}`}
                 >
                   Chèn
@@ -3499,6 +3503,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               <div className="relative">
                 <button
                   onClick={() => setShowActiveMenu(showActiveMenu === "format" ? null : "format")}
+                  onMouseEnter={() => { if (showActiveMenu) setShowActiveMenu("format"); }}
                   className={`rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer leading-normal ${showActiveMenu === "format" ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-700 hover:bg-slate-100"}`}
                 >
                   Định dạng
@@ -4292,6 +4297,7 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
               <div className="relative">
                 <button
                   onClick={() => setShowActiveMenu(showActiveMenu === "tools" ? null : "tools")}
+                  onMouseEnter={() => { if (showActiveMenu) setShowActiveMenu("tools"); }}
                   className={`rounded px-2 py-0.5 text-xs font-medium transition cursor-pointer leading-normal ${showActiveMenu === "tools" ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-700 hover:bg-slate-100"}`}
                 >
                   Công cụ
@@ -4602,12 +4608,13 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
       )}
 
       {/* Backdrop for open toolbar style / font menus */}
-      {(isStyleMenuOpen || isFontMenuOpen) && (
+      {(isStyleMenuOpen || isFontMenuOpen || showZoomMenu) && (
         <div
           className="fixed inset-0 z-40 bg-transparent"
           onClick={() => {
             setIsStyleMenuOpen(false);
             setIsFontMenuOpen(false);
+            setShowZoomMenu(false);
           }}
         />
       )}
@@ -4622,8 +4629,8 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
       {/* ============================================================== */}
       {/* 2. RICH TEXT FORMATTING TOOLBAR                                */}
       {/* ============================================================== */}
-      <div className="relative z-40 flex h-11 w-full shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-4 overflow-hidden">
-        <div className="flex items-center gap-1 text-slate-700 overflow-x-auto no-scrollbar whitespace-nowrap min-w-0 pr-2">
+      <div className="relative z-40 flex h-11 w-full shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-4">
+        <div className="flex items-center gap-1 text-slate-700 whitespace-nowrap min-w-0 pr-2">
           {/* Undo / Redo */}
           <button
             onClick={handleUndo}
