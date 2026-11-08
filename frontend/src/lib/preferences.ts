@@ -38,7 +38,9 @@ export interface NotificationPreferences {
 
 export interface AppearancePreferences {
   theme: "light" | "dark" | "system";
-  fontSize: "normal" | "large";
+  fontSize: "small" | "normal" | "large";
+  uiDensity?: "comfortable" | "compact";
+  highContrastProjector?: boolean;
   reducedMotion: boolean;
 }
 
@@ -85,6 +87,8 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   appearance: {
     theme: "system",
     fontSize: "normal",
+    uiDensity: "comfortable",
+    highContrastProjector: false,
     reducedMotion: false,
   },
 };

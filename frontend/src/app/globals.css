@@ -175,3 +175,30 @@ body {
   height: 0 !important;
   width: 0 !important;
 }
+
+/* 6. High Contrast & Classroom Projector Optimization */
+html.mode-projector {
+  --border: #64748b;
+  font-weight: 500;
+}
+html.mode-projector.dark {
+  --border: #475569;
+  --background: #020617;
+  --card: #090e1a;
+}
+html.mode-projector body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+html.mode-projector .latex-content .katex,
+html.mode-projector .inline-math-wrapper .katex {
+  font-size: 1.1em !important;
+  font-weight: 600;
+}
+
+/* 7. UI Density: Compact Mode */
+html.density-compact .compact-densable {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+

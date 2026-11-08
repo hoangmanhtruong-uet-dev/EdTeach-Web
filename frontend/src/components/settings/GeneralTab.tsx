@@ -43,7 +43,13 @@ import {
   FileSpreadsheet,
   FileCode2,
   Globe,
+  Cloud,
+  Presentation,
+  Rows,
+  LayoutGrid,
+  Monitor,
 } from "lucide-react";
+import { LatexRenderer } from "@/components/ui/latex-renderer";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { useConfirm } from "@/context/confirm-dialog-context";
@@ -52,6 +58,7 @@ import {
   getUserPreferences,
   saveUserPreferencesLocal,
   UserPreferences,
+  AppearancePreferences,
 } from "@/lib/preferences";
 import { TeacherVerificationCard } from "@/components/verification/teacher-verification-card";
 import { PlanStatusCard } from "./PlanStatusCard";
@@ -1318,23 +1325,108 @@ export function GeneralTab({
 
   // ================= 7. APPEARANCE (A14) =================
   const [currentTheme, setCurrentTheme] = useState<"light" | "dark" | "system">("system");
-  const [fontSize, setFontSize] = useState<"normal" | "large">("normal");
+  const [fontSize, setFontSize] = useState<"small" | "normal" | "large">("normal");
+  const [uiDensity, setUiDensity] = useState<"comfortable" | "compact">("comfortable");
+  const [highContrastProjector, setHighContrastProjector] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<"idle" | "syncing" | "saved">("idle");
+  const [previewSubject, setPreviewSubject] = useState<"math" | "chem">("math");
+  const [selectedPreviewAnswer, setSelectedPreviewAnswer] = useState<string | null>("B");
+  const appearanceSyncTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     try {
-      const savedTheme = (localStorage.getItem("app_theme") as any) || "system";
+      const prefs = getUserPreferences(profile);
+
+      const savedTheme = (localStorage.getItem("app_theme") as any) || prefs.appearance?.theme || "system";
       setCurrentTheme(savedTheme);
 
-      const savedSize = (localStorage.getItem("app_font_size") as any) || "normal";
+      const savedSize = (localStorage.getItem("app_font_size") as any) || prefs.appearance?.fontSize || "normal";
       setFontSize(savedSize);
 
-      const savedMotion = localStorage.getItem("app_reduced_motion") === "true";
+      const savedDensity = (localStorage.getItem("app_ui_density") as any) || prefs.appearance?.uiDensity || "comfortable";
+      setUiDensity(savedDensity);
+
+      const savedProjector = localStorage.getItem("app_projector_mode") === "true" || !!prefs.appearance?.highContrastProjector;
+      setHighContrastProjector(savedProjector);
+
+      const savedMotion = localStorage.getItem("app_reduced_motion") === "true" || !!prefs.appearance?.reducedMotion;
       setReducedMotion(savedMotion);
     } catch {
       // ignore
     }
-  }, []);
+
+    const handleThemeEvent = (e: any) => {
+      const theme = e?.detail?.theme;
+      if (theme && ["light", "dark", "system"].includes(theme)) {
+        setCurrentTheme(theme);
+      }
+    };
+    window.addEventListener("eduteach_theme_changed", handleThemeEvent);
+    return () => {
+      window.removeEventListener("eduteach_theme_changed", handleThemeEvent);
+      if (appearanceSyncTimerRef.current) {
+        clearTimeout(appearanceSyncTimerRef.current);
+      }
+    };
+  }, [profile]);
+
+  const triggerDebouncedAppearanceSync = useCallback(
+    (newAppearance: AppearancePreferences) => {
+      if (appearanceSyncTimerRef.current) {
+        clearTimeout(appearanceSyncTimerRef.current);
+      }
+      setCloudSyncStatus("syncing");
+
+      appearanceSyncTimerRef.current = setTimeout(async () => {
+        try {
+          const currentPrefs = getUserPreferences(profile);
+          const updatedPreferences: UserPreferences = {
+            ...currentPrefs,
+            appearance: newAppearance,
+          };
+
+          saveUserPreferencesLocal(updatedPreferences);
+
+          if (user) {
+            const {
+              data: { session: curSession },
+            } = await supabase.auth.getSession();
+            const headers: Record<string, string> = {
+              "Content-Type": "application/json",
+            };
+            if (curSession?.access_token) {
+              headers["Authorization"] = `Bearer ${curSession.access_token}`;
+            }
+
+            const res = await fetch("/api/user/profile", {
+              method: "PUT",
+              headers,
+              body: JSON.stringify({
+                preferences: updatedPreferences,
+                updated_at: new Date().toISOString(),
+              }),
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success && data.profile) {
+                updateProfileLocal(data.profile);
+              }
+            }
+          }
+          setCloudSyncStatus("saved");
+          setTimeout(() => {
+            setCloudSyncStatus("idle");
+          }, 2500);
+        } catch (err) {
+          console.warn("Failed to sync appearance to DB:", err);
+          setCloudSyncStatus("idle");
+        }
+      }, 800);
+    },
+    [profile, user, supabase, updateProfileLocal]
+  );
 
   const applyTheme = (theme: "light" | "dark" | "system") => {
     setCurrentTheme(theme);
@@ -1351,25 +1443,88 @@ export function GeneralTab({
           document.documentElement.classList.remove("dark");
         }
       }
+      window.dispatchEvent(
+        new CustomEvent("eduteach_theme_changed", { detail: { theme } })
+      );
     } catch {
       // ignore
     }
-    showToast(`Đã chuyển sang giao diện ${theme === "dark" ? "Tối" : theme === "light" ? "Sáng" : "Theo hệ thống"}`, "info");
+
+    triggerDebouncedAppearanceSync({
+      theme,
+      fontSize,
+      uiDensity,
+      highContrastProjector,
+      reducedMotion,
+    });
   };
 
-  const applyFontSize = (size: "normal" | "large") => {
+  const applyFontSize = (size: "small" | "normal" | "large") => {
     setFontSize(size);
     try {
       localStorage.setItem("app_font_size", size);
-      if (size === "large") {
-        document.documentElement.style.fontSize = "17px";
+      if (size === "small") {
+        document.documentElement.style.fontSize = "14.5px";
+      } else if (size === "large") {
+        document.documentElement.style.fontSize = "17.5px";
       } else {
         document.documentElement.style.fontSize = "16px";
       }
     } catch {
       // ignore
     }
-    showToast(`Đã điều chỉnh cỡ chữ: ${size === "large" ? "Lớn (110%)" : "Vừa (100%)"}`, "info");
+
+    triggerDebouncedAppearanceSync({
+      theme: currentTheme,
+      fontSize: size,
+      uiDensity,
+      highContrastProjector,
+      reducedMotion,
+    });
+  };
+
+  const applyUiDensity = (density: "comfortable" | "compact") => {
+    setUiDensity(density);
+    try {
+      localStorage.setItem("app_ui_density", density);
+      if (density === "compact") {
+        document.documentElement.classList.add("density-compact");
+      } else {
+        document.documentElement.classList.remove("density-compact");
+      }
+    } catch {
+      // ignore
+    }
+
+    triggerDebouncedAppearanceSync({
+      theme: currentTheme,
+      fontSize,
+      uiDensity: density,
+      highContrastProjector,
+      reducedMotion,
+    });
+  };
+
+  const applyHighContrastProjector = (enabled: boolean) => {
+    setHighContrastProjector(enabled);
+    try {
+      localStorage.setItem("app_projector_mode", enabled ? "true" : "false");
+      if (enabled) {
+        document.documentElement.classList.add("mode-projector");
+      } else {
+        document.documentElement.classList.remove("mode-projector");
+      }
+    } catch {
+      // ignore
+    }
+
+    triggerDebouncedAppearanceSync({
+      theme: currentTheme,
+      fontSize,
+      uiDensity,
+      highContrastProjector: enabled,
+      reducedMotion,
+    });
   };
 
   const applyReducedMotion = (enabled: boolean) => {
@@ -1384,6 +1539,14 @@ export function GeneralTab({
     } catch {
       // ignore
     }
+
+    triggerDebouncedAppearanceSync({
+      theme: currentTheme,
+      fontSize,
+      uiDensity,
+      highContrastProjector,
+      reducedMotion: enabled,
+    });
   };
 
   // ================= 8. REFERRAL STATS & LINKS (A9) =================
@@ -2986,94 +3149,507 @@ export function GeneralTab({
 
           {/* ================= SECTION 6: GIAO DIỆN (A14) ================= */}
           {currentSubTab === "appearance" && (
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-6">
-              <h2 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                <Palette className="w-5 h-5 text-primary" />
-                <span>Tùy chỉnh giao diện hiển thị</span>
-              </h2>
+            <div className="space-y-6">
+              {/* Main Appearance Card */}
+              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-xs space-y-6">
+                {/* Header with Cloud Sync Status */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border">
+                  <div>
+                    <h2 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                      <Palette className="w-5 h-5 text-primary" />
+                      <span>Tùy chỉnh giao diện hiển thị</span>
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Cá nhân hóa chế độ sáng tối, kích thước cỡ chữ, mật độ hiển thị và chế độ máy chiếu trường học.
+                    </p>
+                  </div>
 
-              {/* Theme Mode */}
-              <div>
-                <p className="text-xs font-bold uppercase text-muted-foreground mb-3">
-                  Chế độ màu hiển thị
-                </p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {[
-                    { value: "light" as const, label: "Giao diện Sáng", desc: "Nền dịu mắt ban ngày", icon: Sun },
-                    { value: "dark" as const, label: "Giao diện Tối", desc: "Độ tương phản cao ban đêm", icon: Moon },
-                    { value: "system" as const, label: "Theo hệ thống", desc: "Tự đổi theo thiết bị", icon: Laptop },
-                  ].map((theme) => {
-                    const isSelected = currentTheme === theme.value;
-                    const Icon = theme.icon;
-                    return (
-                      <button
-                        key={theme.value}
-                        type="button"
-                        onClick={() => applyTheme(theme.value)}
-                        className={`rounded-xl border p-4 text-left transition cursor-pointer relative ${
-                          isSelected
-                            ? "border-primary bg-primary/5 ring-1 ring-primary font-bold shadow-xs"
-                            : "border-border hover:bg-muted"
-                        }`}
-                      >
-                        {isSelected && (
-                          <span className="absolute top-3 right-3 rounded-full bg-primary p-0.5 text-white">
-                            <Check className="w-3 h-3" />
-                          </span>
-                        )}
-                        <Icon className={`w-5 h-5 mb-2 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
-                        <p className="text-xs font-bold">{theme.label}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{theme.desc}</p>
-                      </button>
-                    );
-                  })}
+                  {/* Cloud sync status indicator */}
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-border bg-muted/60 self-start sm:self-auto shadow-2xs">
+                    {cloudSyncStatus === "syncing" ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                        <span className="text-muted-foreground font-semibold">Đang đồng bộ…</span>
+                      </>
+                    ) : cloudSyncStatus === "saved" ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Đã đồng bộ lên đám mây</span>
+                      </>
+                    ) : (
+                      <>
+                        <Cloud className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground">Tự động đồng bộ</span>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Font Size */}
-              <div className="pt-4 border-t border-border">
-                <p className="text-xs font-bold uppercase text-muted-foreground mb-3">
-                  Kích thước cỡ chữ hiển thị
-                </p>
-                <div className="grid gap-3 sm:grid-cols-2 max-w-md">
-                  {[
-                    { id: "normal" as const, label: "Vừa (100% - Tiêu chuẩn)", desc: "Bố cục cân đối" },
-                    { id: "large" as const, label: "Lớn (110% - Dễ đọc hơn)", desc: "Rõ chữ, đỡ mỏi mắt" },
-                  ].map((item) => (
+                {/* 1. Theme Mode with Wireframe Skeleton Previews */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Chế độ màu hiển thị (Theme)
+                    </p>
+                    <span className="text-[11px] text-muted-foreground">Đồng bộ 2 chiều với thanh Topbar</span>
+                  </div>
+                  <div className="grid gap-3.5 sm:grid-cols-3">
+                    {[
+                      {
+                        value: "light" as const,
+                        label: "Giao diện Sáng",
+                        desc: "Nền dịu mắt, tối ưu làm việc ban ngày & in ấn",
+                        icon: Sun,
+                      },
+                      {
+                        value: "dark" as const,
+                        label: "Giao diện Tối",
+                        desc: "Độ tương phản cao, giảm chói mắt ban đêm",
+                        icon: Moon,
+                      },
+                      {
+                        value: "system" as const,
+                        label: "Theo hệ thống",
+                        desc: "Tự động đổi theo thiết bị & trình duyệt",
+                        icon: Laptop,
+                      },
+                    ].map((theme) => {
+                      const isSelected = currentTheme === theme.value;
+                      const Icon = theme.icon;
+                      return (
+                        <button
+                          key={theme.value}
+                          type="button"
+                          onClick={() => applyTheme(theme.value)}
+                          className={`rounded-2xl border p-4 text-left transition cursor-pointer relative group ${
+                            isSelected
+                              ? "border-primary bg-primary/5 ring-2 ring-primary/40 font-bold shadow-xs"
+                              : "border-border hover:bg-muted/60 hover:border-border/80"
+                          }`}
+                        >
+                          {isSelected && (
+                            <span className="absolute top-3 right-3 rounded-full bg-primary p-0.5 text-white shadow-xs z-10">
+                              <Check className="w-3 h-3" />
+                            </span>
+                          )}
+
+                          {/* Mini-skeleton Visual Wireframe */}
+                          {theme.value === "light" && (
+                            <div className="h-16 w-full rounded-xl border border-slate-200 bg-white p-2 mb-3 shadow-2xs space-y-1.5 pointer-events-none">
+                              <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                                <div className="flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                </div>
+                                <span className="h-1 w-8 rounded bg-slate-200" />
+                              </div>
+                              <div className="flex gap-1.5">
+                                <div className="w-5 h-8 rounded bg-slate-100 border border-slate-200/50" />
+                                <div className="flex-1 space-y-1">
+                                  <div className="h-1.5 w-4/5 rounded bg-blue-500/80" />
+                                  <div className="h-1.5 w-3/5 rounded bg-slate-200" />
+                                  <div className="h-1.5 w-2/3 rounded bg-slate-100" />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {theme.value === "dark" && (
+                            <div className="h-16 w-full rounded-xl border border-slate-800 bg-slate-950 p-2 mb-3 shadow-2xs space-y-1.5 pointer-events-none">
+                              <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+                                <div className="flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                </div>
+                                <span className="h-1 w-8 rounded bg-slate-700" />
+                              </div>
+                              <div className="flex gap-1.5">
+                                <div className="w-5 h-8 rounded bg-slate-900 border border-slate-800" />
+                                <div className="flex-1 space-y-1">
+                                  <div className="h-1.5 w-4/5 rounded bg-blue-500" />
+                                  <div className="h-1.5 w-3/5 rounded bg-slate-700" />
+                                  <div className="h-1.5 w-2/3 rounded bg-slate-800" />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {theme.value === "system" && (
+                            <div className="h-16 w-full rounded-xl border border-border overflow-hidden mb-3 shadow-2xs flex pointer-events-none">
+                              {/* Left half: Light */}
+                              <div className="w-1/2 bg-white p-2 space-y-1.5 border-r border-slate-200">
+                                <div className="flex items-center gap-1 pb-1 border-b border-slate-100">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                </div>
+                                <div className="h-1.5 w-4/5 rounded bg-blue-500/80" />
+                                <div className="h-1.5 w-2/3 rounded bg-slate-200" />
+                              </div>
+                              {/* Right half: Dark */}
+                              <div className="w-1/2 bg-slate-950 p-2 space-y-1.5">
+                                <div className="flex items-center justify-end gap-1 pb-1 border-b border-slate-800">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                </div>
+                                <div className="h-1.5 w-4/5 rounded bg-blue-500" />
+                                <div className="h-1.5 w-2/3 rounded bg-slate-700" />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 mb-1">
+                            <Icon className={`w-4 h-4 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                            <p className="text-xs font-bold text-foreground">{theme.label}</p>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">{theme.desc}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. Font Size - Balanced 3-Column Grid */}
+                <div className="pt-4 border-t border-border">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Kích thước cỡ chữ hiển thị
+                    </p>
+                    <span className="text-[11px] text-muted-foreground">Cân bằng tỷ lệ mắt đọc toàn hệ thống</span>
+                  </div>
+                  <div className="grid gap-3.5 sm:grid-cols-3">
+                    {[
+                      {
+                        id: "small" as const,
+                        label: "Nhỏ gọn (90% - 14.5px)",
+                        desc: "Tối ưu laptop 13-14 inch & hiển thị nhiều dòng hơn",
+                        sampleText: "Aa",
+                        sampleSizeClass: "text-sm font-semibold",
+                      },
+                      {
+                        id: "normal" as const,
+                        label: "Tiêu chuẩn (100% - 16px)",
+                        desc: "Cân đối tỷ lệ mắt đọc chuẩn giao diện giáo dục",
+                        sampleText: "Aa",
+                        sampleSizeClass: "text-lg font-bold",
+                      },
+                      {
+                        id: "large" as const,
+                        label: "Lớn (115% - 18px)",
+                        desc: "Chữ to rõ nét, chống mỏi mắt khi soạn giáo án lâu",
+                        sampleText: "Aa",
+                        sampleSizeClass: "text-2xl font-black text-primary",
+                      },
+                    ].map((item) => {
+                      const isSelected = fontSize === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => applyFontSize(item.id)}
+                          className={`rounded-2xl border p-4 text-left transition cursor-pointer relative group ${
+                            isSelected
+                              ? "border-primary bg-primary/5 ring-2 ring-primary/40 font-bold shadow-xs"
+                              : "border-border hover:bg-muted/60 hover:border-border/80"
+                          }`}
+                        >
+                          {isSelected && (
+                            <span className="absolute top-3 right-3 rounded-full bg-primary p-0.5 text-white shadow-xs z-10">
+                              <Check className="w-3 h-3" />
+                            </span>
+                          )}
+
+                          {/* Visual Aa Badge Sample */}
+                          <div className="h-14 w-full rounded-xl border border-border/60 bg-muted/40 flex items-center justify-center mb-3">
+                            <span className={`${item.sampleSizeClass} text-foreground tracking-tight`}>
+                              {item.sampleText}
+                            </span>
+                          </div>
+
+                          <p className="text-xs font-bold text-foreground mb-1">{item.label}</p>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">{item.desc}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Live Preview Card with Authentic LaTeX (Math & Chemistry) */}
+                <div className="pt-4 border-t border-border">
+                  <div className="rounded-2xl border-2 border-primary/25 bg-muted/20 p-4 sm:p-5 shadow-2xs space-y-3.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wider text-foreground">
+                            Khung xem trước trực tiếp (Live Preview)
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Đổi màu hoặc cỡ chữ ở trên để kiểm tra công thức Toán & Hóa học phản ứng tức thì
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Subject Switch Tabs */}
+                      <div className="inline-flex p-1 rounded-xl bg-card border border-border text-xs self-start sm:self-auto shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewSubject("math")}
+                          className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                            previewSubject === "math"
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Toán & Vật lý
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewSubject("chem")}
+                          className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                            previewSubject === "chem"
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Hóa học
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Question Interactive Box */}
+                    <div className="rounded-xl border border-border bg-card p-4 sm:p-5 space-y-3 shadow-2xs">
+                      {previewSubject === "math" ? (
+                        <>
+                          <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                            <span className="px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
+                              Câu 1 (Mức độ Vận dụng)
+                            </span>
+                            <span className="text-muted-foreground">Toán 12 • GDPT 2025</span>
+                          </div>
+
+                          <div className="text-xs sm:text-sm text-foreground leading-relaxed latex-content">
+                            <LatexRenderer
+                              content="Cho hàm số $y = f(x) = \frac{2x - 1}{x + 1}$ có đồ thị $(C)$. Biết tích phân xác định $I = \int_{0}^{1} \sqrt{x^2 + 1} \, dx = \frac{\sqrt{2} + \ln(1 + \sqrt{2})}{2}$. Khẳng định nào sau đây là đúng về đường tiệm cận của đồ thị hàm số?"
+                            />
+                          </div>
+
+                          <div className="grid gap-2 sm:grid-cols-2 pt-1">
+                            {[
+                              { key: "A", content: "Đồ thị $(C)$ có tiệm cận đứng $x = 1$ và $y = 2$" },
+                              { key: "B", content: "Đồ thị $(C)$ có tiệm cận đứng $x = -1$ và tiệm cận ngang $y = 2$" },
+                              { key: "C", content: "Đồ thị $(C)$ không có tiệm cận ngang" },
+                              { key: "D", content: "Đồ thị $(C)$ có tiệm cận đứng $y = -1$ và tiệm cận ngang $x = 2$" },
+                            ].map((opt) => {
+                              const isChecked = selectedPreviewAnswer === opt.key;
+                              return (
+                                <button
+                                  key={opt.key}
+                                  type="button"
+                                  onClick={() => setSelectedPreviewAnswer(opt.key)}
+                                  className={`flex items-start gap-2.5 p-2.5 rounded-xl border text-left text-xs transition cursor-pointer ${
+                                    isChecked
+                                      ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs ring-1 ring-primary"
+                                      : "border-border hover:bg-muted/50 text-foreground"
+                                  }`}
+                                >
+                                  <span
+                                    className={`flex h-4 w-4 shrink-0 rounded-full border items-center justify-center text-[10px] font-bold mt-0.5 ${
+                                      isChecked
+                                        ? "border-primary bg-primary text-white"
+                                        : "border-muted-foreground/40 text-muted-foreground"
+                                    }`}
+                                  >
+                                    {opt.key}
+                                  </span>
+                                  <span className="flex-1 latex-content">
+                                    <LatexRenderer content={opt.content} />
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                              Câu 2 (Thí nghiệm Hóa học)
+                            </span>
+                            <span className="text-muted-foreground">Hóa học 12 • Phản ứng oxi hóa khử</span>
+                          </div>
+
+                          <div className="text-xs sm:text-sm text-foreground leading-relaxed latex-content">
+                            <LatexRenderer
+                              content="Hòa tan hoàn toàn $5{,}4\text{ g}$ bột nhôm ($\text{Al}$) trong lượng dư dung dịch $\text{HCl}$, thu được khí $\text{H}_2 \uparrow$. Sục tiếp khí thu được qua dung dịch $\text{Ba(OH)}_2$ thấy xuất hiện kết tủa trắng $\text{BaSO}_4 \downarrow$. Phương trình phản ứng chính: $$2\text{Al} + 6\text{HCl} \longrightarrow 2\text{AlCl}_3 + 3\text{H}_2 \uparrow$$ Thể tích khí $\text{H}_2$ thu được ở điều kiện chuẩn ($25^\circ\text{C}, 1\text{ bar}$) là:"
+                            />
+                          </div>
+
+                          <div className="grid gap-2 sm:grid-cols-2 pt-1">
+                            {[
+                              { key: "A", content: "$4{,}48\\text{ lít}$" },
+                              { key: "B", content: "$7{,}437\\text{ lít}$" },
+                              { key: "C", content: "$2{,}24\\text{ lít}$" },
+                              { key: "D", content: "$6{,}72\\text{ lít}$" },
+                            ].map((opt) => {
+                              const isChecked = selectedPreviewAnswer === opt.key;
+                              return (
+                                <button
+                                  key={opt.key}
+                                  type="button"
+                                  onClick={() => setSelectedPreviewAnswer(opt.key)}
+                                  className={`flex items-start gap-2.5 p-2.5 rounded-xl border text-left text-xs transition cursor-pointer ${
+                                    isChecked
+                                      ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs ring-1 ring-primary"
+                                      : "border-border hover:bg-muted/50 text-foreground"
+                                  }`}
+                                >
+                                  <span
+                                    className={`flex h-4 w-4 shrink-0 rounded-full border items-center justify-center text-[10px] font-bold mt-0.5 ${
+                                      isChecked
+                                        ? "border-primary bg-primary text-white"
+                                        : "border-muted-foreground/40 text-muted-foreground"
+                                    }`}
+                                  >
+                                    {opt.key}
+                                  </span>
+                                  <span className="flex-1 latex-content">
+                                    <LatexRenderer content={opt.content} />
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. UI Density (Mật độ hiển thị) */}
+                <div className="pt-4 border-t border-border">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Mật độ hiển thị giao diện (UI Density)
+                    </p>
+                    <span className="text-[11px] text-muted-foreground">Tối ưu thao tác chấm bài & duyệt đề</span>
+                  </div>
+                  <div className="grid gap-3.5 sm:grid-cols-2">
+                    {[
+                      {
+                        id: "comfortable" as const,
+                        label: "Tiêu chuẩn (Thoáng đãng)",
+                        desc: "Khoảng cách đệm rộng rãi (padding 16px), dễ thao tác chuột và cảm ứng trên tablet",
+                        icon: LayoutGrid,
+                      },
+                      {
+                        id: "compact" as const,
+                        label: "Thu gọn (Compact Mode)",
+                        desc: "Tối ưu chấm trắc nghiệm OMR & ngân hàng câu hỏi, hiển thị nhiều dữ liệu hơn mà không phải cuộn chuột",
+                        icon: Rows,
+                      },
+                    ].map((item) => {
+                      const isSelected = uiDensity === item.id;
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => applyUiDensity(item.id)}
+                          className={`rounded-2xl border p-4 text-left transition cursor-pointer relative group ${
+                            isSelected
+                              ? "border-primary bg-primary/5 ring-2 ring-primary/40 font-bold shadow-xs"
+                              : "border-border hover:bg-muted/60 hover:border-border/80"
+                          }`}
+                        >
+                          {isSelected && (
+                            <span className="absolute top-3 right-3 rounded-full bg-primary p-0.5 text-white shadow-xs z-10">
+                              <Check className="w-3 h-3" />
+                            </span>
+                          )}
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <Icon className={`w-4 h-4 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                            <p className="text-xs font-bold text-foreground">{item.label}</p>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">{item.desc}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 5. Accessibility & Classroom Presentation Toggles */}
+                <div className="pt-4 border-t border-border space-y-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Trợ năng & Trình chiếu giảng đường
+                  </p>
+
+                  {/* Projector / High Contrast Mode */}
+                  <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-border bg-muted/30">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Presentation className="w-4 h-4 text-amber-500 shrink-0" />
+                        <p className="text-xs font-bold text-foreground">
+                          Tối ưu cho Máy chiếu trường học (Chữ đậm & Tương phản cao)
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Tăng độ dày font chữ (+1 weight), viền khung đen/trắng sắc nét hơn 50% và phóng to công thức LaTeX để học sinh ngồi bàn cuối vẫn nhìn rõ khi chiếu lên màn chiếu lớp học.
+                      </p>
+                    </div>
+
                     <button
-                      key={item.id}
                       type="button"
-                      onClick={() => applyFontSize(item.id)}
-                      className={`p-3.5 rounded-xl border text-left transition cursor-pointer ${
-                        fontSize === item.id
-                          ? "border-primary bg-primary/5 ring-1 ring-primary font-bold shadow-xs"
-                          : "border-border hover:bg-muted"
+                      role="switch"
+                      aria-checked={highContrastProjector}
+                      onClick={() => applyHighContrastProjector(!highContrastProjector)}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-primary ${
+                        highContrastProjector
+                          ? "bg-primary"
+                          : "bg-slate-300 dark:bg-slate-700"
                       }`}
                     >
-                      <p className="text-xs font-bold">{item.label}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{item.desc}</p>
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          highContrastProjector ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
                     </button>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              {/* Reduced Motion */}
-              <div className="pt-4 border-t border-border flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-foreground">Giảm hiệu ứng chuyển động (Reduced Motion)</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Hạn chế các hiệu ứng chuyển cảnh và chuyển động trên trang cho người dùng nhạy cảm.
-                  </p>
+                  {/* Reduced Motion Toggle with Corrected Visual Knob */}
+                  <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-border bg-muted/30">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Sliders className="w-4 h-4 text-primary shrink-0" />
+                        <p className="text-xs font-bold text-foreground">
+                          Giảm hiệu ứng chuyển động (Reduced Motion)
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Hạn chế các hiệu ứng chuyển cảnh và chuyển động trên trang cho người dùng nhạy cảm hoặc máy tính cấu hình văn phòng.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={reducedMotion}
+                      onClick={() => applyReducedMotion(!reducedMotion)}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-primary ${
+                        reducedMotion
+                          ? "bg-primary"
+                          : "bg-slate-300 dark:bg-slate-700"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          reducedMotion ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
-                <label className="relative inline-flex cursor-pointer items-center">
-                  <input
-                    type="checkbox"
-                    checked={reducedMotion}
-                    onChange={(e) => applyReducedMotion(e.target.checked)}
-                    className="peer sr-only"
-                  />
-                  <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
-                </label>
               </div>
             </div>
           )}

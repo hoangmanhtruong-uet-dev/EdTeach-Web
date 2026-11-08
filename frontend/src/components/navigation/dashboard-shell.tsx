@@ -46,13 +46,16 @@ function DashboardShellContent({
     const nextDark = !isDark;
     setIsDark(nextDark);
     try {
+      const nextTheme = nextDark ? "dark" : "light";
       if (nextDark) {
         document.documentElement.classList.add("dark");
-        localStorage.setItem("app_theme", "dark");
       } else {
         document.documentElement.classList.remove("dark");
-        localStorage.setItem("app_theme", "light");
       }
+      localStorage.setItem("app_theme", nextTheme);
+      window.dispatchEvent(
+        new CustomEvent("eduteach_theme_changed", { detail: { theme: nextTheme } })
+      );
     } catch {
       // ignore
     }
@@ -95,6 +98,22 @@ function DashboardShellContent({
     } catch {
       // ignore
     }
+
+    const handleThemeEvent = (e: any) => {
+      const theme = e?.detail?.theme;
+      if (theme === "dark") {
+        setIsDark(true);
+      } else if (theme === "light") {
+        setIsDark(false);
+      } else {
+        setIsDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
+      }
+    };
+
+    window.addEventListener("eduteach_theme_changed", handleThemeEvent);
+    return () => {
+      window.removeEventListener("eduteach_theme_changed", handleThemeEvent);
+    };
   }, [user]);
 
   // Các trang editor toàn màn hình chuyên biệt
