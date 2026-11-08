@@ -47,7 +47,7 @@ export function getAppUrl(path: string = ""): string {
 
 // Business Logic Constants
 export const MINIMUM_PAYOUT_VND = 200000;
-export const SUPPORT_EMAIL = "support@edutest.ai";
+export const SUPPORT_EMAIL = "developerhoangtruong@gmail.com";
 export const REFERRAL_BONUS_CREDITS = 2000;
 
 // Branding & Administrative Constants
