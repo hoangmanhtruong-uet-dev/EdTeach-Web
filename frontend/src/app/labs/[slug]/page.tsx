@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { Navbar } from "@/components/layout/navbar";
 import { getLab, LABS } from "@/data/labs";
 import { LabViewer } from "./lab-viewer";
 
@@ -41,14 +40,13 @@ export default function LabDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   return (
-    <div className="flex min-h-screen flex-col">
-      <Navbar />
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-950">
       <Suspense
         fallback={
-          <div className="flex flex-1 items-center justify-center bg-slate-50 dark:bg-slate-950">
+          <div className="flex flex-1 items-center justify-center bg-slate-950 text-white">
             <div className="text-center">
               <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <p className="text-sm text-slate-500 dark:text-slate-400">Đang tải phòng thí nghiệm 3D...</p>
+              <p className="text-sm text-slate-400">Đang khởi tạo phòng thí nghiệm 3D...</p>
             </div>
           </div>
         }

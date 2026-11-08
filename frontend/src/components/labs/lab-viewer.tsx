@@ -4,12 +4,10 @@ import { useRef, useCallback, useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Home,
   Maximize2,
   Sparkles,
   ShieldCheck,
   CheckCircle2,
-  ChevronRight,
   PenTool,
   Bot,
   FileQuestion,
@@ -17,9 +15,10 @@ import {
   ExternalLink,
   X,
   BookOpen,
-  Download,
   Copy,
   Check,
+  PanelLeft,
+  PanelLeftClose,
 } from "lucide-react";
 import {
   SUBJECT_LABEL,
@@ -160,7 +159,7 @@ function LabAIAssistantDrawer({ lab, isOpen, onClose }: LabAIAssistantDrawerProp
   if (!isOpen) return null;
 
   return (
-    <div className="absolute top-12 right-0 bottom-0 w-full sm:w-96 z-30 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+    <div className="absolute top-0 right-0 bottom-0 w-full sm:w-96 z-30 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400">
@@ -357,6 +356,7 @@ export function LabViewer({ lab }: { lab: LabLesson }) {
   const [showQuizGenerator, setShowQuizGenerator] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState<"whiteboard" | "ai_assistant" | "quiz_generator" | null>(null);
   const [showAttributionModal, setShowAttributionModal] = useState(false);
+  const [isLeftGuideOpen, setIsLeftGuideOpen] = useState(false);
 
   const isProUser = checkIsPro(profile) || checkIsPro(user) || checkIsMax(profile) || checkIsMax(user);
 
@@ -367,6 +367,67 @@ export function LabViewer({ lab }: { lab: LabLesson }) {
         iframeRef.current.src = "about:blank";
       }
     };
+  }, []);
+
+  // Focus Mode Injection: Hide causality chain, footer micro-text, collapse left panel by default
+  const injectFocusModeStyles = useCallback(() => {
+    try {
+      const doc = iframeRef.current?.contentDocument;
+      if (!doc) return;
+
+      // 1. Inject Focus Mode CSS
+      const styleId = "edutest-focus-mode-styles";
+      if (!doc.getElementById(styleId)) {
+        const style = doc.createElement("style");
+        style.id = styleId;
+        style.textContent = `
+          /* Focus Mode: Maximize canvas area & minimize clutter */
+          #top .chain5 { display: none !important; }
+          #top { height: 38px !important; }
+          #steps { top: 40px !important; }
+          #foot .foot2 { display: none !important; }
+          #left { transition: transform 0.28s ease, opacity 0.28s ease !important; }
+        `;
+        doc.head.appendChild(style);
+      }
+
+      // 2. Collapse left panel by default for full-width 3D view
+      const leftPanel = doc.getElementById("left");
+      if (leftPanel) {
+        if (!leftPanel.classList.contains("collapsed")) {
+          leftPanel.classList.add("collapsed");
+        }
+        setIsLeftGuideOpen(false);
+
+        // 3. Keep parent button state in sync if user toggles tab inside the iframe
+        const observer = new MutationObserver(() => {
+          setIsLeftGuideOpen(!leftPanel.classList.contains("collapsed"));
+        });
+        observer.observe(leftPanel, { attributes: true, attributeFilter: ["class"] });
+      }
+    } catch (err) {
+      console.warn("Unable to inject focus mode styles into iframe:", err);
+    }
+  }, []);
+
+  const handleToggleLeftGuide = useCallback(() => {
+    try {
+      const doc = iframeRef.current?.contentDocument;
+      if (!doc) return;
+      const leftPanel = doc.getElementById("left");
+      if (leftPanel) {
+        const isCollapsed = leftPanel.classList.contains("collapsed");
+        if (isCollapsed) {
+          leftPanel.classList.remove("collapsed");
+          setIsLeftGuideOpen(true);
+        } else {
+          leftPanel.classList.add("collapsed");
+          setIsLeftGuideOpen(false);
+        }
+      }
+    } catch (err) {
+      console.warn("Unable to toggle left guide in iframe:", err);
+    }
   }, []);
 
   const handleFullscreen = useCallback(() => {
@@ -401,46 +462,62 @@ export function LabViewer({ lab }: { lab: LabLesson }) {
   };
 
   return (
-    <div className="flex flex-col relative" style={{ height: "calc(100vh - 64px)" }}>
-      {/* Top Bar */}
-      <div className="flex h-12 flex-none items-center gap-2 sm:gap-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 sm:px-4 shadow-xs z-20">
-        <Link
-          href="/"
-          title="Quay về trang chủ EduTest AI"
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-        >
-          <Home className="h-4 w-4" />
-          <span className="hidden sm:inline">Trang chủ</span>
-        </Link>
-        <span className="text-slate-300 dark:text-slate-700">/</span>
+    <div className="flex flex-col relative h-screen w-screen overflow-hidden bg-slate-950">
+      {/* Sleek Focus Top Bar (42px) */}
+      <div className="flex h-11 flex-none items-center gap-2 sm:gap-2.5 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md px-3 sm:px-4 shadow-sm z-20">
         <Link
           href="/labs"
-          title="Quay về danh sách Phòng thí nghiệm 3D"
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          title="Quay về Kho phòng thí nghiệm 3D"
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
         >
-          <ArrowLeft className="h-4 w-4" />
-          <span className="hidden sm:inline">Kho 3D</span>
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Kho 3D</span>
         </Link>
-        <span className="text-slate-300 dark:text-slate-700">|</span>
+        <span className="text-slate-700">|</span>
 
-        <h1 className="flex-1 truncate text-xs sm:text-sm font-semibold text-slate-900 dark:text-white">
+        <h1 className="truncate text-xs sm:text-sm font-semibold text-white max-w-[160px] sm:max-w-xs md:max-w-md lg:max-w-lg">
           {lab.titleVi}
         </h1>
 
         <span
-          className={`hidden md:inline-flex rounded-full border px-2 py-0.5 text-xs font-medium backdrop-blur-xs ${SUBJECT_COLOR[lab.subject]}`}
+          className={`hidden md:inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${SUBJECT_COLOR[lab.subject]}`}
         >
           {SUBJECT_LABEL[lab.subject]}
         </span>
 
-        {/* CC BY-NC 4.0 Open Access Badge */}
+        {/* CC BY-NC 4.0 Open Access Info Badge */}
         <button
           onClick={() => setShowAttributionModal(true)}
-          title="Mô phỏng mở miễn phí theo giấy phép Creative Commons (CC BY-NC 4.0). Bấm để xem ghi nguồn PhET & Tongjiang Lab."
-          className="flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
+          title="Mô phỏng mở miễn phí theo giấy phép Creative Commons (CC BY-NC 4.0). Bấm để xem chi tiết bản quyền."
+          className="hidden lg:flex items-center gap-1 rounded-full bg-emerald-950/60 hover:bg-emerald-900/80 px-2 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-800/60 transition cursor-pointer"
         >
-          <span className="hidden sm:inline">Mở Miễn Phí</span> CC BY-NC 4.0
-          <Info className="w-3 h-3 text-emerald-600 shrink-0" />
+          <span>CC BY-NC 4.0</span>
+          <Info className="w-3 h-3 text-emerald-400 shrink-0" />
+        </button>
+
+        <div className="flex-1" />
+
+        {/* Toggle Guide Panel */}
+        <button
+          onClick={handleToggleLeftGuide}
+          title={isLeftGuideOpen ? "Thu gọn bảng hướng dẫn để mở rộng không gian 3D" : "Mở bảng hướng dẫn thí nghiệm từng bước"}
+          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition cursor-pointer border ${
+            isLeftGuideOpen
+              ? "bg-slate-800 border-slate-700 text-sky-400 hover:bg-slate-700"
+              : "bg-sky-950/50 border-sky-800/60 text-sky-300 hover:bg-sky-900/60"
+          }`}
+        >
+          {isLeftGuideOpen ? (
+            <>
+              <PanelLeftClose className="h-3.5 w-3.5 text-sky-400" />
+              <span className="hidden sm:inline">Đóng hướng dẫn</span>
+            </>
+          ) : (
+            <>
+              <PanelLeft className="h-3.5 w-3.5 text-sky-400" />
+              <span className="hidden sm:inline">Mở hướng dẫn</span>
+            </>
+          )}
         </button>
 
         {/* Proprietary Value-Add Action 1: Whiteboard Overlay (PRO) */}
@@ -450,11 +527,11 @@ export function LabViewer({ lab }: { lab: LabLesson }) {
           className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
             showGlassOverlay
               ? "bg-amber-500 text-slate-950 shadow-xs ring-2 ring-amber-400"
-              : "bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700/80 shadow-2xs"
+              : "bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 border border-amber-700/80 shadow-2xs"
           }`}
         >
           <PenTool className="h-3.5 w-3.5" />
-          <span className="hidden lg:inline">{showGlassOverlay ? "Tắt kính vẽ" : "Kính vẽ (PRO)"}</span>
+          <span className="hidden xl:inline">{showGlassOverlay ? "Tắt kính vẽ" : "Kính vẽ (PRO)"}</span>
         </button>
 
         {/* Proprietary Value-Add Action 2: AI Simulation Assistant (PRO) */}
@@ -464,20 +541,20 @@ export function LabViewer({ lab }: { lab: LabLesson }) {
           className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
             showAIAssistant
               ? "bg-indigo-600 text-white shadow-xs"
-              : "bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 shadow-2xs"
+              : "bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-800 shadow-2xs"
           }`}
         >
-          <Bot className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-          <span className="hidden lg:inline">Trợ lý AI (PRO)</span>
+          <Bot className="h-3.5 w-3.5 text-indigo-400" />
+          <span className="hidden xl:inline">Trợ lý AI (PRO)</span>
         </button>
 
         {/* Proprietary Value-Add Action 3: Quiz Generator (PRO) */}
         <button
           onClick={handleToggleQuizGenerator}
           title={isProUser ? "Tự động sinh đề kiểm tra từ mô phỏng 3D" : "Nâng cấp Gói PRO để tự động sinh đề thi"}
-          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold bg-pink-50 dark:bg-pink-950/40 hover:bg-pink-100 dark:hover:bg-pink-900/60 text-pink-800 dark:text-pink-200 border border-pink-200 dark:border-pink-800 shadow-2xs transition cursor-pointer"
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold bg-pink-950/40 hover:bg-pink-900/60 text-pink-300 border border-pink-800 shadow-2xs transition cursor-pointer"
         >
-          <FileQuestion className="h-3.5 w-3.5 text-pink-600 dark:text-pink-400" />
+          <FileQuestion className="h-3.5 w-3.5 text-pink-400" />
           <span className="hidden xl:inline">Sinh đề 3D (PRO)</span>
         </button>
 
@@ -485,7 +562,7 @@ export function LabViewer({ lab }: { lab: LabLesson }) {
         <button
           onClick={handleFullscreen}
           title="Toàn màn hình (F11)"
-          className="rounded-md p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+          className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer transition-colors"
         >
           <Maximize2 className="h-4 w-4" />
         </button>
@@ -499,6 +576,7 @@ export function LabViewer({ lab }: { lab: LabLesson }) {
           className="h-full w-full border-0"
           allow="fullscreen"
           title={lab.titleVi}
+          onLoad={injectFocusModeStyles}
         />
 
         {/* Transparent Whiteboard Overlay Tool */}
@@ -514,21 +592,6 @@ export function LabViewer({ lab }: { lab: LabLesson }) {
           isOpen={showAIAssistant}
           onClose={() => setShowAIAssistant(false)}
         />
-      </div>
-
-      {/* Bottom Legal Attribution Bar */}
-      <div className="h-6 flex-none bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-        <div className="flex items-center gap-2 truncate">
-          <span>PhET Interactive Simulations & Tongjiang Lab (CC BY-NC 4.0)</span>
-          <span className="text-slate-300">·</span>
-          <span className="hidden sm:inline">Mở miễn phí 100% phi thương mại</span>
-        </div>
-        <button
-          onClick={() => setShowAttributionModal(true)}
-          className="hover:underline text-primary dark:text-blue-400 font-medium shrink-0"
-        >
-          Chi tiết giấy phép
-        </button>
       </div>
 
       {/* Upgrade Modal for PRO Value-Add Features */}
