@@ -13,7 +13,6 @@ import {
   BookOpen,
   Calendar,
   Presentation,
-  FlaskConical,
   ScanLine,
   Zap,
   CheckCircle2,
@@ -146,25 +145,10 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-bold tracking-tight text-balance">
               Xin chào, {profile?.name || user?.email?.split("@")[0] || "Thầy Cô"}! 👋
             </h1>
-
-            {/* Interactive Beta v1.0 -> v2.0 pill */}
-            <Link
-              href="/updates"
-              title="Nhấp để xem lộ trình bản cập nhật v2.0.0 chính thức"
-              className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 border border-slate-700/80 px-3 py-1 text-xs text-white shadow-xs hover:bg-slate-950 hover:border-blue-400 transition-all hover:scale-[1.02] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" aria-hidden="true" />
-              <span className="font-bold text-amber-300">v1.0 ➔ v2.0</span>
-              <span className="text-slate-400">•</span>
-              <span className="text-slate-200 font-medium hidden sm:inline">Bản nâng cấp GDPT</span>
-              <span className="text-blue-300 font-bold flex items-center gap-0.5 ml-1">
-                Lộ trình v2.0 <ArrowRight className="w-3 h-3" aria-hidden="true" />
-              </span>
-            </Link>
           </div>
 
           <p className="text-muted-foreground text-xs sm:text-sm mt-1">
-            Chào mừng Thầy/Cô đến với <strong>EduTest AI</strong>. Sẵn sàng soạn đề thi chuẩn GDPT 2025 và chiếu Bục Giảng Số 4.0.
+            Chào mừng Thầy/Cô đến với EduTest
           </p>
         </div>
 
@@ -286,105 +270,6 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
-      </div>
-
-      {/* ================= 3. ACTION PILLS SƯ PHẠM (QUICK ACTIONS 2.0) ================= */}
-      <div className="rounded-xl border border-border bg-card p-4 sm:p-5 shadow-2xs">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" aria-hidden="true" />
-            <h2 className="font-semibold text-sm sm:text-base text-foreground">
-              Bộ Công Cụ Sư Phạm Nổi Bật (Quick Actions)
-            </h2>
-          </div>
-          <span className="text-xs text-muted-foreground hidden sm:inline">
-            Truy cập tức thì các tính năng phục vụ tiết dạy
-          </span>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Action 1: Tạo đề bằng AI */}
-          <Link
-            href="/exams/create"
-            className="flex items-center gap-3 rounded-xl border border-border p-3.5 transition-colors hover:bg-muted/60 group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 motion-reduce:transform-none transition-transform">
-              <Sparkles className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-foreground group-hover:text-blue-600 transition-colors truncate">
-                Tạo Đề Bằng AI
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                Chuẩn GDPT 2025 & Ma trận 4 mức
-              </p>
-            </div>
-          </Link>
-
-          {/* Action 2: Bục Giảng Số 4.0 */}
-          <Link
-            href={latestExam ? `/teach/${latestExam.id}` : "/exams"}
-            className="flex items-center gap-3 rounded-xl border border-blue-200/80 bg-blue-50/40 dark:border-blue-800/60 dark:bg-blue-950/30 p-3.5 transition-colors hover:bg-blue-50/80 dark:hover:bg-blue-950/50 group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
-          >
-            <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 motion-reduce:transform-none transition-transform shadow-xs">
-              <Presentation className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="text-sm font-bold text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                  Bục Giảng Số 4.0
-                </p>
-                <span className="rounded bg-blue-600 text-white px-1.5 py-0.2 text-[9px] font-black uppercase">
-                  PRO
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                Split-Screen & Kính vẽ chiếu lớp
-              </p>
-            </div>
-          </Link>
-
-          {/* Action 3: Phòng Thí Nghiệm 3D */}
-          <Link
-            href="/labs"
-            className="flex items-center gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/40 dark:border-emerald-800/60 dark:bg-emerald-950/30 p-3.5 transition-colors hover:bg-emerald-50/80 dark:hover:bg-emerald-950/50 group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
-          >
-            <div className="h-10 w-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 motion-reduce:transform-none transition-transform shadow-xs">
-              <FlaskConical className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="text-sm font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors truncate">
-                  Phòng TN 3D
-                </p>
-                <span className="rounded bg-emerald-600 text-white px-1.5 py-0.2 text-[9px] font-black uppercase">
-                  54+ Bài
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                Vật lý, Hóa, Sinh, Địa tương tác
-              </p>
-            </div>
-          </Link>
-
-          {/* Action 4: Chấm Bài OMR */}
-          <Link
-            href="/grading"
-            className="flex items-center gap-3 rounded-xl border border-border p-3.5 transition-colors hover:bg-muted/60 group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <div className="h-10 w-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-105 motion-reduce:transform-none transition-transform">
-              <ScanLine className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-foreground group-hover:text-purple-600 transition-colors truncate">
-                Chấm Trắc Nghiệm OMR
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                Quét camera & điện thoại 0.3s
-              </p>
-            </div>
-          </Link>
-        </div>
       </div>
 
       {/* ================= 4. MAIN GRID: ĐỀ THI GẦN ĐÂY & VÍ TÀI KHOẢN ================= */}

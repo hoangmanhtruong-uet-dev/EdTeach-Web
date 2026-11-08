@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
-  title: "EduTest AI - Tạo đề thi tự động bằng AI",
+  title: "EduTest - Tạo đề thi tự động bằng AI",
   description:
     "Nền tảng tạo đề thi trắc nghiệm và tự luận tự động bằng AI dành cho giáo viên Việt Nam. Tiết kiệm thời gian, nâng cao chất lượng.",
 };

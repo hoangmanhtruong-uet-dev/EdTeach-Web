@@ -49,7 +49,7 @@ export default function LandingPage() {
                   PHIÊN BẢN MỚI
                 </span>
                 <span className="font-semibold text-slate-100">
-                  EduTest AI • Nền tảng Bục Giảng Số 4.0 & Tạo đề thi chuẩn GDPT
+                  EduTest • Nền tảng Bục Giảng Số 4.0 & Tạo đề thi chuẩn GDPT
                 </span>
                 <span className="hidden sm:inline-flex items-center gap-1 font-bold text-amber-300 group-hover:text-amber-200 transition-colors">
                   <span>Xem Lộ Trình v2.0</span>
@@ -796,7 +796,7 @@ export default function LandingPage() {
         <section className="border-t border-slate-200 dark:border-slate-800 bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-[#070b14] py-20">
           <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 space-y-6">
             <h2 className="text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
-              Sẵn sàng nâng tầm tiết học với EduTest AI?
+              Sẵn sàng nâng tầm tiết học với EduTest?
             </h2>
             <p className="text-base text-slate-700 leading-relaxed max-w-xl mx-auto font-normal">
               Tham gia cùng hàng nghìn thầy cô đang tiết kiệm hàng giờ soạn đề và biến từng tiết chữa đề thành trải nghiệm tương tác số cuốn hút học sinh.

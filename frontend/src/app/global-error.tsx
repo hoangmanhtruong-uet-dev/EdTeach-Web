@@ -28,7 +28,7 @@ export default function GlobalError({
               Đã Xảy Ra Sự Cố Bất Ngờ
             </h1>
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Hệ thống EduTest AI đã ghi nhận lỗi để đội ngũ kỹ thuật xử lý. Dữ liệu của bạn luôn được bảo vệ an toàn.
+              Hệ thống EduTest đã ghi nhận lỗi để đội ngũ kỹ thuật xử lý. Dữ liệu của bạn luôn được bảo vệ an toàn.
             </p>
           </div>
 

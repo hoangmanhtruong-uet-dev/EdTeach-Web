@@ -142,7 +142,7 @@ export function DashboardSidebar() {
             <BookOpen className="h-7 w-7 text-primary shrink-0" aria-hidden="true" />
             <div className="flex flex-col min-w-0">
               <span className="text-lg font-bold leading-tight truncate">
-                Edu<span className="text-primary">Test</span> AI
+                Edu<span className="text-primary">Test</span>
               </span>
               <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 truncate">
                 v2.0.0 Beta (GDPT 2025)
@@ -256,7 +256,7 @@ export function DashboardSidebar() {
             <div className="flex w-full items-center justify-center relative group">
               <Link
                 href="/dashboard"
-                aria-label="EduTest AI - Trang chủ"
+                aria-label="EduTest - Trang chủ"
                 className="flex h-10 w-10 min-h-[40px] min-w-[40px] items-center justify-center rounded-xl hover:bg-muted/80 text-primary transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <BookOpen className="h-6 w-6" aria-hidden="true" />
@@ -286,7 +286,7 @@ export function DashboardSidebar() {
                   <BookOpen className="h-7 w-7 text-primary shrink-0" aria-hidden="true" />
                   <div className="flex flex-col min-w-0">
                     <span className="text-base font-bold leading-tight truncate">
-                      Edu<span className="text-primary">Test</span> AI
+                      Edu<span className="text-primary">Test</span>
                     </span>
                     <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 truncate">
                       v2.0.0 Beta (GDPT 2025)

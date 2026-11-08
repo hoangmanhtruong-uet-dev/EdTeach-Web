@@ -51,7 +51,7 @@ export const SUPPORT_EMAIL = "support@edutest.ai";
 export const REFERRAL_BONUS_CREDITS = 2000;
 
 // Branding & Administrative Constants
-export const PLATFORM_NAME = "EduTest AI";
+export const PLATFORM_NAME = "EduTest";
 export const PLATFORM_SHORT_NAME = "EdTeach";
 export const MASTER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || process.env.ADMIN_EMAIL || "admin@edteach.vn";
 export const ADMIN_EMAIL_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_EMAIL_DOMAIN || "@admin.edteach.vn";
