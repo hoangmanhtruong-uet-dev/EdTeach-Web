@@ -19,11 +19,6 @@ import {
   PenTool,
   Clock,
   Layers,
-  Columns2,
-  Network,
-  FileText,
-  Activity,
-  ArrowRight,
   HelpCircle,
   CheckCircle2,
 } from "lucide-react";
@@ -38,7 +33,6 @@ import {
   updateWhiteboard,
   FREE_TIER_MAX_BOARDS,
 } from "@/lib/api/whiteboard";
-import { WHITEBOARD_TEMPLATES } from "@/lib/whiteboard/templates";
 import { Whiteboard } from "@/types/whiteboard";
 
 export default function WhiteboardDashboardPage() {
@@ -52,7 +46,6 @@ export default function WhiteboardDashboardPage() {
   const [filterFavorite, setFilterFavorite] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isCreating, setIsCreating] = useState(false);
-  const [creatingTemplateKey, setCreatingTemplateKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -94,18 +87,13 @@ export default function WhiteboardDashboardPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isPro, whiteboards.length]);
 
-  const handleCreateBoard = async (templateKey?: string, templateTitle?: string) => {
+  const handleCreateBoard = async () => {
     setErrorMessage(null);
     setIsCreating(true);
-    if (templateKey) setCreatingTemplateKey(templateKey);
     try {
-      const title = templateTitle || (templateKey ? undefined : "Bảng vẽ mới");
-      const res = await createWhiteboard(title, isPro, templateKey);
+      const res = await createWhiteboard("Bảng vẽ mới", isPro);
       if (res.data) {
-        showToast(
-          templateKey ? "Đã khởi tạo bảng vẽ từ mẫu sư phạm!" : "Đã tạo bảng vẽ mới!",
-          "success"
-        );
+        showToast("Đã tạo bảng vẽ mới!", "success");
         router.push(`/whiteboard/${res.data.id}`);
       } else if (res.error) {
         setErrorMessage(res.error);
@@ -117,7 +105,6 @@ export default function WhiteboardDashboardPage() {
       showToast(msg, "error");
     } finally {
       setIsCreating(false);
-      setCreatingTemplateKey(null);
     }
   };
 
@@ -215,7 +202,7 @@ export default function WhiteboardDashboardPage() {
               className="inline-flex h-12 min-h-[44px] items-center justify-center gap-2.5 rounded-2xl bg-white px-6 text-sm font-bold text-blue-700 shadow-xl transition-all hover:bg-blue-50 active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              <span>{isCreating && !creatingTemplateKey ? "Đang tạo..." : "Tạo bảng vẽ mới"}</span>
+              <span>{isCreating ? "Đang tạo..." : "Tạo bảng vẽ mới"}</span>
               <kbd className="hidden lg:inline-block ml-1 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-mono font-bold text-blue-800">
                 N
               </kbd>
@@ -289,56 +276,6 @@ export default function WhiteboardDashboardPage() {
         </div>
       </div>
 
-      {/* 3. 4 Sư Phạm Quick Templates Row (Sprint W-1 A4) */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-amber-500" />
-            <h2 className="text-sm sm:text-base font-bold text-foreground">
-              Bắt đầu nhanh từ Mẫu Sư Phạm (Templates 1-Click)
-            </h2>
-          </div>
-          <span className="text-xs text-muted-foreground hidden sm:inline">
-            Khung chuẩn mực sẵn sàng cho tiết học
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {WHITEBOARD_TEMPLATES.map((tpl) => {
-            const isThisLoading = isCreating && creatingTemplateKey === tpl.key;
-            return (
-              <button
-                key={tpl.key}
-                onClick={() => handleCreateBoard(tpl.key, tpl.name)}
-                disabled={isCreating}
-                className="group relative flex flex-col justify-between rounded-2xl border border-border bg-card p-4 text-left shadow-2xs transition-all hover:border-primary hover:shadow-md hover:-translate-y-0.5 cursor-pointer disabled:opacity-50"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
-                      {tpl.badge}
-                    </span>
-                    <span className="text-xs text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-0.5">
-                      →
-                    </span>
-                  </div>
-                  <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition">
-                    {tpl.name}
-                  </h3>
-                  <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                    {tpl.description}
-                  </p>
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between text-xs font-semibold text-primary">
-                  <span>{isThisLoading ? "Đang nạp mẫu..." : "Dùng mẫu này"}</span>
-                  <Plus className="h-3.5 w-3.5" />
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       {/* 4. Quota & Pro Status Banner (Free Tier Limit = 5 Bảng) */}
       <div className={`flex flex-col justify-between gap-4 rounded-2xl border p-5 shadow-2xs md:flex-row md:items-center ${
@@ -498,15 +435,7 @@ export default function WhiteboardDashboardPage() {
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-md transition hover:bg-primary/90 cursor-pointer"
               >
                 <Plus className="h-4 w-4" />
-                <span>Tạo bảng vẽ trống</span>
-              </button>
-              <button
-                onClick={() => handleCreateBoard("two-columns", "Hai cột: Đề bài & Lời giải")}
-                disabled={isCreating}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-bold text-foreground shadow-2xs transition hover:bg-muted cursor-pointer"
-              >
-                <Columns2 className="h-4 w-4 text-blue-600" />
-                <span>Dùng mẫu Hai Cột</span>
+                <span>{isCreating ? "Đang tạo..." : "Tạo bảng vẽ mới"}</span>
               </button>
             </div>
           )}
