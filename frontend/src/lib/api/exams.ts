@@ -190,7 +190,16 @@ export async function updateExam(id: string, updates: UpdateExam) {
   return data as Exam;
 }
 
-export async function softDeleteExam(id: string) {
+export async function hardDeleteExam(id: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase.from("exams").delete().eq("id", id);
+  if (error) {
+    throw error;
+  }
+  return true;
+}
+
+export async function softDeleteExam(id: string): Promise<boolean> {
   const supabase = createClient();
   const { error } = await (supabase.from("exams") as any)
     .update({ deleted_at: new Date().toISOString() })
@@ -207,8 +216,56 @@ export async function softDeleteExam(id: string) {
   return true;
 }
 
-export async function deleteExam(id: string) {
-  return softDeleteExam(id);
+/**
+ * Xóa đề thi theo phân hạng người dùng:
+ * - isPro === false (Tài khoản FREE): Xóa vĩnh viễn trực tiếp trong CSDL (hard delete).
+ * - isPro === true (Gói PRO): Xóa mềm (soft delete), lưu trong thùng rác 14 ngày có thể khôi phục.
+ */
+export async function deleteExam(id: string, isPro: boolean = false): Promise<boolean> {
+  if (isPro) {
+    return softDeleteExam(id);
+  }
+  return hardDeleteExam(id);
+}
+
+/**
+ * Khôi phục đề thi từ thùng rác về danh sách chính (Đặc quyền PRO)
+ */
+export async function restoreExam(id: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await (supabase.from("exams") as any)
+    .update({ deleted_at: null })
+    .eq("id", id);
+  if (error) {
+    throw error;
+  }
+  return true;
+}
+
+/**
+ * Lấy danh sách đề thi trong thùng rác (Được xóa trong vòng 14 ngày gần nhất)
+ */
+export async function getTrashExams(): Promise<Exam[]> {
+  const supabase = createClient();
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("exams")
+    .select("*")
+    .not("deleted_at", "is", null)
+    .gte("deleted_at", fourteenDaysAgo)
+    .order("deleted_at", { ascending: false });
+  if (error) {
+    console.error("Failed to fetch trash exams", error);
+    return [];
+  }
+  return (data as any[]) || [];
+}
+
+/**
+ * Xóa vĩnh viễn đề thi trong thùng rác
+ */
+export async function permanentDeleteExam(id: string): Promise<boolean> {
+  return hardDeleteExam(id);
 }
 
 export async function updateQuestion(id: string, updates: UpdateQuestion) {

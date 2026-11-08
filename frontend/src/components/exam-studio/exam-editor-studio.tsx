@@ -111,7 +111,6 @@ import { VariationTableRenderer, VariationTableData } from "./variation-table-mo
 import { FunctionGraphRenderer, FunctionGraphData } from "./function-graph-modal";
 import { ChartSvgRenderer, ChartConfigData } from "./chart-editor-modal";
 import { GeometrySvgRenderer, GeometryConfigData } from "./geometry-editor-modal";
-import { TeachingStepperBar } from "./teaching-stepper-bar";
 
 // Dynamic lazy imports for heavy studio modals (Performance Optimization P2)
 const QuotaExhaustedModal = dynamic(() => import("@/components/modals/quota-exhausted-modal").then((m) => m.QuotaExhaustedModal), { ssr: false });
@@ -2705,53 +2704,88 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
                   Tệp
                 </button>
                 {showActiveMenu === "file" && (
-                  <div className="absolute left-0 top-full z-50 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                  <div className="absolute left-0 top-full z-50 mt-1 min-w-[280px] sm:min-w-[320px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl text-slate-700 text-xs select-none">
                     <button
                       onClick={() => {
                         setTitle("Đề thi mới");
                         setQuestions([]);
                         setShowActiveMenu(null);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-slate-50"
+                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-50 transition"
                     >
-                      <Plus className="h-3.5 w-3.5" /> Tạo đề mới
+                      <div className="flex items-center gap-2.5">
+                        <Plus className="h-4 w-4 text-slate-500" />
+                        <span className="font-medium text-slate-800">Tạo đề mới</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">Ctrl+N</span>
                     </button>
+
                     <button
                       onClick={() => {
                         handleExportDocx();
                         setShowActiveMenu(null);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-slate-50"
+                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-50 transition"
                     >
-                      <Download className="h-3.5 w-3.5" /> Tải về file Word (.docx)
+                      <div className="flex items-center gap-2.5">
+                        <Download className="h-4 w-4 text-emerald-600" />
+                        <span className="font-medium text-slate-800">Tải về file Word</span>
+                      </div>
+                      <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">.docx</span>
                     </button>
+
                     <button
                       onClick={() => {
                         setShowShuffleModal(true);
                         setShowActiveMenu(null);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-slate-50 text-blue-600 font-semibold"
+                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-blue-50/60 transition"
                     >
-                      <Shuffle className="h-3.5 w-3.5 text-blue-600" /> Trộn bộ 4 mã đề & Ma trận (.docx)
+                      <div className="flex items-center gap-2.5">
+                        <Shuffle className="h-4 w-4 text-blue-600 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-blue-700">Trộn bộ 4 mã đề & Ma trận</div>
+                          <div className="text-[10px] text-blue-500/80">Kèm ma trận barem hoán vị</div>
+                        </div>
+                      </div>
+                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">.docx</span>
                     </button>
+
                     <button
                       onClick={() => {
                         handleExportDualDocx();
                         setShowActiveMenu(null);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-slate-50 text-amber-700 font-bold"
+                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-amber-50/60 transition"
                       title="Tải về cùng lúc: 1 Bản Học Sinh (có dòng chấm chép bài) & 1 Bản Giáo Viên (kèm lời giải chi tiết)"
                     >
-                      <Crown className="h-3.5 w-3.5 text-amber-600" /> Xuất Bộ Đề Kép Giảng Dạy (HS + GV) (.docx)
+                      <div className="flex items-center gap-2.5">
+                        <Crown className="h-4 w-4 text-amber-600 shrink-0" />
+                        <div>
+                          <div className="font-bold text-amber-800 flex items-center gap-1.5">
+                            <span>Xuất Bộ Đề Kép (HS + GV)</span>
+                            <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-extrabold text-amber-800 uppercase tracking-wider">PRO</span>
+                          </div>
+                          <div className="text-[10px] text-amber-600/80">1 Bản học sinh + 1 Bản GV kèm giải</div>
+                        </div>
+                      </div>
+                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">.docx</span>
                     </button>
+
+                    <div className="my-1 border-t border-slate-100" />
+
                     <button
                       onClick={() => {
                         handlePrint();
                         setShowActiveMenu(null);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-slate-50"
+                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-50 transition"
                     >
-                      <Printer className="h-3.5 w-3.5" /> In đề thi (PDF)
+                      <div className="flex items-center gap-2.5">
+                        <Printer className="h-4 w-4 text-slate-500" />
+                        <span className="font-medium text-slate-800">In đề thi</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">Ctrl+P</span>
                     </button>
                   </div>
                 )}
@@ -4575,17 +4609,6 @@ export function ExamEditorStudio({ initialExamId }: ExamStudioProps) {
           </div>
         </div>
       </header>
-
-      {/* Teaching Stepper Bar: Hành trình Tiết dạy 360° */}
-      {examId && (
-        <TeachingStepperBar
-          examId={examId}
-          examName={title}
-          questionCount={questions.length}
-          onOpenShuffleModal={() => setShowShuffleModal(true)}
-          onExportDualTeaching={handleExportDualDocx}
-        />
-      )}
 
       {/* Hidden file input for image uploads */}
       <input

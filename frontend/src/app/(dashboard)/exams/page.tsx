@@ -22,9 +22,18 @@ import {
   ChevronRight,
   SlidersHorizontal,
   AlertTriangle,
+  Clock,
 } from "lucide-react";
 import Link from "next/link";
-import { getUserExams, deleteExam, Exam, getExamById } from "@/lib/api/exams";
+import {
+  getUserExams,
+  deleteExam,
+  Exam,
+  getExamById,
+  getTrashExams,
+  restoreExam,
+  permanentDeleteExam,
+} from "@/lib/api/exams";
 import { useAuth } from "@/context/auth-context";
 import { isMaxUser, isProUser, PricingPlan } from "@/lib/payment/plans";
 // docx exporter loaded dynamically on demand
@@ -46,8 +55,15 @@ export default function ExamsPage() {
   const [pageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
 
-  // Soft Delete Confirmation Dialog State (EXL-04, EXL-10)
+  // Delete Confirmation Dialog State (Free: Hard delete / Pro: Soft delete)
   const [deleteConfirmExam, setDeleteConfirmExam] = useState<Exam | null>(null);
+
+  // Tab State: "active" (Đề thi của tôi) | "trash" (Thùng rác 14 ngày - PRO)
+  const [activeTab, setActiveTab] = useState<"active" | "trash">("active");
+  const [trashExams, setTrashExams] = useState<Exam[]>([]);
+  const [trashLoading, setTrashLoading] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [permDeleteConfirmExam, setPermDeleteConfirmExam] = useState<Exam | null>(null);
 
   // Filter & Sort States (EXL-02)
   const [selectedSubject, setSelectedSubject] = useState("all");
@@ -182,9 +198,29 @@ export default function ExamsPage() {
     }
   }, [currentPage, pageSize, debouncedSearch, selectedSubject, selectedGrade, selectedStatus, sortBy, showToast]);
 
+  // Load trash exams (PRO users with 14-day retention)
+  const loadTrashExams = useCallback(async () => {
+    if (!isPro) return;
+    setTrashLoading(true);
+    try {
+      const items = await getTrashExams();
+      setTrashExams(items);
+    } catch (err) {
+      console.error("Failed to load trash exams", err);
+    } finally {
+      setTrashLoading(false);
+    }
+  }, [isPro]);
+
   useEffect(() => {
     loadExams();
   }, [loadExams]);
+
+  useEffect(() => {
+    if (isPro) {
+      loadTrashExams();
+    }
+  }, [isPro, loadTrashExams]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const startItem = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
@@ -224,14 +260,19 @@ export default function ExamsPage() {
     }
   };
 
-  // EXL-04, EXL-10: Confirmation Delete
+  // EXL-04, EXL-10: Confirmation Delete (Free: Hard delete from DB, Pro: 14-day soft delete in trash)
   const handleConfirmDelete = async () => {
     if (!deleteConfirmExam) return;
     const idToDelete = deleteConfirmExam.id;
     setDeletingId(idToDelete);
     try {
-      await deleteExam(idToDelete);
-      showToast("Đã chuyển đề thi vào thùng rác thành công.", "success");
+      await deleteExam(idToDelete, isPro);
+      if (isPro) {
+        showToast("Đã chuyển đề thi vào Thùng rác (lưu trữ 14 ngày).", "success");
+        await loadTrashExams();
+      } else {
+        showToast("Đã xóa vĩnh viễn đề thi khỏi hệ thống CSDL.", "success");
+      }
       setDeleteConfirmExam(null);
       if (exams.length === 1 && currentPage > 1) {
         setCurrentPage((p) => p - 1);
@@ -240,6 +281,39 @@ export default function ExamsPage() {
       }
     } catch (err) {
       console.error("Failed to delete exam", err);
+      showToast("Không thể xóa đề thi. Vui lòng thử lại.", "error");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Restore exam from trash (PRO feature)
+  const handleRestoreExam = async (exam: Exam) => {
+    setRestoringId(exam.id);
+    try {
+      await restoreExam(exam.id);
+      showToast(`Đã khôi phục đề thi "${exam.name}" về danh sách chính!`, "success");
+      await Promise.all([loadTrashExams(), loadExams()]);
+    } catch (err) {
+      console.error("Failed to restore exam", err);
+      showToast("Không thể khôi phục đề thi. Vui lòng thử lại.", "error");
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
+  // Permanent Delete for trash items
+  const handleConfirmPermanentDelete = async () => {
+    if (!permDeleteConfirmExam) return;
+    const id = permDeleteConfirmExam.id;
+    setDeletingId(id);
+    try {
+      await permanentDeleteExam(id);
+      showToast("Đã xóa vĩnh viễn đề thi khỏi CSDL.", "success");
+      setPermDeleteConfirmExam(null);
+      await loadTrashExams();
+    } catch (err) {
+      console.error("Failed to permanently delete exam", err);
       showToast("Không thể xóa đề thi. Vui lòng thử lại.", "error");
     } finally {
       setDeletingId(null);
@@ -269,8 +343,55 @@ export default function ExamsPage() {
         </Link>
       </div>
 
-      {/* Search & Filter */}
-      <div className="space-y-3">
+      {/* Tabs: Tất cả đề thi & Thùng rác (14 ngày) */}
+      <div className="flex items-center gap-2 border-b border-border pb-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab("active")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 transition -mb-[5px] cursor-pointer",
+            activeTab === "active"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <BookOpen className="h-4 w-4" />
+          <span>Tất cả đề thi</span>
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-foreground">
+            {totalCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("trash");
+            if (isPro) loadTrashExams();
+          }}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 transition -mb-[5px] cursor-pointer",
+            activeTab === "trash"
+              ? "border-amber-500 text-amber-600 dark:text-amber-400"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Trash2 className="h-4 w-4" />
+          <span>Thùng rác (14 ngày)</span>
+          <span className="rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 text-[11px] font-bold">
+            PRO
+          </span>
+          {isPro && trashExams.length > 0 && (
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-bold text-foreground">
+              {trashExams.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === "active" && (
+        <>
+          {/* Search & Filter */}
+          <div className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -764,8 +885,139 @@ export default function ExamsPage() {
           </div>
         )}
       </div>
+      </>
+    )}
 
-      {/* Delete Confirmation Modal (EXL-04, EXL-10) */}
+      {/* ============================================================== */}
+      {/* TRASH VIEW (THÙNG RÁC 14 NGÀY - ĐẶC QUYỀN PRO)                */}
+      {/* ============================================================== */}
+      {activeTab === "trash" && !isPro && (
+        <div className="rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20 dark:from-amber-950/20 dark:via-card dark:to-card p-8 sm:p-12 text-center shadow-xs">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 mb-4 shadow-sm">
+            <Trash2 className="h-8 w-8" />
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 px-3 py-1 text-xs font-bold uppercase tracking-wider mb-3">
+            <Crown className="h-3.5 w-3.5" /> Đặc quyền Gói Giáo Viên PRO
+          </div>
+          <h2 className="text-xl font-bold text-foreground">Thùng rác & Khôi phục đề thi đã xóa trong 14 ngày</h2>
+          <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground leading-relaxed">
+            Với gói Giáo Viên PRO, mọi đề thi Thầy/Cô xóa đều được bảo vệ trong Thùng rác 14 ngày. Thầy/Cô có thể dễ dàng khôi phục lại đề thi bất kỳ lúc nào nếu xóa nhầm hoặc muốn tái sử dụng.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setUpgradeTier("pro")}
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700 transition shadow-xs cursor-pointer"
+            >
+              <Crown className="h-4 w-4" /> Nâng cấp Giáo Viên PRO (149k/tháng)
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("active")}
+              className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+            >
+              Quay lại danh sách đề thi
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "trash" && isPro && (
+        <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
+          {trashLoading ? (
+            <div className="flex h-48 items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : trashExams.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Trash2 className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="mt-4 font-semibold">Thùng rác đang trống</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Không có đề thi nào trong thùng rác trong 14 ngày qua.</p>
+            </div>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-border bg-muted/50 text-xs font-semibold text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3">Tên đề thi</th>
+                  <th className="px-4 py-3">Môn / Lớp</th>
+                  <th className="px-4 py-3">Ngày xóa</th>
+                  <th className="px-4 py-3">Thời hạn lưu trữ</th>
+                  <th className="px-4 py-3 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {trashExams.map((exam) => {
+                  const deletedDate = exam.deleted_at ? new Date(exam.deleted_at) : new Date();
+                  const daysElapsed = Math.floor((Date.now() - deletedDate.getTime()) / (1000 * 60 * 60 * 24));
+                  const daysRemaining = Math.max(1, 14 - daysElapsed);
+
+                  return (
+                    <tr key={exam.id} className="hover:bg-muted/40 transition">
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-foreground">{exam.name}</div>
+                        <div className="text-xs text-muted-foreground">{exam.question_count || 0} câu hỏi</div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {exam.subject} • Lớp {exam.grade}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {deletedDate.toLocaleDateString("vi-VN", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold",
+                          daysRemaining <= 2
+                            ? "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
+                        )}>
+                          <Clock className="h-3 w-3" /> Còn {daysRemaining} ngày
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            disabled={restoringId === exam.id}
+                            onClick={() => handleRestoreExam(exam)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 px-3 py-1.5 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition cursor-pointer disabled:opacity-50"
+                            title="Khôi phục đề thi về danh sách chính"
+                          >
+                            {restoringId === exam.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            )}
+                            <span>Khôi phục</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setPermDeleteConfirmExam(exam)}
+                            className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
+                            title="Xóa vĩnh viễn khỏi CSDL ngay lập tức"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal (EXL-04, EXL-10: Free vs PRO distinction) */}
       {deleteConfirmExam && (
         <div
           role="dialog"
@@ -776,22 +1028,36 @@ export default function ExamsPage() {
         >
           <div className="bg-white dark:bg-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-neutral-200 dark:border-neutral-800 relative text-left">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5" />
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                isPro ? "bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400" : "bg-destructive/10 text-destructive"
+              )}>
+                {isPro ? <Trash2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
               </div>
               <div>
                 <h3 id="delete-dialog-title" className="font-bold text-base text-foreground">
-                  Xác nhận xóa đề thi
+                  {isPro ? "Chuyển đề thi vào Thùng rác" : "Xóa vĩnh viễn đề thi"}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Đề thi sẽ được chuyển vào thùng rác
+                  {isPro ? "Bảo lưu an toàn trong 14 ngày (Đặc quyền PRO)" : "Tài khoản Miễn phí: Không thể hoàn tác"}
                 </p>
               </div>
             </div>
 
-            <p id="delete-dialog-desc" className="text-sm text-neutral-600 dark:text-neutral-300 mb-6 leading-relaxed">
-              Bạn có chắc chắn muốn xóa đề thi <strong>&quot;{deleteConfirmExam.name}&quot;</strong> ({deleteConfirmExam.subject} - Lớp {deleteConfirmExam.grade})? Thao tác này an toàn và không làm đứt gãy lịch sử chấm thi.
-            </p>
+            <div className="text-sm text-neutral-600 dark:text-neutral-300 mb-6 leading-relaxed space-y-2">
+              <p id="delete-dialog-desc">
+                Bạn có chắc chắn muốn xóa đề thi <strong>&quot;{deleteConfirmExam.name}&quot;</strong> ({deleteConfirmExam.subject} - Lớp {deleteConfirmExam.grade})?
+              </p>
+              {isPro ? (
+                <div className="rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300">
+                  ✓ Đề thi sẽ được lưu trong Thùng rác <strong>14 ngày</strong>. Thầy/Cô có thể khôi phục lại bất kỳ lúc nào trước khi hệ thống tự động dọn dẹp.
+                </div>
+              ) : (
+                <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-xs text-destructive">
+                  ⚠️ <strong>Cảnh báo</strong>: Thao tác này sẽ xóa vĩnh viễn đề thi và toàn bộ câu hỏi khỏi CSDL ngay lập tức. Nâng cấp <strong>Gói Giáo Viên PRO</strong> để kích hoạt tính năng Thùng rác khôi phục 14 ngày!
+                </div>
+              )}
+            </div>
 
             <div className="flex justify-end gap-2.5">
               <button
@@ -805,10 +1071,57 @@ export default function ExamsPage() {
                 type="button"
                 disabled={deletingId === deleteConfirmExam.id}
                 onClick={handleConfirmDelete}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-destructive text-white text-xs font-bold hover:bg-destructive/90 transition shadow-xs cursor-pointer disabled:opacity-50"
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50",
+                  isPro ? "bg-amber-600 hover:bg-amber-700" : "bg-destructive hover:bg-destructive/90"
+                )}
               >
                 {deletingId === deleteConfirmExam.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>Xóa đề thi</span>
+                <span>{isPro ? "Chuyển vào thùng rác" : "Xóa vĩnh viễn"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permanent Delete Modal for Trash Items */}
+      {permDeleteConfirmExam && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200"
+        >
+          <div className="bg-white dark:bg-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-neutral-200 dark:border-neutral-800 relative text-left">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-foreground">Xóa vĩnh viễn khỏi Thùng rác</h3>
+                <p className="text-xs text-muted-foreground">Thao tác không thể hoàn tác</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-6 leading-relaxed">
+              Bạn có chắc muốn xóa vĩnh viễn đề thi <strong>&quot;{permDeleteConfirmExam.name}&quot;</strong> khỏi CSDL ngay bây giờ mà không cần đợi hết hạn 14 ngày?
+            </p>
+
+            <div className="flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setPermDeleteConfirmExam(null)}
+                className="px-4 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-muted transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={deletingId === permDeleteConfirmExam.id}
+                onClick={handleConfirmPermanentDelete}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-destructive text-white text-xs font-bold hover:bg-destructive/90 transition shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                {deletingId === permDeleteConfirmExam.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Xác nhận xóa vĩnh viễn</span>
               </button>
             </div>
           </div>
