@@ -311,36 +311,25 @@ export function GeneralTab({
     setAvatarError(null);
 
     try {
-      const supabase = createClient();
-      let finalAvatarUrl = "";
-      const filePath = `${user.id}/avatar.jpg`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, blob, {
-          contentType: "image/jpeg",
-          upsert: true,
-        });
-
-      if (!uploadError) {
-        const { data: pubData } = supabase.storage.from("avatars").getPublicUrl(filePath);
-        finalAvatarUrl = `${pubData.publicUrl}?t=${Date.now()}`;
-      } else {
-        // Graceful fallback to inline compressed dataUrl
-        finalAvatarUrl = dataUrl;
+      // Gửi file qua API Route /api/user/avatar (xử lý trên server bằng Admin Client, triệt tiêu 100% lỗi RLS)
+      const formData = new FormData();
+      formData.append("file", blob, "avatar.jpg");
+      if (dataUrl) {
+        formData.append("dataUrl", dataUrl);
       }
 
-      const { error: dbError } = await (supabase.from("users") as any)
-        .update({
-          avatar_url: finalAvatarUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
+      const res = await fetch("/api/user/avatar", {
+        method: "POST",
+        body: formData,
+      });
 
-      if (dbError) throw dbError;
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Không thể cập nhật ảnh đại diện.");
+      }
 
       await refreshProfile();
-      showToast("Cập nhật ảnh đại diện thành công!", "success");
+      showToast(result.message || "Cập nhật ảnh đại diện thành công!", "success");
     } catch (err: any) {
       setAvatarError(err.message || "Không thể cập nhật ảnh đại diện.");
     } finally {
@@ -361,18 +350,19 @@ export function GeneralTab({
     if (!isOk) return;
 
     setUploadingAvatar(true);
+    setAvatarError(null);
     try {
-      const supabase = createClient();
-      const { error } = await (supabase.from("users") as any)
-        .update({
-          avatar_url: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
+      const res = await fetch("/api/user/avatar", {
+        method: "DELETE",
+      });
 
-      if (error) throw error;
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Không thể xóa ảnh.");
+      }
+
       await refreshProfile();
-      showToast("Đã xóa ảnh đại diện.", "info");
+      showToast(result.message || "Đã xóa ảnh đại diện.", "info");
     } catch (err: any) {
       setAvatarError(err.message || "Không thể xóa ảnh.");
     } finally {
