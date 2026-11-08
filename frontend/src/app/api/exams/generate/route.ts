@@ -646,19 +646,21 @@ export async function POST(req: NextRequest) {
 
           // Danh sách mô hình chuẩn theo Google AI Studio:
           // Ưu tiên gemini-3.8-flash (suy luận sâu & tuân thủ schema) -> gemini-3.5-flash-lite -> gemini-flash-latest -> gemini-flash-lite-latest
+          // Tối ưu hóa thứ tự mô hình:
+          // Ưu tiên gemini-3.5-flash-lite (tốc độ ~4.8s, chống timeout trên Vercel 60s)
+          // -> gemini-flash-lite-latest -> gemini-flash-latest -> gemini-3.8-flash
           const modelsToTry = [
-            "gemini-3.8-flash",
             "gemini-3.5-flash-lite",
-            "gemini-flash-latest",
             "gemini-flash-lite-latest",
-            "gemini-3-flash-preview",
+            "gemini-flash-latest",
+            "gemini-3.8-flash",
           ];
 
           console.log(`[Exam Generator] Invoking AI for ${subject} Lớp ${safeGradeNum}, Key: ${geminiKey ? geminiKey.slice(0, 8) + "..." : "NONE"}`);
           for (const model of modelsToTry) {
             try {
               const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 45000);
+              const timeoutId = setTimeout(() => controller.abort(), 25000);
 
               const geminiRes = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,

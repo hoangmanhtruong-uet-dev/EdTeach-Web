@@ -62,7 +62,7 @@ export function getGeminiApiKey(tierOrPaid: GeminiTier | boolean = false): strin
 
 export async function callGeminiJson<T = any>(
   prompt: string,
-  preferredModels: string[] = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"],
+  preferredModels: string[] = ["gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-flash-latest", "gemini-3.8-flash"],
   tierOrPaid: GeminiTier | boolean = false
 ): Promise<T> {
   const geminiKey = resolveGeminiApiKey(tierOrPaid);
