@@ -8,9 +8,49 @@ import {
 } from "@/lib/grading/student-submission-store";
 import { SEED_EXAMS } from "@/lib/seed/seed-exams";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  normalizeShortAnswer,
+  normalizeTfGroupAnswer,
+} from "@/lib/grading/omr-template-resolver";
 
 interface RouteProps {
   params: Promise<{ token: string }>;
+}
+
+function buildNormalizedAnswerKeyAndSheet(questions: any[], fallbackCount?: number): {
+  answerKey: Record<number, string>;
+  questionCount: number;
+  sheetType: "20" | "40" | "50" | "2025";
+} {
+  const answerKey: Record<number, string> = {};
+  let has2025 = false;
+
+  questions.forEach((q, idx) => {
+    const qType = q.question_type || q.type || "multiple_choice";
+    const rawAns = String(q.correct_answer || "").trim();
+
+    if (qType === "true_false_group" || qType === "true_false") {
+      has2025 = true;
+      answerKey[idx + 1] = normalizeTfGroupAnswer(rawAns) || "Đ-S-Đ-S";
+    } else if (qType === "short_answer" || qType === "numeric") {
+      has2025 = true;
+      answerKey[idx + 1] = normalizeShortAnswer(rawAns) || "0";
+    } else {
+      const m = rawAns.match(/^([A-D])/i);
+      answerKey[idx + 1] = m ? m[1].toUpperCase() : rawAns.slice(0, 1).toUpperCase() || "A";
+    }
+  });
+
+  const qCount = questions.length || fallbackCount || 20;
+  const sheetType: "20" | "40" | "50" | "2025" = has2025
+    ? "2025"
+    : qCount <= 20
+    ? "20"
+    : qCount <= 40
+    ? "40"
+    : "50";
+
+  return { answerKey, questionCount: qCount, sheetType };
 }
 
 async function resolveSubmissionLink(token: string): Promise<StudentSubmissionLink | null> {
@@ -21,11 +61,10 @@ async function resolveSubmissionLink(token: string): Promise<StudentSubmissionLi
   if (token.startsWith("seed-")) {
     const seed = SEED_EXAMS.find((e) => e.id === token);
     if (seed) {
-      const answerKey: Record<number, string> = {};
-      (seed.questions || []).forEach((q, idx) => {
-        answerKey[idx + 1] = (q.correct_answer || "A").trim().toUpperCase();
-      });
-      const qCount = seed.questions?.length || seed.question_count || 20;
+      const { answerKey, questionCount, sheetType } = buildNormalizedAnswerKeyAndSheet(
+        seed.questions || [],
+        seed.question_count
+      );
       const newLink: StudentSubmissionLink = {
         token,
         sessionId: seed.id,
@@ -36,8 +75,8 @@ async function resolveSubmissionLink(token: string): Promise<StudentSubmissionLi
         durationMinutes: 60,
         createdAt: Date.now(),
         expiresAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
-        questionCount: qCount,
-        sheetType: qCount <= 20 ? "20" : qCount <= 50 ? "50" : "100",
+        questionCount,
+        sheetType,
         answerKey,
         isClosed: false,
         submissionsCount: 0,
@@ -69,11 +108,10 @@ async function resolveSubmissionLink(token: string): Promise<StudentSubmissionLi
       if (!error && exam) {
         const questions = (exam.questions as any[]) || [];
         questions.sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
-        const answerKey: Record<number, string> = {};
-        questions.forEach((q, idx) => {
-          answerKey[idx + 1] = (q.correct_answer || "A").trim().toUpperCase();
-        });
-        const qCount = questions.length || exam.question_count || 20;
+        const { answerKey, questionCount, sheetType } = buildNormalizedAnswerKeyAndSheet(
+          questions,
+          exam.question_count
+        );
         const newLink: StudentSubmissionLink = {
           token,
           userId: exam.user_id,
@@ -85,8 +123,8 @@ async function resolveSubmissionLink(token: string): Promise<StudentSubmissionLi
           durationMinutes: 60,
           createdAt: Date.now(),
           expiresAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
-          questionCount: qCount,
-          sheetType: qCount <= 20 ? "20" : qCount <= 50 ? "50" : "100",
+          questionCount,
+          sheetType,
           answerKey,
           isClosed: false,
           submissionsCount: 0,

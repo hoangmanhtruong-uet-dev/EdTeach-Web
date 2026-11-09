@@ -40,6 +40,7 @@ import { UpgradeTierModal } from "@/components/modals/upgrade-tier-modal";
 import { PaymentCheckoutModal } from "@/components/modals/payment-checkout-modal";
 import { ZaloShareModal } from "./zalo-share-modal";
 import { RemediationModal } from "./remediation-modal";
+import { get2025QuestionCounts, scoreStudentAnswers } from "@/lib/grading/omr-template-resolver";
 
 export interface GradedStudent {
   id: string;
@@ -332,7 +333,7 @@ export function SessionDetailView({
     copied: boolean;
   } | null>(null);
 
-  // Top missed questions calculation
+  // Top missed questions calculation (hỗ trợ chuẩn GDPT 2025 Đúng/Sai & Điền số)
   const topMissedQuestions = useMemo(() => {
     if (session.gradedStudents.length === 0 || !session.answerKey) return [];
     const questionStats: Record<
@@ -345,23 +346,32 @@ export function SessionDetailView({
       questionStats[qNum] = {
         wrongCount: 0,
         total: 0,
-        correctAns: (session.answerKey[qNum] || "").toUpperCase(),
+        correctAns: String(session.answerKey[qNum] || "").trim(),
         wrongAnswers: {},
       };
     });
 
     session.gradedStudents.forEach((std) => {
       if (!std.studentAnswers) return;
-      Object.entries(std.studentAnswers).forEach(([qStr, rawStudentAns]) => {
-        const qNum = Number(qStr);
-        if (!questionStats[qNum]) return;
-        questionStats[qNum].total += 1;
-        const studentAns = (rawStudentAns || "").toUpperCase();
-        const correct = questionStats[qNum].correctAns;
-        if (studentAns && studentAns !== correct) {
-          questionStats[qNum].wrongCount += 1;
-          questionStats[qNum].wrongAnswers[studentAns] =
-            (questionStats[qNum].wrongAnswers[studentAns] || 0) + 1;
+      const scored = scoreStudentAnswers({
+        sheetType: session.sheetType,
+        subject: session.subject,
+        questionCount: session.questionCount,
+        answerKey: session.answerKey,
+        studentAnswers: std.studentAnswers,
+      });
+
+      scored.details.forEach((d) => {
+        const stat = questionStats[d.questionNumber];
+        if (!stat) return;
+        if (d.correctAnswer) {
+          stat.correctAns = d.correctAnswer;
+        }
+        stat.total += 1;
+        if (!d.isEmpty && !d.isCorrect) {
+          stat.wrongCount += 1;
+          stat.wrongAnswers[d.studentAnswer] =
+            (stat.wrongAnswers[d.studentAnswer] || 0) + 1;
         }
       });
     });
@@ -383,7 +393,13 @@ export function SessionDetailView({
       .filter((q) => q.wrongCount > 0)
       .sort((a, b) => b.wrongCount - a.wrongCount)
       .slice(0, 5);
-  }, [session.gradedStudents, session.answerKey]);
+  }, [
+    session.gradedStudents,
+    session.answerKey,
+    session.sheetType,
+    session.subject,
+    session.questionCount,
+  ]);
 
   const handlePushToTeachingWhiteboard = () => {
     if (!isMaxUser(profile)) {
@@ -464,8 +480,28 @@ export function SessionDetailView({
               {session.name}
             </h1>
             <p className="mt-1 text-xs text-neutral-500 dark:text-slate-400">
-              {session.questionCount} câu trắc nghiệm · tổng 10 điểm · {session.sheetType} câu · Môn{" "}
-              {session.subject}
+              {session.sheetType === "2025" ? (
+                (() => {
+                  const counts2025 = get2025QuestionCounts(
+                    session.subject,
+                    session.questionCount
+                  );
+                  return (
+                    <>
+                      {counts2025.totalQuestions} câu · tổng 10 điểm ·{" "}
+                      {counts2025.part3Count > 0
+                        ? "Form 2025 (3 phần)"
+                        : "Form 2025 (2 phần)"}{" "}
+                      · Môn {session.subject}
+                    </>
+                  );
+                })()
+              ) : (
+                <>
+                  {session.questionCount} câu trắc nghiệm · tổng 10 điểm · Phiếu{" "}
+                  {session.sheetType} câu · Môn {session.subject}
+                </>
+              )}
             </p>
           </div>
 
@@ -1318,35 +1354,46 @@ export function SessionDetailView({
               Chi tiết câu trả lời
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2">
-              {Array.from({ length: session.questionCount }).map((_, idx) => {
-                const qNum = idx + 1;
-                const studentAns = (selectedStudentDetail.studentAnswers[qNum] || "").toUpperCase();
-                const correctAns = (session.answerKey[qNum] || "A").toUpperCase();
-                const isCorrect = studentAns === correctAns;
-
-                return (
-                  <div
-                    key={qNum}
-                    className={`p-2 rounded-lg border text-center text-xs ${
-                      isCorrect
-                        ? "border-emerald-200 bg-emerald-50/60"
-                        : studentAns
-                        ? "border-red-200 bg-red-50/60"
-                        : "border-neutral-200 bg-neutral-50"
-                    }`}
-                  >
-                    <div className="text-[10px] text-neutral-400 font-semibold">Câu {qNum}</div>
-                    <div className="font-mono font-bold mt-0.5">
-                      <span className={isCorrect ? "text-emerald-700" : "text-red-600"}>
-                        {studentAns || "—"}
-                      </span>
-                      {!isCorrect && (
-                        <span className="text-emerald-600 text-[11px] ml-1">({correctAns})</span>
-                      )}
-                    </div>
+              {scoreStudentAnswers({
+                sheetType: session.sheetType,
+                subject: session.subject,
+                questionCount: session.questionCount,
+                answerKey: session.answerKey || {},
+                studentAnswers: selectedStudentDetail.studentAnswers || {},
+              }).details.map((d) => (
+                <div
+                  key={d.questionNumber}
+                  className={`p-2 rounded-lg border text-center text-xs ${
+                    d.isCorrect
+                      ? "border-emerald-200 bg-emerald-50/60"
+                      : !d.isEmpty
+                      ? "border-red-200 bg-red-50/60"
+                      : "border-neutral-200 bg-neutral-50"
+                  }`}
+                >
+                  <div className="text-[10px] text-neutral-400 font-semibold">
+                    Câu {d.questionNumber}
                   </div>
-                );
-              })}
+                  <div className="font-mono font-bold mt-0.5 break-all">
+                    <span
+                      className={
+                        d.isCorrect
+                          ? "text-emerald-700"
+                          : d.isEmpty
+                          ? "text-neutral-400"
+                          : "text-red-600"
+                      }
+                    >
+                      {d.studentAnswer || "—"}
+                    </span>
+                    {!d.isCorrect && d.correctAnswer && (
+                      <span className="text-emerald-600 text-[11px] ml-1">
+                        ({d.correctAnswer})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="mt-6 pt-4 border-t border-neutral-100 text-right">

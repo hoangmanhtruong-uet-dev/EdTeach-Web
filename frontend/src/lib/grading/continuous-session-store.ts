@@ -2,6 +2,11 @@
 // Backed by PostgreSQL/Supabase with robust in-memory fallback for local dev & testing
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  flattenOmrAnswers,
+  isValidStudentCode,
+  scoreStudentAnswers,
+} from "./omr-template-resolver";
 
 export interface RosterStudent {
   sbd: string;
@@ -430,6 +435,9 @@ export async function submitContinuousPaper(params: {
   }
 
   // Idempotency check: if clientSubmissionId already exists, return it immediately
+  if (!submissionsMap.has(session.id)) {
+    await getSessionSubmissions(session.id);
+  }
   const existingSubs = submissionsMap.get(session.id) || [];
   const existing = existingSubs.find(
     (s) => s.clientSubmissionId === params.clientSubmissionId
@@ -449,8 +457,8 @@ export async function submitContinuousPaper(params: {
 
   if (params.omrResult) {
     const omr = params.omrResult;
-    if (omr.student_code && omr.student_code !== "??????" && !studentSbd) {
-      studentSbd = omr.student_code;
+    if (isValidStudentCode(omr.student_code) && !studentSbd) {
+      studentSbd = String(omr.student_code).trim();
     }
     if (omr.annotated_image_base64) {
       annotatedImage = omr.annotated_image_base64;
@@ -458,35 +466,34 @@ export async function submitContinuousPaper(params: {
     if (omr.confidence !== undefined) {
       confidence = Math.min(confidence, omr.confidence);
     }
-    // Trích xuất answers từ OMR kết quả
-    const resultsObj = omr.results || omr.part1_results || {};
-    for (const [qNumStr, val] of Object.entries(resultsObj as Record<string, any>)) {
-      const qNum = parseInt(qNumStr, 10);
-      if (!isNaN(qNum)) {
-        rawAnswers[qNum] = val.selected || "";
-      }
-    }
+    Object.assign(
+      rawAnswers,
+      flattenOmrAnswers(omr, session.sheetType, session.subject, session.questionCount)
+    );
   }
 
-  // Chấm điểm đối chiếu với answerKey của phiên
-  let correctCount = 0;
-  const totalQuestions = session.questionCount || Object.keys(session.answerKey).length || 20;
+  // Chấm điểm đối chiếu với answerKey của phiên (hỗ trợ cả ABCD, Đúng/Sai GDPT 2025 & Trả lời ngắn)
+  const effectiveQCount =
+    params.omrResult?.sheet_type === "bgd_2025" ? 54 : session.questionCount;
+  const scored = scoreStudentAnswers({
+    sheetType: session.sheetType,
+    subject: session.subject,
+    questionCount: effectiveQCount,
+    answerKey: session.answerKey,
+    studentAnswers: rawAnswers,
+  });
 
-  for (let q = 1; q <= totalQuestions; q++) {
-    const correctVal = (session.answerKey[q] || "A").trim().toUpperCase();
-    const studentVal = (rawAnswers[q] || "").trim().toUpperCase();
-    const isCorrect = studentVal === correctVal && studentVal.length > 0;
-    if (isCorrect) correctCount++;
+  const correctCount = scored.correctCount;
+  const score = scored.score;
 
+  for (const d of scored.details) {
     answersList.push({
-      questionNumber: q,
-      selected: studentVal,
-      correctAnswer: correctVal,
-      isCorrect,
+      questionNumber: d.questionNumber,
+      selected: d.studentAnswer,
+      correctAnswer: d.correctAnswer,
+      isCorrect: d.isCorrect,
     });
   }
-
-  const score = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) / 10 : 0;
 
   // 2. Nhận diện danh tính & Đối chiếu Roster
   let matchedStudentId: string | null = null;
@@ -500,7 +507,7 @@ export async function submitContinuousPaper(params: {
   }
 
   // Check 2: Trống SBD hoặc SBD không hợp lệ
-  if (!studentSbd || studentSbd.includes("?")) {
+  if (!isValidStudentCode(studentSbd)) {
     needsReview = true;
     reviewNotes += "Không nhận diện rõ SBD. ";
   }
@@ -596,8 +603,12 @@ export async function updateSubmission(params: {
   status?: "processing" | "graded" | "needs_review" | "confirmed";
   reviewNotes?: string;
 }): Promise<ContinuousSubmission | null> {
-  const subs = submissionsMap.get(params.sessionId) || [];
-  const sub = subs.find((s) => s.id === params.submissionId);
+  let subs = submissionsMap.get(params.sessionId) || [];
+  let sub = subs.find((s) => s.id === params.submissionId);
+  if (!sub) {
+    subs = await getSessionSubmissions(params.sessionId);
+    sub = subs.find((s) => s.id === params.submissionId);
+  }
   if (!sub) return null;
 
   if (params.detectedSbd !== undefined) sub.detectedSbd = params.detectedSbd;
@@ -607,12 +618,35 @@ export async function updateSubmission(params: {
   if (params.status !== undefined) sub.status = params.status;
 
   if (params.answers) {
-    sub.answers = params.answers;
-    sub.correctCount = params.answers.filter((a) => a.isCorrect).length;
-    sub.score =
-      params.answers.length > 0
-        ? Math.round((sub.correctCount / params.answers.length) * 100) / 10
-        : 0;
+    const session = await getContinuousSession(params.sessionId);
+    if (session) {
+      const answerMap: Record<number, string> = {};
+      for (const a of params.answers) {
+        answerMap[a.questionNumber] = a.selected;
+      }
+      const scored = scoreStudentAnswers({
+        sheetType: session.sheetType,
+        subject: session.subject,
+        questionCount: session.questionCount,
+        answerKey: session.answerKey,
+        studentAnswers: answerMap,
+      });
+      sub.answers = scored.details.map((d) => ({
+        questionNumber: d.questionNumber,
+        selected: d.studentAnswer,
+        correctAnswer: d.correctAnswer,
+        isCorrect: d.isCorrect,
+      }));
+      sub.correctCount = scored.correctCount;
+      sub.score = scored.score;
+    } else {
+      sub.answers = params.answers;
+      sub.correctCount = params.answers.filter((a) => a.isCorrect).length;
+      sub.score =
+        params.answers.length > 0
+          ? Math.round((sub.correctCount / params.answers.length) * 100) / 10
+          : 0;
+    }
   }
 
   // Sync to Supabase

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { GradedStudent, ExamSession } from "./session-detail-view";
 import { RemediationSheetData } from "@/lib/remediation/remediation-store";
+import { scoreStudentAnswers } from "@/lib/grading/omr-template-resolver";
 // remediation docx exporter loaded dynamically on demand
 
 interface RemediationModalProps {
@@ -55,39 +56,38 @@ export function RemediationModal({
   const [tutorBrandName, setTutorBrandName] = useState(teacherName || "");
   const [tutorPhone, setTutorPhone] = useState("");
 
-  // Extract all wrong questions for this student
+  // Extract all wrong questions for this student (hỗ trợ cả ABCD, Đúng/Sai GDPT 2025 & Điền số)
   const wrongQuestions = React.useMemo(() => {
     if (!student) return [];
-    const wrongs: Array<{
-      questionNumber: number;
-      cognitiveLevel: string;
-      studentAnswer: string;
-      correctAnswer: string;
-      content?: string;
-    }> = [];
+    const scored = scoreStudentAnswers({
+      sheetType: session.sheetType,
+      subject: session.subject,
+      questionCount: session.questionCount || 40,
+      answerKey: session.answerKey || {},
+      studentAnswers: student.studentAnswers || {},
+    });
+    const totalQ = scored.totalQuestions || session.questionCount || 40;
 
-    const totalQ = session.questionCount || 40;
-    for (let q = 1; q <= totalQ; q++) {
-      const studentAns = (
-        (student.studentAnswers && student.studentAnswers[q]) ||
-        ""
-      ).toUpperCase().trim();
-      const correctAns = ((session.answerKey && session.answerKey[q]) || "A").toUpperCase().trim();
-      const isCorrect = studentAns === correctAns && studentAns !== "";
+    return scored.details
+      .filter((d) => !d.isCorrect)
+      .map((d) => {
+        const ratio = totalQ > 0 ? d.questionNumber / totalQ : 0;
+        const cog =
+          ratio <= 0.4
+            ? "Nhận biết"
+            : ratio <= 0.7
+            ? "Thông hiểu"
+            : ratio <= 0.9
+            ? "Vận dụng"
+            : "Vận dụng cao";
 
-      if (!isCorrect) {
-        const ratio = q / totalQ;
-        const cog = ratio <= 0.4 ? "Nhận biết" : ratio <= 0.7 ? "Thông hiểu" : ratio <= 0.9 ? "Vận dụng" : "Vận dụng cao";
-
-        wrongs.push({
-          questionNumber: q,
+        return {
+          questionNumber: d.questionNumber,
           cognitiveLevel: cog,
-          studentAnswer: studentAns || "Chưa điền",
-          correctAnswer: correctAns,
-        });
-      }
-    }
-    return wrongs;
+          studentAnswer: d.studentAnswer || "Chưa điền",
+          correctAnswer: d.correctAnswer || "",
+        };
+      });
   }, [student, session]);
 
   // Default select all wrong questions when opening

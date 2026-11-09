@@ -46,15 +46,29 @@ def extract_bubble_stats(
     # Mean intensity inside circle
     mean_val = cv2.mean(roi, mask=mask)[0]
 
-    # Local thresholding: Pencil on white paper
-    # Typical paper is 220-250, pencil is 50-130, eraser smudge is 160-200
+    # Estimate local paper brightness right outside the bubble outline to stay robust in dim lighting
+    bg_r = int(round(r * 1.5))
+    bx1, by1 = max(0, cx - bg_r), max(0, cy - bg_r)
+    bx2, by2 = min(w_img, cx + bg_r + 1), min(h_img, cy + bg_r + 1)
+    bg_patch = gray[by1:by2, bx1:bx2]
+    if bg_patch.size > 0:
+        yy, xx = np.ogrid[:bg_patch.shape[0], :bg_patch.shape[1]]
+        dist2 = (xx - (cx - bx1)) ** 2 + (yy - (cy - by1)) ** 2
+        outer_ring_px = bg_patch[dist2 >= (r + 1) ** 2]
+        paper_bg = float(np.percentile(outer_ring_px, 85)) if outer_ring_px.size >= 8 else 240.0
+    else:
+        paper_bg = 240.0
+    paper_bg = max(130.0, min(255.0, paper_bg))
+
+    # Local thresholding: Pencil on paper
+    # Typical paper is bright relative to local ring, pencil is clearly darker
     _, thresh = cv2.threshold(roi, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     dark_pixels = cv2.countNonZero(cv2.bitwise_and(thresh, thresh, mask=mask))
 
     fill_ratio = dark_pixels / float(total_inner_pixels)
 
-    # Darkness metric: 1.0 = completely black (0), 0.0 = completely white (255)
-    darkness = max(0.0, min(1.0, (240.0 - mean_val) / 180.0))
+    # Darkness metric normalized to local paper brightness
+    darkness = max(0.0, min(1.0, (paper_bg - mean_val) / max(80.0, paper_bg * 0.72)))
 
     # Composite score giving weight to both binary fill and analog darkness
     composite_score = 0.65 * fill_ratio + 0.35 * darkness

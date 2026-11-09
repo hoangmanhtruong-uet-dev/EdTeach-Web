@@ -5,6 +5,10 @@ import {
   submitContinuousPaper,
   updateSubmission,
 } from "@/lib/grading/continuous-session-store";
+import {
+  resolveBackendOmrSheetType,
+  isValidStudentCode,
+} from "@/lib/grading/omr-template-resolver";
 
 const AI_SERVICE_BASE =
   process.env.INTERNAL_AI_SERVICE_URL ||
@@ -65,14 +69,18 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         "csub_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
       const imageBase64 = item.imageBase64 || item.image;
       let detectedSbd = item.detectedSbd || item.studentCode || "";
-      let detectedName = item.detectedName || item.studentName || "";
-      let confidence = item.confidence ?? 1.0;
+      const detectedName = item.detectedName || item.studentName || "";
+      const confidence = item.confidence ?? 1.0;
       let omrResult = item.omrResult || null;
 
       // Nếu có ảnh mà chưa có omrResult, gọi OMR engine
       if (imageBase64 && !omrResult) {
         try {
-          const sheetType = session.sheetType === "2025" ? "bgd_2025" : "classic_50";
+          const sheetType = resolveBackendOmrSheetType(
+            session.sheetType,
+            session.subject,
+            session.questionCount
+          );
           const omrRes = await fetch(`${AI_SERVICE_BASE}/ai/omr/grade-single`, {
             method: "POST",
             headers: {
@@ -85,14 +93,14 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
               answer_key: session.answerKey || {},
               return_annotated_image: true,
             }),
-            signal: AbortSignal.timeout(3500),
+            signal: AbortSignal.timeout(8000),
           });
 
           if (omrRes.ok) {
             const json = await omrRes.json();
             omrResult = json.data;
-            if (omrResult.student_code && omrResult.student_code !== "??????") {
-              detectedSbd = omrResult.student_code;
+            if (omrResult && isValidStudentCode(omrResult.student_code)) {
+              detectedSbd = omrResult.student_code.trim();
             }
           }
         } catch (omrErr) {

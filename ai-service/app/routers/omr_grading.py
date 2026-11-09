@@ -27,7 +27,7 @@ router = APIRouter(
 
 class SingleGradeRequest(BaseModel):
     image_base64: str = Field(..., description="Ảnh bài thi chụp từ camera hoặc scan (Base64 hoặc Data URI)")
-    sheet_type: str = Field("bgd_2025", description="Mẫu phiếu: 'bgd_2025' hoặc 'classic_50'")
+    sheet_type: str = Field("bgd_2025", description="Mẫu phiếu: 'bgd_2025_math', 'bgd_2025_science', 'bgd_2025_social', 'sheet_20', 'sheet_40', 'sheet_50', 'bgd_2025' hoặc 'classic_50'")
     answer_key: Dict[str, Any] = Field(default_factory=dict, description="Đáp án chuẩn của đề thi")
     return_annotated_image: bool = Field(True, description="Có trả về ảnh nắn kèm vòng tròn xanh/đỏ/vàng không")
 
@@ -40,13 +40,13 @@ class BatchItemRequest(BaseModel):
 
 class BatchGradeRequest(BaseModel):
     items: List[BatchItemRequest] = Field(..., description="Danh sách các ảnh bài thi cần chấm")
-    sheet_type: str = Field("bgd_2025", description="Mẫu phiếu: 'bgd_2025' hoặc 'classic_50'")
+    sheet_type: str = Field("bgd_2025", description="Mẫu phiếu: 'bgd_2025_math', 'bgd_2025_science', 'bgd_2025_social', 'sheet_20', 'sheet_40', 'sheet_50', 'bgd_2025' hoặc 'classic_50'")
     answer_key: Dict[str, Any] = Field(default_factory=dict, description="Đáp án chuẩn")
     return_annotated_images: bool = Field(False, description="Có trả về ảnh annotated cho từng bài không")
 
 
 class TemplatePdfRequest(BaseModel):
-    sheet_type: str = Field("bgd_2025", description="Mẫu phiếu: 'bgd_2025' hoặc 'classic_50'")
+    sheet_type: str = Field("bgd_2025", description="Mẫu phiếu: 'bgd_2025_math', 'bgd_2025_science', 'bgd_2025_social', 'sheet_20', 'sheet_40', 'sheet_50', 'bgd_2025' hoặc 'classic_50'")
     exam_title: str = Field("KỲ THI TRẮC NGHIỆM ĐỊNH KỲ", description="Tiêu đề kỳ thi in trên đầu phiếu")
     school_name: Optional[str] = Field("TRƯỜNG THPT CHUYÊN EDU", description="Tên trường")
 
@@ -56,16 +56,28 @@ async def get_supported_templates():
     """Lấy danh sách các mẫu phiếu trắc nghiệm hệ thống hỗ trợ."""
     templates = []
     for k, geom in GEOMETRIES.items():
+        if k == "bgd_2025_math":
+            features = ["Phần I (12 câu MCQ)", "Phần II (4 câu Đúng/Sai)", "Phần III (6 câu Điền số chuẩn -/,)"]
+        elif k == "bgd_2025_science":
+            features = ["Phần I (18 câu MCQ)", "Phần II (4 câu Đúng/Sai)", "Phần III (6 câu Điền số chuẩn -/,)"]
+        elif k == "bgd_2025_social":
+            features = ["Phần I (24 câu MCQ)", "Phần II (4 câu Đúng/Sai)", "Không có Phần III (Khu chữ ký)"]
+        elif k == "sheet_20":
+            features = ["20 câu trắc nghiệm 4 lựa chọn (2 cột x 10 hàng, 0.5đ/câu)"]
+        elif k == "sheet_40":
+            features = ["40 câu trắc nghiệm 4 lựa chọn (4 cột x 10 hàng, 0.25đ/câu)"]
+        elif k == "sheet_50":
+            features = ["50 câu trắc nghiệm 4 lựa chọn (5 cột x 10 hàng, 0.2đ/câu)"]
+        elif k == "bgd_2025":
+            features = ["Phần I (40 câu MCQ)", "Phần II (8 câu Đúng/Sai)", "Phần III (6 câu Điền số)"]
+        else:
+            features = ["50 câu trắc nghiệm 4 lựa chọn (A, B, C, D)"]
         templates.append({
             "id": k,
             "name": geom.get("name"),
             "width": geom.get("width"),
             "height": geom.get("height"),
-            "features": (
-                ["Phần I (40 câu MCQ)", "Phần II (8 câu Đúng/Sai)", "Phần III (6 câu Điền số)"]
-                if k == "bgd_2025"
-                else ["50 câu trắc nghiệm 4 lựa chọn (A, B, C, D)"]
-            )
+            "features": features
         })
     return {"templates": templates}
 

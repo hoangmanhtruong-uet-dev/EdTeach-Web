@@ -55,6 +55,13 @@ import { useToast } from "@/context/toast-context";
 import { useConfirm } from "@/context/confirm-dialog-context";
 import { getUserPreferences } from "@/lib/preferences";
 import { PLATFORM_NAME, SUPPORT_EMAIL } from "@/lib/constants";
+import {
+  computeOmrCounts,
+  flattenOmrAnswers,
+  get2025QuestionCounts,
+  isValidStudentCode,
+  scoreStudentAnswers,
+} from "@/lib/grading/omr-template-resolver";
 
 interface ExamSession {
   id: string;
@@ -176,10 +183,15 @@ function GradingPageInner() {
         body: JSON.stringify({
           action: "download_pdf",
           sheetType: showPrintModal.sheetType,
+          subject: showPrintModal.subject,
+          questionCount: showPrintModal.questionCount,
           examTitle: showPrintModal.name,
         }),
       });
-      if (!res.ok) throw new Error("Lỗi tải PDF từ AI Service");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Lỗi tải PDF từ AI Service");
+      }
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -296,7 +308,10 @@ function GradingPageInner() {
     setCreateSessionName(`Kỳ thi khảo sát ${createSubject} ${new Date().toLocaleDateString("vi-VN")}`);
     // Mặc định sinh đáp án mẫu
     const initialAnswers: Record<number, string> = {};
-    const count = parseInt(createSheetType) || 20;
+    const count =
+      createSheetType === "2025"
+        ? get2025QuestionCounts(createSubject).totalQuestions
+        : parseInt(createSheetType) || 20;
     const choices = ["A", "B", "C", "D"];
     for (let i = 1; i <= count; i++) {
       initialAnswers[i] = choices[(i - 1) % 4];
@@ -315,139 +330,74 @@ function GradingPageInner() {
     return { label: "Chưa đạt", badgeClass: "bg-rose-600 text-white shadow-rose-500/20" };
   };
 
-  // Tính điểm thông minh: Hỗ trợ cả 20, 40, 50 câu và cấu trúc GDPT 2025
+  // Tính điểm thông minh: Hỗ trợ 20, 40, 50 câu và cả 3 biến thể GDPT 2025 (Toán / KHTN / KHXH)
   const computeStudentResult = (
     session: ExamSession,
     existingAnswers?: Record<number, string>
   ) => {
     const is2025 = session.sheetType === "2025";
-    const studentAns: Record<number, string> = {};
-    let totalScore = 0;
-    let correctCount = 0;
-    let incorrectCount = 0;
-    let emptyCount = 0;
+    const generatedAnswers: Record<number, string> = {};
 
-    if (is2025) {
-      // CẤU TRÚC ĐỀ THI TỐT NGHIỆP THPT 2025 CHUẨN BỘ GD&ĐT:
-      // Phân biệt Môn Toán (22 câu) và Môn Lý/Hóa/Sinh (28 câu)
-      const isScience = ["Vật lí", "Hóa học", "Sinh học"].includes(session.subject) || session.questionCount === 28;
-      const part1Count = isScience ? 18 : 12;
-      const part2Count = 4;
-      const part3Count = 6;
-      const part1Point = 0.25;
-      const part3Point = isScience ? 0.25 : 0.5;
-
-      // PHẦN I: Trắc nghiệm 4 lựa chọn (Toán 12 câu = 3.0đ, Lý/Hóa/Sinh 18 câu = 4.5đ)
-      for (let i = 1; i <= part1Count; i++) {
-        const correctVal = session.answerKey[i] || "A";
-        let ans = existingAnswers ? existingAnswers[i] : undefined;
-        if (ans === undefined) {
+    if (!existingAnswers) {
+      if (is2025) {
+        const counts = get2025QuestionCounts(session.subject, session.questionCount);
+        const choices = ["A", "B", "C", "D"];
+        for (let i = 1; i <= counts.part1Count; i++) {
+          const correctVal = session.answerKey[i] || "A";
           const isRight = Math.random() < 0.85;
-          const choices = ["A", "B", "C", "D"];
-          ans = isRight ? correctVal : choices[(choices.indexOf(correctVal) + 1) % 4];
+          generatedAnswers[i] = isRight
+            ? correctVal
+            : choices[(choices.indexOf(correctVal) + 1) % 4];
         }
-        studentAns[i] = ans;
-        if (ans === correctVal) {
-          totalScore += part1Point;
-          correctCount++;
-        } else if (!ans || ans === "blank") {
-          emptyCount++;
-        } else {
-          incorrectCount++;
+        const startP2 = counts.part1Count + 1;
+        const endP2 = counts.part1Count + counts.part2Count;
+        for (let i = startP2; i <= endP2; i++) {
+          const correctVal = session.answerKey[i] || "Đ-S-Đ-Đ";
+          const correctParts = correctVal.split("-");
+          generatedAnswers[i] = correctParts
+            .map((part) => (Math.random() < 0.85 ? part : part === "Đ" ? "S" : "Đ"))
+            .join("-");
         }
-      }
-
-      // PHẦN II: 4 câu Đúng/Sai (Mỗi câu 4 ý a-b-c-d = 4.0đ)
-      // Thang điểm Bộ GD&ĐT: Đúng 1 ý = 0.1đ; 2 ý = 0.25đ; 3 ý = 0.5đ; 4 ý = 1.0đ
-      const startP2 = part1Count + 1;
-      const endP2 = part1Count + part2Count;
-      for (let i = startP2; i <= endP2; i++) {
-        const correctVal = session.answerKey[i] || "Đ-S-Đ-Đ";
-        const correctParts = correctVal.split("-");
-        let ans = existingAnswers ? existingAnswers[i] : undefined;
-        if (ans === undefined) {
-          const studentParts = correctParts.map((part) =>
-            Math.random() < 0.85 ? part : part === "Đ" ? "S" : "Đ"
-          );
-          ans = studentParts.join("-");
-        }
-        studentAns[i] = ans;
-
-        const studentParts = ans ? ans.split("-") : [];
-        let rightSubs = 0;
-        for (let p = 0; p < 4; p++) {
-          if (studentParts[p] && studentParts[p] === correctParts[p]) {
-            rightSubs++;
+        if (counts.part3Count > 0) {
+          const startP3 = endP2 + 1;
+          const endP3 = counts.totalQuestions;
+          for (let i = startP3; i <= endP3; i++) {
+            const correctVal = session.answerKey[i] || "15";
+            generatedAnswers[i] =
+              Math.random() < 0.8 ? correctVal : String((parseInt(correctVal, 10) || 15) + 1);
           }
         }
-
-        if (rightSubs === 4) {
-          totalScore += 1.0;
-          correctCount++;
-        } else if (rightSubs === 3) {
-          totalScore += 0.5;
-          correctCount++;
-        } else if (rightSubs === 2) {
-          totalScore += 0.25;
-          incorrectCount++;
-        } else if (rightSubs === 1) {
-          totalScore += 0.1;
-          incorrectCount++;
-        } else {
-          incorrectCount++;
-        }
-      }
-
-      // PHẦN III: 6 câu Trả lời ngắn / Điền số (Toán 0.5đ/câu = 3.0đ, KHTN 0.25đ/câu = 1.5đ)
-      const startP3 = endP2 + 1;
-      const endP3 = part1Count + part2Count + part3Count;
-      for (let i = startP3; i <= endP3; i++) {
-        const correctVal = session.answerKey[i] || "15";
-        let ans = existingAnswers ? existingAnswers[i] : undefined;
-        if (ans === undefined) {
-          ans = Math.random() < 0.8 ? correctVal : (parseInt(correctVal) + 1).toString();
-        }
-        studentAns[i] = ans;
-        if (ans && ans.trim() === correctVal.trim()) {
-          totalScore += part3Point;
-          correctCount++;
-        } else if (!ans) {
-          emptyCount++;
-        } else {
-          incorrectCount++;
-        }
-      }
-    } else {
-      // PHIẾU TRUYỀN THỐNG: 20, 40 hoặc 50 câu (A, B, C, D)
-      const totalQ = session.questionCount;
-      const pointPerQ = 10 / totalQ;
-      const choices = ["A", "B", "C", "D"];
-
-      for (let i = 1; i <= totalQ; i++) {
-        const correctVal = session.answerKey[i] || "A";
-        let ans = existingAnswers ? existingAnswers[i] : undefined;
-        if (ans === undefined) {
+      } else {
+        const totalQ = session.questionCount;
+        const choices = ["A", "B", "C", "D"];
+        for (let i = 1; i <= totalQ; i++) {
+          const correctVal = session.answerKey[i] || "A";
           const isRight = Math.random() < 0.85;
-          ans = isRight ? correctVal : choices[(choices.indexOf(correctVal) + 1) % 4];
-        }
-        studentAns[i] = ans;
-        if (ans === correctVal) {
-          totalScore += pointPerQ;
-          correctCount++;
-        } else if (!ans || ans === "blank") {
-          emptyCount++;
-        } else {
-          incorrectCount++;
+          generatedAnswers[i] = isRight
+            ? correctVal
+            : choices[(choices.indexOf(correctVal) + 1) % 4];
         }
       }
     }
 
-    const finalScore = Math.min(10, Math.round(totalScore * 10) / 10);
+    const scored = scoreStudentAnswers({
+      sheetType: session.sheetType,
+      subject: session.subject,
+      questionCount: session.questionCount,
+      answerKey: session.answerKey || {},
+      studentAnswers: existingAnswers || generatedAnswers,
+    });
+
+    const studentAns: Record<number, string> = {};
+    for (const d of scored.details) {
+      studentAns[d.questionNumber] = d.studentAnswer;
+    }
+
     return {
-      score: finalScore,
-      correctCount,
-      incorrectCount,
-      emptyCount,
+      score: scored.score,
+      correctCount: scored.correctCount,
+      incorrectCount: scored.incorrectCount,
+      emptyCount: scored.emptyCount,
       studentAnswers: studentAns,
     };
   };
@@ -455,14 +405,18 @@ function GradingPageInner() {
   // Thay đổi số câu khi đổi mẫu phiếu
   const handleSheetTypeChange = (type: "20" | "40" | "50" | "2025") => {
     setCreateSheetType(type);
-    const count = type === "2025" ? 22 : parseInt(type);
+    const counts2025 = get2025QuestionCounts(createSubject);
+    const count = type === "2025" ? counts2025.totalQuestions : parseInt(type);
     const updated: Record<number, string> = {};
     const choices = ["A", "B", "C", "D"];
     for (let i = 1; i <= count; i++) {
       if (type === "2025") {
-        if (i <= 12) updated[i] = manualAnswers[i] || choices[(i - 1) % 4];
-        else if (i <= 16) updated[i] = manualAnswers[i] || "Đ-S-Đ-Đ";
-        else updated[i] = manualAnswers[i] || "15";
+        if (i <= counts2025.part1Count) updated[i] = manualAnswers[i] || choices[(i - 1) % 4];
+        else if (i <= counts2025.part1Count + counts2025.part2Count) {
+          updated[i] = manualAnswers[i] || "Đ-S-Đ-Đ";
+        } else {
+          updated[i] = manualAnswers[i] || "15";
+        }
       } else {
         updated[i] = manualAnswers[i] || choices[(i - 1) % 4];
       }
@@ -470,25 +424,27 @@ function GradingPageInner() {
     setManualAnswers(updated);
   };
 
-  // Khi chọn một đề thi đã soạn sẵn
-  const handleSelectExistingExam = (examId: string) => {
+  // Khi chọn một đề thi đã soạn sẵn (nạp đáp án THẬT từ DB)
+  const handleSelectExistingExam = async (examId: string) => {
     setSelectedExamId(examId);
     const found = userExams.find((e) => e.id === examId);
-    if (found) {
-      setCreateSessionName(`Chấm: ${found.name}`);
-      setCreateSubject(found.subject || "Toán");
-      setCreateGrade(found.grade || "10");
+    if (!found) return;
+    setCreateSessionName(`Chấm: ${found.name}`);
+    setCreateSubject(found.subject || "Toán");
+    setCreateGrade(found.grade || "10");
+
+    try {
+      const extracted = await extractRealAnswerKeyFromExam(examId);
+      setCreateSubject(extracted.subject || found.subject || "Toán");
+      setCreateGrade(extracted.grade || found.grade || "10");
+      setCreateSheetType(extracted.sheetType);
+      setManualAnswers(extracted.answerKey);
+    } catch {
       const count = found.question_count || 20;
       if (count <= 20) setCreateSheetType("20");
       else if (count <= 40) setCreateSheetType("40");
       else setCreateSheetType("50");
-
-      const choices = ["A", "B", "C", "D"];
-      const ans: Record<number, string> = {};
-      for (let i = 1; i <= count; i++) {
-        ans[i] = choices[(i * 3) % 4];
-      }
-      setManualAnswers(ans);
+      setManualAnswers({});
     }
   };
 
@@ -499,7 +455,10 @@ function GradingPageInner() {
       return;
     }
 
-    const count = createSheetType === "2025" ? 22 : parseInt(createSheetType);
+    const count =
+      createSheetType === "2025"
+        ? get2025QuestionCounts(createSubject).totalQuestions
+        : parseInt(createSheetType);
     const newSession: ExamSession = {
       id: "session_" + Date.now(),
       name: createSessionName.trim(),
@@ -657,34 +616,40 @@ function GradingPageInner() {
       let flaggedQuestions: any[] = [];
       let omrEngine: string | undefined = undefined;
 
+      let finalEmpty = 0;
+
       if (sub.omrResult) {
         const omr = sub.omrResult;
         finalScore = omr.total_score ?? 0;
-        finalCorrect = omr.correct_count ?? (omr.scores_by_section ? Math.round(omr.scores_by_section.part1_score / 0.25) : 0);
-        finalIncorrect = omr.total_questions ? (omr.total_questions - finalCorrect) : 0;
+        const counts = computeOmrCounts(omr, currentSession.questionCount);
+        finalCorrect = counts.correctCount;
+        finalIncorrect = counts.incorrectCount;
+        finalEmpty = counts.emptyCount;
         annotatedImage = omr.annotated_image_base64;
         flaggedQuestions = omr.flagged_questions || [];
         omrEngine = omr.engine_used;
-
-        if (omr.results) {
-          for (const [k, v] of Object.entries(omr.results as Record<string, any>)) {
-            finalAnswers[Number(k)] = v.selected || "";
-          }
-        } else if (omr.part1_results) {
-          for (const [k, v] of Object.entries(omr.part1_results as Record<string, any>)) {
-            finalAnswers[Number(k)] = v.selected || "";
-          }
-        }
+        finalAnswers = flattenOmrAnswers(
+          omr,
+          currentSession.sheetType,
+          currentSession.subject,
+          currentSession.questionCount
+        );
       } else {
         const result = computeStudentResult(currentSession);
         finalScore = result.score;
         finalCorrect = result.correctCount;
         finalIncorrect = result.incorrectCount;
+        finalEmpty = result.emptyCount;
         finalAnswers = result.studentAnswers;
       }
 
+      const detectedCode = isValidStudentCode(sub.studentCode)
+        ? String(sub.studentCode).trim()
+        : isValidStudentCode(sub.omrResult?.student_code)
+        ? String(sub.omrResult.student_code).trim()
+        : "";
       const studentName = sub.studentName || `Học sinh ${currentSession.gradedStudents.length + 1}`;
-      const studentCode = sub.studentCode || `${1000 + currentSession.gradedStudents.length + 1}`;
+      const studentCode = detectedCode || `${1000 + currentSession.gradedStudents.length + 1}`;
 
       const newStudent = {
         id: "std_" + Date.now(),
@@ -693,7 +658,7 @@ function GradingPageInner() {
         score: finalScore,
         correctCount: finalCorrect,
         incorrectCount: finalIncorrect,
-        emptyCount: 0,
+        emptyCount: finalEmpty,
         gradedAt: new Date().toLocaleTimeString("vi-VN") + " " + new Date().toLocaleDateString("vi-VN"),
         studentAnswers: finalAnswers,
         annotatedImage,
@@ -830,6 +795,8 @@ function GradingPageInner() {
             action: "grade_single",
             imageBase64: imageToGrade,
             sheetType: showScanModal.sheetType,
+            subject: showScanModal.subject,
+            questionCount: showScanModal.questionCount,
             answerKey: showScanModal.answerKey,
             returnAnnotatedImage: true,
           }),
@@ -839,35 +806,32 @@ function GradingPageInner() {
           const json = await res.json();
           const omr = json.data;
 
-          const studentAns: Record<number, string> = {};
-          if (omr.results) {
-            for (const [k, v] of Object.entries(omr.results as Record<string, any>)) {
-              studentAns[Number(k)] = v.selected || "";
-            }
-          } else if (omr.part1_results) {
-            for (const [k, v] of Object.entries(omr.part1_results as Record<string, any>)) {
-              studentAns[Number(k)] = v.selected || "";
-            }
-          }
+          const studentAns = flattenOmrAnswers(
+            omr,
+            showScanModal.sheetType,
+            showScanModal.subject,
+            showScanModal.questionCount
+          );
 
-          const studentName = (omr.student_code && omr.student_code !== "??????")
-            ? `SBD: ${omr.student_code}`
+          const hasValidCode = isValidStudentCode(omr.student_code);
+          const cleanCode = hasValidCode ? String(omr.student_code).trim() : "";
+          const studentName = hasValidCode
+            ? `SBD: ${cleanCode}`
             : (studentNameInput || `Học sinh ${showScanModal.gradedStudents.length + 1}`);
-          const studentCode = (omr.student_code && omr.student_code !== "??????")
-            ? omr.student_code
+          const studentCode = hasValidCode
+            ? cleanCode
             : (studentCodeInput || `${1000 + showScanModal.gradedStudents.length + 1}`);
 
-          const finalCorrect = omr.correct_count ?? (omr.scores_by_section ? Math.round(omr.scores_by_section.part1_score / 0.25) : 0);
-          const finalIncorrect = omr.total_questions ? (omr.total_questions - finalCorrect) : 0;
+          const counts = computeOmrCounts(omr, showScanModal.questionCount);
 
           const newStudent = {
             id: "std_" + Date.now(),
             studentName,
             studentCode,
             score: omr.total_score,
-            correctCount: finalCorrect,
-            incorrectCount: finalIncorrect,
-            emptyCount: 0,
+            correctCount: counts.correctCount,
+            incorrectCount: counts.incorrectCount,
+            emptyCount: counts.emptyCount,
             gradedAt: new Date().toLocaleTimeString("vi-VN") + " " + new Date().toLocaleDateString("vi-VN"),
             studentAnswers: studentAns,
             annotatedImage: omr.annotated_image_base64,
@@ -966,6 +930,8 @@ function GradingPageInner() {
           action: "grade_batch",
           items,
           sheetType: showScanModal.sheetType,
+          subject: showScanModal.subject,
+          questionCount: showScanModal.questionCount,
           answerKey: showScanModal.answerKey,
           returnAnnotatedImages: true,
         }),
@@ -978,29 +944,26 @@ function GradingPageInner() {
       for (const item of json.items || []) {
         if (item.status === "success" && item.data) {
           const omr = item.data;
-          const studentAns: Record<number, string> = {};
-          if (omr.results) {
-            for (const [k, v] of Object.entries(omr.results as Record<string, any>)) {
-              studentAns[Number(k)] = v.selected || "";
-            }
-          } else if (omr.part1_results) {
-            for (const [k, v] of Object.entries(omr.part1_results as Record<string, any>)) {
-              studentAns[Number(k)] = v.selected || "";
-            }
-          }
-          const finalCorrect = omr.correct_count ?? (omr.scores_by_section ? Math.round(omr.scores_by_section.part1_score / 0.25) : 0);
-          const finalIncorrect = omr.total_questions ? (omr.total_questions - finalCorrect) : 0;
+          const studentAns = flattenOmrAnswers(
+            omr,
+            showScanModal.sheetType,
+            showScanModal.subject,
+            showScanModal.questionCount
+          );
+          const counts = computeOmrCounts(omr, showScanModal.questionCount);
+          const hasValidCode = isValidStudentCode(omr.student_code);
+          const cleanCode = hasValidCode ? String(omr.student_code).trim() : "";
 
           newGradedStudents.push({
             id: "std_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
-            studentName: omr.student_code && omr.student_code !== "??????"
-              ? `SBD: ${omr.student_code}`
+            studentName: hasValidCode
+              ? `SBD: ${cleanCode}`
               : (item.student_name || "Học sinh"),
-            studentCode: omr.student_code || "",
+            studentCode: cleanCode,
             score: omr.total_score,
-            correctCount: finalCorrect,
-            incorrectCount: finalIncorrect,
-            emptyCount: 0,
+            correctCount: counts.correctCount,
+            incorrectCount: counts.incorrectCount,
+            emptyCount: counts.emptyCount,
             gradedAt: new Date().toLocaleTimeString("vi-VN") + " " + new Date().toLocaleDateString("vi-VN"),
             studentAnswers: studentAns,
             annotatedImage: omr.annotated_image_base64,
@@ -1210,7 +1173,7 @@ function GradingPageInner() {
                   Chấm phiếu trắc nghiệm
                 </h1>
                 <p className="mt-1.5 text-sm text-muted-foreground max-w-2xl leading-relaxed">
-                  Tạo kỳ thi, in phiếu cho học sinh tô, rồi chụp phiếu để chấm. Hỗ trợ chuẩn GDPT 2025 (3 phần), phiếu 20, 40, 50 câu và đa mã đề.
+                  Tạo kỳ thi, in phiếu cho học sinh tô, rồi chụp phiếu để chấm. Hỗ trợ chuẩn GDPT 2025 (Toán / KHTN 3 phần & KHXH 2 phần), phiếu 20, 40, 50 câu và đa mã đề.
                 </p>
               </div>
 
@@ -1445,7 +1408,7 @@ function GradingPageInner() {
 
                           {/* Mẫu phiếu */}
                           <span className="px-2.5 py-0.5 rounded text-[11px] font-medium bg-blue-950/40 text-blue-300 border border-blue-900/40">
-                            {session.sheetType === "2025" ? "Form 2025 (3 Phần)" : `Phiếu ${session.questionCount} câu`}
+                            {session.sheetType === "2025" ? (get2025QuestionCounts(session.subject, session.questionCount).part3Count > 0 ? "Form 2025 (3 Phần)" : "Form 2025 (2 Phần)") : `Phiếu ${session.questionCount} câu`}
                           </span>
 
                           {/* Ngày tạo */}

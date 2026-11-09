@@ -70,6 +70,7 @@ export function ZaloShareModal({
           sessionName: session.name,
           subject: session.subject,
           grade: session.grade,
+          sheetType: session.sheetType,
           questionCount: session.questionCount,
           answerKey: session.answerKey,
           student,
@@ -89,7 +90,7 @@ export function ZaloShareModal({
       const data = await res.json();
       setToken(data.token);
       setReportUrl(data.reportUrl);
-      setZaloText(data.zaloShareText);
+      setZaloText(data.zaloShareText || data.zaloMessage || "");
     } catch (err: any) {
       console.error("Zalo report generation failed:", err);
       setError(err.message || "Đã xảy ra lỗi khi kết nối tới máy chủ.");

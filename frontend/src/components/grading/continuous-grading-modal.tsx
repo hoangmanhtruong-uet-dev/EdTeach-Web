@@ -32,6 +32,11 @@ import {
 import { useToast } from "@/context/toast-context";
 import { useConfirm } from "@/context/confirm-dialog-context";
 import { ContinuousSubmission, RosterStudent } from "@/lib/grading/continuous-session-store";
+import {
+  get2025QuestionCounts,
+  normalizeTfGroupAnswer,
+  scoreStudentAnswers,
+} from "@/lib/grading/omr-template-resolver";
 
 interface ContinuousGradingModalProps {
   isOpen: boolean;
@@ -218,22 +223,29 @@ export function ContinuousGradingModal({
   // Sync back to parent exam session on close
   useEffect(() => {
     if (submissions.length > 0 && onUpdateSessionStudents) {
-      const mapped = submissions.map((s) => ({
-        id: s.id,
-        studentName: s.detectedName || `SBD ${s.detectedSbd || "Chưa rõ"}`,
-        studentCode: s.detectedSbd || "",
-        score: s.score,
-        correctCount: s.correctCount,
-        incorrectCount: session.questionCount - s.correctCount,
-        emptyCount: 0,
-        gradedAt: new Date(s.createdAt).toLocaleTimeString("vi-VN"),
-        studentAnswers: s.answers.reduce(
-          (acc, a) => ({ ...acc, [a.questionNumber]: a.selected }),
-          {}
-        ),
-        annotatedImage: s.annotatedImage,
-        status: s.status,
-      }));
+      const mapped = submissions.map((s) => {
+        const emptyCount = s.answers.filter((a) => !a.selected || !a.selected.trim()).length;
+        const incorrectCount =
+          s.answers.length > 0
+            ? s.answers.filter((a) => !a.isCorrect && Boolean(a.selected && a.selected.trim())).length
+            : Math.max(0, session.questionCount - s.correctCount);
+        return {
+          id: s.id,
+          studentName: s.detectedName || `SBD ${s.detectedSbd || "Chưa rõ"}`,
+          studentCode: s.detectedSbd || "",
+          score: s.score,
+          correctCount: s.correctCount,
+          incorrectCount,
+          emptyCount,
+          gradedAt: new Date(s.createdAt).toLocaleTimeString("vi-VN"),
+          studentAnswers: s.answers.reduce(
+            (acc, a) => ({ ...acc, [a.questionNumber]: a.selected }),
+            {}
+          ),
+          annotatedImage: s.annotatedImage,
+          status: s.status,
+        };
+      });
       onUpdateSessionStudents(mapped);
     }
   }, [submissions, session.questionCount, onUpdateSessionStudents]);
@@ -489,16 +501,34 @@ export function ContinuousGradingModal({
   const handleConfirmReview = async () => {
     if (!reviewingSubmission || !sessionToken) return;
 
-    // Recalculate answers & score
-    const updatedAnswers = reviewingSubmission.answers.map((a) => {
-      const selected = reviewAnswers[a.questionNumber] || a.selected;
-      const isCorrect = selected.toUpperCase() === a.correctAnswer.toUpperCase();
-      return {
-        ...a,
-        selected,
-        isCorrect,
-      };
+    const counts2025 = get2025QuestionCounts(session.subject, session.questionCount);
+    const totalQ =
+      session.sheetType === "2025" ? counts2025.totalQuestions : session.questionCount || 20;
+
+    const existingByQ = new Map(
+      reviewingSubmission.answers.map((a) => [a.questionNumber, a])
+    );
+    const answerMap: Record<number, string> = {};
+    for (let q = 1; q <= totalQ; q++) {
+      const prev = existingByQ.get(q)?.selected ?? "";
+      answerMap[q] = reviewAnswers[q] !== undefined ? reviewAnswers[q] : prev;
+    }
+
+    const scored = scoreStudentAnswers({
+      sheetType: session.sheetType,
+      subject: session.subject,
+      questionCount: totalQ,
+      answerKey: session.answerKey || {},
+      studentAnswers: answerMap,
     });
+
+    const updatedAnswers = scored.details.map((d) => ({
+      questionNumber: d.questionNumber,
+      selected: d.studentAnswer,
+      correctAnswer:
+        d.correctAnswer || existingByQ.get(d.questionNumber)?.correctAnswer || "",
+      isCorrect: d.isCorrect,
+    }));
 
     try {
       const res = await fetch(
@@ -653,7 +683,15 @@ export function ContinuousGradingModal({
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Kỳ thi: <strong className="text-foreground">{session.name}</strong> • {session.questionCount} câu • Mẫu {session.sheetType}
+                Kỳ thi: <strong className="text-foreground">{session.name}</strong> •{" "}
+                {session.sheetType === "2025"
+                  ? (() => {
+                      const c = get2025QuestionCounts(session.subject, session.questionCount);
+                      return `${c.totalQuestions} câu • ${
+                        c.part3Count > 0 ? "Form 2025 (3 phần)" : "Form 2025 (2 phần)"
+                      }`;
+                    })()
+                  : `${session.questionCount} câu • Mẫu ${session.sheetType}`}
               </p>
             </div>
           </div>
@@ -1375,72 +1413,338 @@ export function ContinuousGradingModal({
                 </div>
 
                 {/* Click-to-correct Answers Matrix */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-neutral-300">Ma trận đáp án các câu:</span>
-                    <span className="text-[11px] text-neutral-400">Click vào đáp án để sửa</span>
-                  </div>
+                {(() => {
+                  const is2025 = session.sheetType === "2025";
+                  const counts2025 = get2025QuestionCounts(session.subject, session.questionCount);
+                  const totalQ = is2025 ? counts2025.totalQuestions : session.questionCount || 20;
+                  const liveScored = scoreStudentAnswers({
+                    sheetType: session.sheetType,
+                    subject: session.subject,
+                    questionCount: totalQ,
+                    answerKey: session.answerKey || {},
+                    studentAnswers: reviewAnswers,
+                  });
+                  const detailByQ = new Map(
+                    liveScored.details.map((d) => [d.questionNumber, d])
+                  );
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-60 overflow-y-auto p-1 border border-neutral-800 rounded-2xl bg-neutral-950">
-                    {Array.from({ length: session.questionCount }).map((_, idx) => {
-                      const qNum = idx + 1;
-                      const currentSelected = reviewAnswers[qNum] || "";
-                      const correctKey = (session.answerKey[qNum] || "A").trim().toUpperCase();
-                      const isCorrect = currentSelected.toUpperCase() === correctKey;
-
-                      return (
-                        <div
-                          key={qNum}
-                          className={`p-2 rounded-xl border ${
-                            isCorrect
-                              ? "bg-emerald-950/40 border-emerald-500/30"
-                              : currentSelected
-                              ? "bg-rose-950/40 border-rose-500/30"
-                              : "bg-neutral-900 border-neutral-800"
-                          }`}
-                        >
-                          <div className="flex justify-between items-center mb-1 text-[11px] font-bold">
-                            <span>Câu {qNum}:</span>
-                            {isCorrect ? (
-                              <span className="text-emerald-400">✓ Đúng</span>
-                            ) : (
-                              <span className="text-rose-400">✗ Sai</span>
-                            )}
-                          </div>
-
-                          <div className="flex justify-between gap-1">
-                            {["A", "B", "C", "D"].map((opt) => {
-                              const isPicked = currentSelected.toUpperCase() === opt;
-                              const isKey = correctKey === opt;
-
-                              let btnClass = "border border-neutral-700 text-neutral-400 hover:border-neutral-500";
-                              if (isPicked && isKey) {
-                                btnClass = "bg-emerald-600 border-emerald-500 text-white font-black";
-                              } else if (isPicked && !isKey) {
-                                btnClass = "bg-rose-600 border-rose-500 text-white font-black";
-                              } else if (!isPicked && isKey) {
-                                btnClass = "border-dashed border-emerald-500 text-emerald-400 bg-emerald-950/30 font-bold";
-                              }
-
-                              return (
-                                <button
-                                  key={opt}
-                                  type="button"
-                                  onClick={() => {
-                                    setReviewAnswers((prev) => ({ ...prev, [qNum]: opt }));
-                                  }}
-                                  className={`w-6 h-6 rounded-lg text-[10px] flex items-center justify-center transition active:scale-90 ${btnClass}`}
-                                >
-                                  {opt}
-                                </button>
-                              );
-                            })}
-                          </div>
+                  return (
+                    <div>
+                      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                        <span className="font-bold text-neutral-300">Ma trận đáp án các câu:</span>
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
+                            Điểm: {liveScored.score}/10 ({liveScored.correctCount}/{totalQ} đúng)
+                          </span>
+                          <span className="text-neutral-400">Click hoặc nhập để sửa</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                      </div>
+
+                      {is2025 ? (
+                        <div className="space-y-3 max-h-72 overflow-y-auto p-2.5 border border-neutral-800 rounded-2xl bg-neutral-950">
+                          {/* Phần I: ABCD */}
+                          <div>
+                            <div className="text-[11px] font-bold text-blue-400 mb-1.5 uppercase tracking-wider">
+                              Phần I — Trắc nghiệm 4 lựa chọn ({counts2025.part1Count} câu)
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              {Array.from({ length: counts2025.part1Count }).map((_, idx) => {
+                                const qNum = idx + 1;
+                                const d = detailByQ.get(qNum);
+                                const currentSelected = d?.studentAnswer || "";
+                                const correctKey = d?.correctAnswer || "";
+                                const isCorrect = Boolean(d?.isCorrect);
+
+                                return (
+                                  <div
+                                    key={qNum}
+                                    className={`p-2 rounded-xl border ${
+                                      isCorrect
+                                        ? "bg-emerald-950/40 border-emerald-500/30"
+                                        : currentSelected
+                                        ? "bg-rose-950/40 border-rose-500/30"
+                                        : "bg-neutral-900 border-neutral-800"
+                                    }`}
+                                  >
+                                    <div className="flex justify-between items-center mb-1 text-[11px] font-bold">
+                                      <span>Câu {qNum}:</span>
+                                      {isCorrect ? (
+                                        <span className="text-emerald-400">✓ Đúng</span>
+                                      ) : (
+                                        <span className="text-rose-400">
+                                          {currentSelected ? "✗ Sai" : "— Trống"}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex justify-between gap-1">
+                                      {["A", "B", "C", "D"].map((opt) => {
+                                        const isPicked = currentSelected === opt;
+                                        const isKey = correctKey === opt;
+                                        let btnClass =
+                                          "border border-neutral-700 text-neutral-400 hover:border-neutral-500";
+                                        if (isPicked && isKey) {
+                                          btnClass =
+                                            "bg-emerald-600 border-emerald-500 text-white font-black";
+                                        } else if (isPicked && !isKey) {
+                                          btnClass =
+                                            "bg-rose-600 border-rose-500 text-white font-black";
+                                        } else if (!isPicked && isKey) {
+                                          btnClass =
+                                            "border-dashed border-emerald-500 text-emerald-400 bg-emerald-950/30 font-bold";
+                                        }
+                                        return (
+                                          <button
+                                            key={opt}
+                                            type="button"
+                                            onClick={() => {
+                                              setReviewAnswers((prev) => ({
+                                                ...prev,
+                                                [qNum]: prev[qNum] === opt ? "" : opt,
+                                              }));
+                                            }}
+                                            className={`w-6 h-6 rounded-lg text-[10px] flex items-center justify-center transition active:scale-90 ${btnClass}`}
+                                          >
+                                            {opt}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Phần II: Đúng / Sai */}
+                          <div>
+                            <div className="text-[11px] font-bold text-purple-400 mb-1.5 uppercase tracking-wider">
+                              Phần II — Đúng / Sai ({counts2025.part2Count} câu × 4 ý)
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {Array.from({ length: counts2025.part2Count }).map((_, idx) => {
+                                const qNum = counts2025.part1Count + idx + 1;
+                                const d = detailByQ.get(qNum);
+                                const normVal = normalizeTfGroupAnswer(reviewAnswers[qNum]);
+                                const subParts = normVal ? normVal.split("-") : ["", "", "", ""];
+                                const keyNorm = normalizeTfGroupAnswer(d?.correctAnswer);
+                                const keyParts = keyNorm ? keyNorm.split("-") : ["", "", "", ""];
+
+                                const toggleSub = (subIdx: number, val: "Đ" | "S") => {
+                                  const next = [...subParts];
+                                  next[subIdx] = next[subIdx] === val ? "" : val;
+                                  const joined = next.some(Boolean) ? next.join("-") : "";
+                                  setReviewAnswers((prev) => ({
+                                    ...prev,
+                                    [qNum]: joined,
+                                  }));
+                                };
+
+                                return (
+                                  <div
+                                    key={qNum}
+                                    className={`p-2.5 rounded-xl border ${
+                                      d?.isCorrect
+                                        ? "bg-emerald-950/40 border-emerald-500/30"
+                                        : normVal
+                                        ? "bg-neutral-900 border-neutral-700"
+                                        : "bg-neutral-900 border-neutral-800"
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between mb-1.5 text-[11px] font-bold">
+                                      <span>Câu {qNum}</span>
+                                      <span className="font-mono text-purple-300">
+                                        {d ? `${d.score}đ` : "0đ"}
+                                      </span>
+                                    </div>
+                                    <div className="space-y-1">
+                                      {["a", "b", "c", "d"].map((subKey, subIdx) => {
+                                        const picked = subParts[subIdx] || "";
+                                        const keyVal = keyParts[subIdx] || "";
+                                        return (
+                                          <div
+                                            key={subKey}
+                                            className="flex items-center justify-between text-[11px]"
+                                          >
+                                            <span className="font-bold text-neutral-400">
+                                              {subKey})
+                                              {keyVal && (
+                                                <span className="ml-1 text-[10px] text-neutral-500 font-normal">
+                                                  (ĐÁ: {keyVal})
+                                                </span>
+                                              )}
+                                            </span>
+                                            <div className="flex gap-1">
+                                              {(["Đ", "S"] as const).map((opt) => {
+                                                const isPicked = picked === opt;
+                                                const isKey = keyVal === opt;
+                                                let cls =
+                                                  "border border-neutral-700 text-neutral-400 hover:border-neutral-500";
+                                                if (isPicked && isKey) {
+                                                  cls =
+                                                    "bg-emerald-600 border-emerald-500 text-white font-bold";
+                                                } else if (isPicked && !isKey && keyVal) {
+                                                  cls =
+                                                    "bg-rose-600 border-rose-500 text-white font-bold";
+                                                } else if (isPicked) {
+                                                  cls =
+                                                    "bg-purple-600 border-purple-500 text-white font-bold";
+                                                } else if (isKey) {
+                                                  cls =
+                                                    "border-dashed border-emerald-500/70 text-emerald-400";
+                                                }
+                                                return (
+                                                  <button
+                                                    key={opt}
+                                                    type="button"
+                                                    onClick={() => toggleSub(subIdx, opt)}
+                                                    className={`px-2 py-0.5 rounded text-[10px] transition ${cls}`}
+                                                  >
+                                                    {opt}
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Phần III: Điền số (chỉ Toán & KHTN/Địa lí) */}
+                          {counts2025.part3Count > 0 && (
+                            <div>
+                              <div className="text-[11px] font-bold text-emerald-400 mb-1.5 uppercase tracking-wider">
+                                Phần III — Trả lời ngắn / Điền số ({counts2025.part3Count} câu)
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {Array.from({ length: counts2025.part3Count }).map((_, idx) => {
+                                  const qNum =
+                                    counts2025.part1Count + counts2025.part2Count + idx + 1;
+                                  const val =
+                                    reviewAnswers[qNum] !== undefined
+                                      ? reviewAnswers[qNum]
+                                      : "";
+                                  const d = detailByQ.get(qNum);
+                                  return (
+                                    <div
+                                      key={qNum}
+                                      className={`p-2 rounded-xl border ${
+                                        d?.isCorrect
+                                          ? "bg-emerald-950/40 border-emerald-500/30"
+                                          : val
+                                          ? "bg-rose-950/40 border-rose-500/30"
+                                          : "bg-neutral-900 border-neutral-800"
+                                      }`}
+                                    >
+                                      <div className="flex justify-between items-center mb-1 text-[10px] font-bold">
+                                        <span>Câu {qNum}</span>
+                                        {d?.correctAnswer && (
+                                          <span className="text-emerald-400 font-mono">
+                                            ĐÁ: {d.correctAnswer}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <input
+                                        type="text"
+                                        maxLength={4}
+                                        value={val}
+                                        onChange={(e) => {
+                                          const filtered = e.target.value.replace(/[^0-9\-.,]/g, "");
+                                          setReviewAnswers((prev) => ({
+                                            ...prev,
+                                            [qNum]: filtered,
+                                          }));
+                                        }}
+                                        placeholder="Trống"
+                                        className="w-full px-2 py-1 rounded-lg bg-neutral-950 border border-neutral-700 font-mono font-bold text-center text-xs text-emerald-400 outline-none focus:border-emerald-500"
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-60 overflow-y-auto p-1 border border-neutral-800 rounded-2xl bg-neutral-950">
+                          {Array.from({ length: totalQ }).map((_, idx) => {
+                            const qNum = idx + 1;
+                            const d = detailByQ.get(qNum);
+                            const currentSelected = d?.studentAnswer || "";
+                            const correctKey = (d?.correctAnswer || session.answerKey[qNum] || "A")
+                              .trim()
+                              .toUpperCase();
+                            const isCorrect = Boolean(d?.isCorrect);
+
+                            return (
+                              <div
+                                key={qNum}
+                                className={`p-2 rounded-xl border ${
+                                  isCorrect
+                                    ? "bg-emerald-950/40 border-emerald-500/30"
+                                    : currentSelected
+                                    ? "bg-rose-950/40 border-rose-500/30"
+                                    : "bg-neutral-900 border-neutral-800"
+                                }`}
+                              >
+                                <div className="flex justify-between items-center mb-1 text-[11px] font-bold">
+                                  <span>Câu {qNum}:</span>
+                                  {isCorrect ? (
+                                    <span className="text-emerald-400">✓ Đúng</span>
+                                  ) : (
+                                    <span className="text-rose-400">
+                                      {currentSelected ? "✗ Sai" : "— Trống"}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex justify-between gap-1">
+                                  {["A", "B", "C", "D"].map((opt) => {
+                                    const isPicked = currentSelected === opt;
+                                    const isKey = correctKey === opt;
+
+                                    let btnClass =
+                                      "border border-neutral-700 text-neutral-400 hover:border-neutral-500";
+                                    if (isPicked && isKey) {
+                                      btnClass =
+                                        "bg-emerald-600 border-emerald-500 text-white font-black";
+                                    } else if (isPicked && !isKey) {
+                                      btnClass =
+                                        "bg-rose-600 border-rose-500 text-white font-black";
+                                    } else if (!isPicked && isKey) {
+                                      btnClass =
+                                        "border-dashed border-emerald-500 text-emerald-400 bg-emerald-950/30 font-bold";
+                                    }
+
+                                    return (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => {
+                                          setReviewAnswers((prev) => ({
+                                            ...prev,
+                                            [qNum]: prev[qNum] === opt ? "" : opt,
+                                          }));
+                                        }}
+                                        className={`w-6 h-6 rounded-lg text-[10px] flex items-center justify-center transition active:scale-90 ${btnClass}`}
+                                      >
+                                        {opt}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 

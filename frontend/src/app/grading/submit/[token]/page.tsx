@@ -24,6 +24,12 @@ import {
   School,
   FileCheck2,
 } from "lucide-react";
+import {
+  flattenOmrAnswers,
+  get2025QuestionCounts,
+  isValidStudentCode,
+  normalizeTfGroupAnswer,
+} from "@/lib/grading/omr-template-resolver";
 
 interface SubmissionPageProps {
   params: Promise<{ token: string }>;
@@ -170,6 +176,8 @@ function StudentSubmissionContent({ params }: SubmissionPageProps) {
             action: "grade_single",
             imageBase64: base64,
             sheetType: linkData?.sheetType || "2025",
+            subject: linkData?.subject,
+            questionCount: linkData?.questionCount,
             answerKey: {},
             studentToken: token,
           }),
@@ -180,24 +188,24 @@ function StudentSubmissionContent({ params }: SubmissionPageProps) {
           const omr = json.data;
 
           if (omr) {
-            const detectedAnswers: Record<number, string> = { ...answers };
-            const resultsMap = omr.results || omr.part1_results || {};
+            const flat = flattenOmrAnswers(
+              omr,
+              linkData?.sheetType,
+              linkData?.subject,
+              linkData?.questionCount
+            );
+            setAnswers({ ...answers, ...flat });
 
-            for (const [k, v] of Object.entries(resultsMap)) {
-              const qNum = Number(k);
-              const val = typeof v === "object" && v !== null ? (v as any).selected : v;
-              if (val && typeof val === "string") {
-                detectedAnswers[qNum] = val.toUpperCase();
-              }
+            // Tự động điền Số Báo Danh và Mã Đề nếu hệ thống đọc được từ phiếu
+            if (isValidStudentCode(omr.student_code) && !studentCode) {
+              setStudentCode(String(omr.student_code).trim());
             }
-            setAnswers(detectedAnswers);
-
-            // Tự động điền Số Báo Danh và Mã Đề nếu AI đọc được từ phiếu
-            if (omr.student_code && omr.student_code !== "??????" && !studentCode) {
-              setStudentCode(omr.student_code);
-            }
-            if (omr.exam_code && omr.exam_code !== "???" && !examCode) {
-              setExamCode(omr.exam_code);
+            if (
+              omr.exam_code &&
+              !/^\?+$/.test(String(omr.exam_code)) &&
+              (!examCode || examCode === "101")
+            ) {
+              setExamCode(String(omr.exam_code).trim());
             }
           }
         }
@@ -314,7 +322,9 @@ function StudentSubmissionContent({ params }: SubmissionPageProps) {
     );
   }
 
-  const questionCount = linkData.questionCount || 20;
+  const is2025 = linkData.sheetType === "2025";
+  const counts2025 = get2025QuestionCounts(linkData.subject, linkData.questionCount);
+  const questionCount = is2025 ? counts2025.totalQuestions : linkData.questionCount || 20;
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-16 font-sans">
@@ -327,7 +337,7 @@ function StudentSubmissionContent({ params }: SubmissionPageProps) {
             </div>
             <div>
               <div className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
-                EduTeach • Nộp bài thi
+                EduTest • Nộp bài thi
               </div>
               <h1 className="text-sm font-bold text-slate-900 line-clamp-1">{linkData.sessionName}</h1>
             </div>
@@ -449,7 +459,7 @@ function StudentSubmissionContent({ params }: SubmissionPageProps) {
                     <div className="text-[11px] font-semibold text-slate-500 mb-1">
                       Câu {item.questionNumber}
                     </div>
-                    <div className="flex items-center justify-center gap-1.5 font-mono text-sm font-bold">
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 font-mono text-sm font-bold break-all">
                       <span
                         className={
                           item.isCorrect
@@ -461,7 +471,7 @@ function StudentSubmissionContent({ params }: SubmissionPageProps) {
                       >
                         {item.studentAnswer || "—"}
                       </span>
-                      {!item.isCorrect && (
+                      {!item.isCorrect && item.correctAnswer && (
                         <span className="text-emerald-600 font-bold">({item.correctAnswer})</span>
                       )}
                     </div>
@@ -738,43 +748,201 @@ function StudentSubmissionContent({ params }: SubmissionPageProps) {
               {inputMode === "bubble" && (
                 <div className="space-y-4">
                   <div className="text-xs text-slate-500 mb-2">
-                    Nhấp chọn đáp án tương ứng cho từng câu hỏi dưới đây:
+                    {is2025
+                      ? "Chọn đáp án tương ứng theo từng phần (chuẩn GDPT 2025):"
+                      : "Nhấp chọn đáp án tương ứng cho từng câu hỏi dưới đây:"}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 max-h-[420px] overflow-y-auto p-1">
-                    {Array.from({ length: questionCount }).map((_, idx) => {
-                      const qNum = idx + 1;
-                      const selectedVal = answers[qNum];
-
-                      return (
-                        <div
-                          key={qNum}
-                          className="flex items-center justify-between px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50"
-                        >
-                          <span className="font-bold text-xs text-slate-700 w-7">
-                            {qNum}.
-                          </span>
-
-                          <div className="flex items-center gap-1.5">
-                            {["A", "B", "C", "D"].map((opt) => (
-                              <button
-                                key={opt}
-                                type="button"
-                                onClick={() => handleSelectOption(qNum, opt)}
-                                className={`w-7 h-7 rounded-full text-xs font-bold font-mono transition ${
-                                  selectedVal === opt
-                                    ? "bg-neutral-900 text-white shadow-xs scale-105"
-                                    : "bg-white border border-slate-300 text-slate-600 hover:border-slate-400"
-                                }`}
+                  {is2025 ? (
+                    <div className="space-y-5 max-h-[480px] overflow-y-auto p-1">
+                      {/* Phần I: ABCD */}
+                      <div>
+                        <div className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-2">
+                          Phần I — Trắc nghiệm 4 lựa chọn ({counts2025.part1Count} câu)
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                          {Array.from({ length: counts2025.part1Count }).map((_, idx) => {
+                            const qNum = idx + 1;
+                            const selectedVal = answers[qNum];
+                            return (
+                              <div
+                                key={qNum}
+                                className="flex items-center justify-between px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50"
                               >
-                                {opt}
-                              </button>
-                            ))}
+                                <span className="font-bold text-xs text-slate-700 w-7">
+                                  {qNum}.
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  {["A", "B", "C", "D"].map((opt) => (
+                                    <button
+                                      key={opt}
+                                      type="button"
+                                      onClick={() => handleSelectOption(qNum, opt)}
+                                      className={`w-7 h-7 rounded-full text-xs font-bold font-mono transition ${
+                                        selectedVal === opt
+                                          ? "bg-neutral-900 text-white shadow-xs scale-105"
+                                          : "bg-white border border-slate-300 text-slate-600 hover:border-slate-400"
+                                      }`}
+                                    >
+                                      {opt}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Phần II: Đúng / Sai */}
+                      <div>
+                        <div className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-2">
+                          Phần II — Trắc nghiệm Đúng / Sai ({counts2025.part2Count} câu × 4 ý)
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {Array.from({ length: counts2025.part2Count }).map((_, idx) => {
+                            const qNum = counts2025.part1Count + idx + 1;
+                            const normVal = normalizeTfGroupAnswer(answers[qNum]);
+                            const subParts = normVal ? normVal.split("-") : ["", "", "", ""];
+
+                            const setSub = (subIdx: number, val: "Đ" | "S") => {
+                              const next = [...subParts];
+                              next[subIdx] = next[subIdx] === val ? "" : val;
+                              const joined = next.some(Boolean) ? next.join("-") : "";
+                              setAnswers((prev) => ({
+                                ...prev,
+                                [qNum]: joined,
+                              }));
+                            };
+
+                            return (
+                              <div
+                                key={qNum}
+                                className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2"
+                              >
+                                <div className="flex items-center justify-between text-xs font-bold text-slate-800 pb-1 border-b border-slate-200">
+                                  <span>Câu {qNum}</span>
+                                  <span className="font-mono text-[11px] text-purple-700">
+                                    {normVal || "Chưa chọn"}
+                                  </span>
+                                </div>
+                                <div className="space-y-1.5">
+                                  {["a", "b", "c", "d"].map((subKey, subIdx) => {
+                                    const picked = subParts[subIdx] || "";
+                                    return (
+                                      <div
+                                        key={subKey}
+                                        className="flex items-center justify-between text-xs"
+                                      >
+                                        <span className="font-bold text-slate-600 uppercase">
+                                          Ý {subKey})
+                                        </span>
+                                        <div className="flex gap-1.5">
+                                          {(["Đ", "S"] as const).map((opt) => (
+                                            <button
+                                              key={opt}
+                                              type="button"
+                                              onClick={() => setSub(subIdx, opt)}
+                                              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                                                picked === opt
+                                                  ? opt === "Đ"
+                                                    ? "bg-emerald-600 text-white shadow-xs"
+                                                    : "bg-rose-600 text-white shadow-xs"
+                                                  : "bg-white border border-slate-300 text-slate-600 hover:border-slate-400"
+                                              }`}
+                                            >
+                                              {opt === "Đ" ? "Đúng" : "Sai"}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Phần III: Trả lời ngắn / Điền số (chỉ Toán & KHTN/Địa lí) */}
+                      {counts2025.part3Count > 0 && (
+                        <div>
+                          <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">
+                            Phần III — Trả lời ngắn / Điền số ({counts2025.part3Count} câu, tối đa 4 ký tự)
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                            {Array.from({ length: counts2025.part3Count }).map((_, idx) => {
+                              const qNum = counts2025.part1Count + counts2025.part2Count + idx + 1;
+                              const val = answers[qNum] || "";
+                              return (
+                                <div
+                                  key={qNum}
+                                  className="p-2.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1.5"
+                                >
+                                  <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                                    <span>Câu {qNum}</span>
+                                    <span className="text-[10px] font-mono text-slate-400">
+                                      ≤4 ký tự
+                                    </span>
+                                  </div>
+                                  <input
+                                    type="text"
+                                    maxLength={4}
+                                    value={val}
+                                    onChange={(e) => {
+                                      const filtered = e.target.value.replace(/[^0-9\-.,]/g, "");
+                                      setAnswers((prev) => ({
+                                        ...prev,
+                                        [qNum]: filtered,
+                                      }));
+                                    }}
+                                    placeholder="VD: -2.5"
+                                    className="w-full text-center font-mono font-bold text-sm border border-slate-300 rounded-lg px-2 py-1.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                                  />
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 max-h-[420px] overflow-y-auto p-1">
+                      {Array.from({ length: questionCount }).map((_, idx) => {
+                        const qNum = idx + 1;
+                        const selectedVal = answers[qNum];
+
+                        return (
+                          <div
+                            key={qNum}
+                            className="flex items-center justify-between px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50"
+                          >
+                            <span className="font-bold text-xs text-slate-700 w-7">
+                              {qNum}.
+                            </span>
+
+                            <div className="flex items-center gap-1.5">
+                              {["A", "B", "C", "D"].map((opt) => (
+                                <button
+                                  key={opt}
+                                  type="button"
+                                  onClick={() => handleSelectOption(qNum, opt)}
+                                  className={`w-7 h-7 rounded-full text-xs font-bold font-mono transition ${
+                                    selectedVal === opt
+                                      ? "bg-neutral-900 text-white shadow-xs scale-105"
+                                      : "bg-white border border-slate-300 text-slate-600 hover:border-slate-400"
+                                  }`}
+                                >
+                                  {opt}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

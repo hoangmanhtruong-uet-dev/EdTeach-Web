@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { submitPhotoToSession, getRemoteSession, reportSessionResult } from "@/lib/grading/remote-cam-store";
+import {
+  resolveBackendOmrSheetType,
+  isValidStudentCode,
+  computeOmrCounts,
+} from "@/lib/grading/omr-template-resolver";
 
 const AI_SERVICE_BASE =
   process.env.INTERNAL_AI_SERVICE_URL ||
@@ -32,7 +37,11 @@ export async function POST(req: NextRequest) {
 
     // Call OpenCV OMR Engine if answer key exists
     try {
-      const sheetType = session.sheetType === "2025" ? "bgd_2025" : "classic_50";
+      const sheetType = resolveBackendOmrSheetType(
+        session.sheetType,
+        session.subject,
+        session.questionCount
+      );
       const omrRes = await fetch(`${AI_SERVICE_BASE}/ai/omr/grade-single`, {
         method: "POST",
         headers: {
@@ -45,22 +54,24 @@ export async function POST(req: NextRequest) {
           answer_key: session.answerKey || {},
           return_annotated_image: true,
         }),
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(8000),
       });
 
       if (omrRes.ok) {
         const json = await omrRes.json();
         omrResult = json.data;
+        const counts = computeOmrCounts(omrResult, session.questionCount);
+        const hasValidSbd = isValidStudentCode(omrResult?.student_code);
 
         // Immediately report back score to mobile phone HUD
         await reportSessionResult(token, {
-          studentName: omrResult.student_code && omrResult.student_code !== "??????"
-            ? `SBD: ${omrResult.student_code}`
+          studentName: hasValidSbd
+            ? `SBD: ${omrResult.student_code.trim()}`
             : (studentName || "Thí sinh"),
-          studentCode: omrResult.student_code || studentCode || "",
+          studentCode: hasValidSbd ? omrResult.student_code.trim() : (studentCode || ""),
           score: omrResult.total_score,
-          correctCount: omrResult.correct_count ?? (omrResult.scores_by_section ? omrResult.scores_by_section.part1_score / 0.25 : 0),
-          incorrectCount: omrResult.total_questions ? (omrResult.total_questions - (omrResult.correct_count || 0)) : 0,
+          correctCount: counts.correctCount,
+          incorrectCount: counts.incorrectCount,
           timestamp: Date.now(),
         });
       }
@@ -68,12 +79,13 @@ export async function POST(req: NextRequest) {
       console.warn("Auto OMR grading fallback:", e);
     }
 
+    const validSbdForSub = isValidStudentCode(omrResult?.student_code);
     const sub = await submitPhotoToSession(token, {
       imageBase64,
-      studentName: omrResult?.student_code
-        ? `SBD: ${omrResult.student_code}`
+      studentName: validSbdForSub
+        ? `SBD: ${omrResult.student_code.trim()}`
         : (studentName || "Học sinh"),
-      studentCode: omrResult?.student_code || studentCode || "",
+      studentCode: validSbdForSub ? omrResult.student_code.trim() : (studentCode || ""),
       ...(omrResult ? { omrResult } : {}),
     } as any);
 

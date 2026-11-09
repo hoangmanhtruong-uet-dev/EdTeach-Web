@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { ExamSession } from "./create-exam-modal";
 import { useToast } from "@/context/toast-context";
+import { get2025QuestionCounts } from "@/lib/grading/omr-template-resolver";
 
 export interface PrintSheetModalProps {
   session: ExamSession | null;
@@ -47,11 +48,16 @@ export function PrintSheetModal({ session, onClose }: PrintSheetModalProps) {
         body: JSON.stringify({
           action: "download_pdf",
           sheetType: session.sheetType,
+          subject: session.subject,
+          questionCount: session.questionCount,
           examTitle: session.name,
         }),
       });
 
-      if (!res.ok) throw new Error("Lỗi tải PDF từ AI Service");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Lỗi tải PDF từ AI Service");
+      }
 
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -77,10 +83,10 @@ export function PrintSheetModal({ session, onClose }: PrintSheetModalProps) {
 
   // Xác định số câu Phần 1, 2, 3 cho Form 2025
   const is2025 = session.sheetType === "2025";
-  const isScience = ["Vật lí", "Hóa học", "Sinh học"].includes(session.subject);
-  const part1Count = is2025 ? (isScience ? 18 : 12) : session.questionCount;
-  const part2Count = is2025 ? 4 : 0;
-  const part3Count = is2025 ? 6 : 0;
+  const counts2025 = get2025QuestionCounts(session.subject, session.questionCount);
+  const part1Count = is2025 ? counts2025.part1Count : session.questionCount;
+  const part2Count = is2025 ? counts2025.part2Count : 0;
+  const part3Count = is2025 ? counts2025.part3Count : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
@@ -95,7 +101,11 @@ export function PrintSheetModal({ session, onClose }: PrintSheetModalProps) {
                 In Phiếu Trả Lời Trắc Nghiệm Chuẩn A4
               </span>
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
-                {is2025 ? "Form 2025 (3 Phần)" : `Phiếu ${session.questionCount} câu`}
+                {is2025
+                  ? counts2025.part3Count > 0
+                    ? "Form 2025 (3 Phần)"
+                    : "Form 2025 (2 Phần)"
+                  : `Phiếu ${session.questionCount} câu`}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -258,7 +268,7 @@ export function PrintSheetModal({ session, onClose }: PrintSheetModalProps) {
             {/* KHUNG THÔNG TIN HỌC SINH + SỐ BÁO DANH + MÃ ĐỀ */}
             <div className="grid grid-cols-12 gap-3 border border-black p-3 rounded mb-5 text-xs">
               {/* Thông tin học sinh */}
-              <div className="col-span-6 space-y-2 border-r border-slate-300 pr-3">
+              <div className="col-span-4 space-y-2 border-r border-slate-300 pr-3">
                 <div>
                   <span className="font-bold">Họ và tên thí sinh:</span>
                   <div className="border-b border-dotted border-black h-5 mt-1 font-semibold text-slate-800">
@@ -285,28 +295,28 @@ export function PrintSheetModal({ session, onClose }: PrintSheetModalProps) {
                 </div>
               </div>
 
-              {/* Ô tô Số Báo Danh (SBD) */}
-              <div className="col-span-3 text-center border-r border-slate-300 pr-2">
-                <div className="font-bold uppercase text-[11px] mb-1">Số Báo Danh</div>
-                <div className="grid grid-cols-4 gap-1 mb-1">
-                  {[0, 1, 2, 3].map((col) => (
+              {/* Ô tô Số Báo Danh (SBD - 8 cột chuẩn hệ thống) */}
+              <div className="col-span-5 text-center border-r border-slate-300 pr-2">
+                <div className="font-bold uppercase text-[11px] mb-1">Số Báo Danh (8 ô)</div>
+                <div className="grid grid-cols-8 gap-0.5 mb-1">
+                  {[0, 1, 2, 3, 4, 5, 6, 7].map((col) => (
                     <div
                       key={col}
-                      className="h-6 border border-black rounded text-center text-xs font-black leading-6"
+                      className="h-5 border border-black rounded text-center text-[10px] font-black leading-5"
                     >
-                      {printMode === "prefilled" ? ["1", "0", "0", "1"][col] : ""}
+                      {printMode === "prefilled" ? ["0", "1", "2", "3", "4", "5", "6", "7"][col] : ""}
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-4 gap-1">
-                  {[0, 1, 2, 3].map((col) => {
-                    const filledRow = printMode === "prefilled" ? [1, 0, 0, 1][col] : -1;
+                <div className="grid grid-cols-8 gap-0.5">
+                  {[0, 1, 2, 3, 4, 5, 6, 7].map((col) => {
+                    const filledRow = printMode === "prefilled" ? col : -1;
                     return (
                       <div key={col} className="space-y-0.5">
                         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((row) => (
                           <div
                             key={row}
-                            className={`w-3.5 h-3.5 mx-auto border border-slate-700 rounded-full text-[8px] flex items-center justify-center font-mono font-bold ${
+                            className={`w-3 h-3 mx-auto border border-slate-700 rounded-full text-[7px] flex items-center justify-center font-mono font-bold ${
                               filledRow === row ? "bg-black text-white" : ""
                             }`}
                           >
@@ -425,53 +435,56 @@ export function PrintSheetModal({ session, onClose }: PrintSheetModalProps) {
                   </div>
                 </div>
 
-                {/* PHẦN III: TRẢ LỜI NGẮN / ĐIỀN SỐ (6 CÂU) */}
-                <div>
-                  <div className="font-black text-[11px] uppercase tracking-wider mb-1.5 border-b border-black pb-0.5 flex justify-between items-center">
-                    <span>PHẦN III: CÂU HỎI TRẢ LỜI NGẮN (6 CÂU)</span>
-                    <span className="text-[10px] font-normal normal-case text-slate-600">
-                      Thí sinh tô các chữ số, dấu âm (-) hoặc dấu phẩy (,)
-                    </span>
+                {/* PHẦN III: TRẢ LỜI NGẮN / ĐIỀN SỐ (6 CÂU - chỉ Toán & KHTN/Địa lí) */}
+                {part3Count > 0 && (
+                  <div>
+                    <div className="font-black text-[11px] uppercase tracking-wider mb-1.5 border-b border-black pb-0.5 flex justify-between items-center">
+                      <span>PHẦN III: CÂU HỎI TRẢ LỜI NGẮN ({part3Count} CÂU)</span>
+                      <span className="text-[10px] font-normal normal-case text-slate-600">
+                        Thí sinh tô các chữ số, dấu âm (-) hoặc dấu phẩy (,)
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-6 gap-2">
+                      {Array.from({ length: part3Count }).map((_, idx) => {
+                        const c = idx + 1;
+                        const realNum = part1Count + part2Count + c;
+                        return (
+                          <div key={c} className="border border-black p-1.5 rounded text-center">
+                            <div className="font-bold text-[10px] border-b border-slate-300 pb-0.5 mb-1">
+                              Câu {realNum}
+                            </div>
+                            {/* 4 ô vuông để điền số */}
+                            <div className="grid grid-cols-4 gap-0.5 mb-1">
+                              {[0, 1, 2, 3].map((box) => (
+                                <div
+                                  key={box}
+                                  className="h-4 border border-black text-[9px] font-mono font-bold leading-4"
+                                />
+                              ))}
+                            </div>
+                            {/* Bong bóng OMR mini */}
+                            <div className="grid grid-cols-4 gap-0.5">
+                              {[0, 1, 2, 3].map((col) => (
+                                <div key={col} className="space-y-0.5">
+                                  {["-", ",", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"].map(
+                                    (char) => (
+                                      <div
+                                        key={char}
+                                        className="w-2.5 h-2.5 mx-auto border border-slate-600 rounded-full text-[6px] font-mono flex items-center justify-center"
+                                      >
+                                        {char}
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-6 gap-2">
-                    {[1, 2, 3, 4, 5, 6].map((c) => {
-                      const realNum = part1Count + part2Count + c;
-                      return (
-                        <div key={c} className="border border-black p-1.5 rounded text-center">
-                          <div className="font-bold text-[10px] border-b border-slate-300 pb-0.5 mb-1">
-                            Câu {realNum}
-                          </div>
-                          {/* 4 ô vuông để điền số */}
-                          <div className="grid grid-cols-4 gap-0.5 mb-1">
-                            {[0, 1, 2, 3].map((box) => (
-                              <div
-                                key={box}
-                                className="h-4 border border-black text-[9px] font-mono font-bold leading-4"
-                              />
-                            ))}
-                          </div>
-                          {/* Bong bóng OMR mini */}
-                          <div className="grid grid-cols-4 gap-0.5">
-                            {[0, 1, 2, 3].map((col) => (
-                              <div key={col} className="space-y-0.5">
-                                {["-", ",", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"].map(
-                                  (char) => (
-                                    <div
-                                      key={char}
-                                      className="w-2.5 h-2.5 mx-auto border border-slate-600 rounded-full text-[6px] font-mono flex items-center justify-center"
-                                    >
-                                      {char}
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                )}
               </div>
             ) : (
               /* MẪU TRUYỀN THỐNG 20, 40, 50 CÂU */
@@ -502,7 +515,7 @@ export function PrintSheetModal({ session, onClose }: PrintSheetModalProps) {
 
             {/* CHÂN TRANG */}
             <div className="mt-8 pt-3 border-t border-slate-300 flex justify-between items-center text-[10px] text-slate-500">
-              <span>Hệ thống chấm OMR EdTeach AI — Chuẩn Bộ GD&ĐT 2025</span>
+              <span>Hệ thống chấm OMR EduTest — Chuẩn Bộ GD&ĐT 2025</span>
               <span>Trang 1/1</span>
             </div>
           </div>

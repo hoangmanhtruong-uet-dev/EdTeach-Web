@@ -2,6 +2,7 @@
 // Replaces in-memory globalThis Maps (RC-07, STU-07, GRD-05)
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { scoreStudentAnswers } from "./omr-template-resolver";
 
 export interface StudentSubmissionDetail {
   questionNumber: number;
@@ -319,45 +320,25 @@ export async function submitStudentExam(params: {
     return { success: false, error: "Thời hạn nhận bài của liên kết này đã kết thúc." };
   }
 
-  const questionCount = link.questionCount || Object.keys(link.answerKey).length || 20;
-  let correctCount = 0;
-  let incorrectCount = 0;
-  let emptyCount = 0;
-  const details: StudentSubmissionDetail[] = [];
+  const scored = scoreStudentAnswers({
+    sheetType: link.sheetType,
+    subject: link.subject,
+    questionCount: link.questionCount,
+    answerKey: link.answerKey,
+    studentAnswers: params.studentAnswers || {},
+  });
 
-  for (let q = 1; q <= questionCount; q++) {
-    const studentAns = (params.studentAnswers[q] || "").trim().toUpperCase();
-    const correctAns = (link.answerKey[q] || "").trim().toUpperCase() || "A";
-
-    if (!studentAns) {
-      emptyCount++;
-      details.push({
-        questionNumber: q,
-        studentAnswer: "",
-        correctAnswer: correctAns,
-        isCorrect: false,
-      });
-    } else if (studentAns === correctAns) {
-      correctCount++;
-      details.push({
-        questionNumber: q,
-        studentAnswer: studentAns,
-        correctAnswer: correctAns,
-        isCorrect: true,
-      });
-    } else {
-      incorrectCount++;
-      details.push({
-        questionNumber: q,
-        studentAnswer: studentAns,
-        correctAnswer: correctAns,
-        isCorrect: false,
-      });
-    }
-  }
-
-  const rawScore = (correctCount / questionCount) * 10;
-  const score = Math.round(rawScore * 100) / 100;
+  const questionCount = scored.totalQuestions;
+  const correctCount = scored.correctCount;
+  const incorrectCount = scored.incorrectCount;
+  const emptyCount = scored.emptyCount;
+  const score = scored.score;
+  const details: StudentSubmissionDetail[] = scored.details.map((d) => ({
+    questionNumber: d.questionNumber,
+    studentAnswer: d.studentAnswer,
+    correctAnswer: d.correctAnswer,
+    isCorrect: d.isCorrect,
+  }));
 
   let insertedId = "sub_" + Date.now();
   const admin = createAdminClient();

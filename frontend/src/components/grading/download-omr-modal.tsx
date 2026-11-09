@@ -22,7 +22,7 @@ export interface DownloadOMRModalProps {
 export function DownloadOMRModal({ isOpen, onClose }: DownloadOMRModalProps) {
   const { showToast } = useToast();
   const [selectedTemplate, setSelectedTemplate] = useState<
-    "2025_math" | "2025_science" | "sheet_20" | "sheet_40" | "sheet_50"
+    "2025_math" | "2025_science" | "2025_social" | "sheet_20" | "sheet_40" | "sheet_50"
   >("2025_math");
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -35,22 +35,31 @@ export function DownloadOMRModal({ isOpen, onClose }: DownloadOMRModalProps) {
       desc: "Gồm 3 phần: 12 trắc nghiệm ABCD + 4 Đúng/Sai + 6 Điền số ngắn. Khổ A4 chuẩn Bộ GD&ĐT.",
       badge: "Mới nhất 2025",
       badgeColor: "bg-blue-500/10 text-blue-400 border-blue-500/30",
-      sheetTypeParam: "2025",
+      sheetTypeParam: "2025_math",
       examTitle: "Phiếu Trả Lời Trắc Nghiệm - Môn Toán (GDPT 2025)",
     },
     {
       id: "2025_science",
-      title: "Mẫu GDPT 2025: Lý / Hóa / Sinh / KHXH (28 câu)",
-      desc: "Gồm 3 phần: 18 trắc nghiệm ABCD + 4 Đúng/Sai + 6 Điền số ngắn. Khổ A4 chuẩn Bộ GD&ĐT.",
-      badge: "Mới nhất 2025",
+      title: "Mẫu GDPT 2025: KHTN & Địa lí (28 câu)",
+      desc: "Dành cho Vật lí, Hóa học, Sinh học, Địa lí: 18 trắc nghiệm ABCD + 4 Đúng/Sai + 6 Điền số ngắn.",
+      badge: "KHTN 2025",
       badgeColor: "bg-purple-500/10 text-purple-400 border-purple-500/30",
-      sheetTypeParam: "2025",
-      examTitle: "Phiếu Trả Lời Trắc Nghiệm - Môn KHTN & KHXH (GDPT 2025)",
+      sheetTypeParam: "2025_science",
+      examTitle: "Phiếu Trả Lời Trắc Nghiệm - Môn KHTN (GDPT 2025)",
+    },
+    {
+      id: "2025_social",
+      title: "Mẫu GDPT 2025: KHXH & Tin/Công nghệ (28 câu)",
+      desc: "Dành cho Lịch sử, GDCD (KTPL), Công nghệ, Tin học: 24 trắc nghiệm ABCD + 4 Đúng/Sai (Không có phần điền số).",
+      badge: "KHXH 2025",
+      badgeColor: "bg-indigo-500/10 text-indigo-400 border-indigo-500/30",
+      sheetTypeParam: "2025_social",
+      examTitle: "Phiếu Trả Lời Trắc Nghiệm - Môn KHXH (GDPT 2025)",
     },
     {
       id: "sheet_40",
       title: "Mẫu Phiếu 40 Câu (Kiểm tra 45 phút / 1 tiết)",
-      desc: "Trắc nghiệm 4 lựa chọn A, B, C, D. Định dạng 4 cột dọc, dễ tô, tỷ lệ nhận diện 99.8%.",
+      desc: "Trắc nghiệm 4 lựa chọn A, B, C, D. Định dạng 4 cột dọc, dễ tô, nhận diện chuẩn 4 góc.",
       badge: "Phổ biến",
       badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
       sheetTypeParam: "40",
@@ -92,7 +101,8 @@ export function DownloadOMRModal({ isOpen, onClose }: DownloadOMRModalProps) {
       });
 
       if (!res.ok) {
-        throw new Error("Lỗi tải PDF từ AI Service");
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Lỗi tải PDF từ AI Service");
       }
 
       const blob = await res.blob();

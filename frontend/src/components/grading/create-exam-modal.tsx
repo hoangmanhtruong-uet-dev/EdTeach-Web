@@ -20,7 +20,11 @@ import {
   Wand2,
 } from "lucide-react";
 import { Exam } from "@/lib/api/exams";
-import { ExamSession as BaseExamSession } from "@/lib/api/grading-sessions";
+import {
+  ExamSession as BaseExamSession,
+  extractRealAnswerKeyFromExam,
+} from "@/lib/api/grading-sessions";
+import { get2025QuestionCounts as resolve2025Counts } from "@/lib/grading/omr-template-resolver";
 
 export interface ExamSession extends BaseExamSession {
   targetClasses?: string;
@@ -54,24 +58,9 @@ const SUBJECTS = [
 // Danh sách khối lớp
 const GRADES = ["6", "7", "8", "9", "10", "11", "12"];
 
-// Kiểm tra môn KHTN (Lý/Hóa/Sinh) theo chuẩn GDPT 2025 (28 câu) hay môn Toán (22 câu)
+// Phân loại số câu GDPT 2025 theo môn học (Toán / KHTN & Địa / KHXH & Công nghệ-Tin học)
 export function get2025QuestionCounts(subject: string) {
-  const isScienceOrOther = ["Vật lí", "Hóa học", "Sinh học"].includes(subject);
-  if (isScienceOrOther) {
-    return {
-      part1Count: 18, // 18 câu trắc nghiệm ABCD (0.25đ / câu = 4.5đ)
-      part2Count: 4,  // 4 câu Đúng/Sai (mỗi câu 4 ý a,b,c,d = 4.0đ)
-      part3Count: 6,  // 6 câu Trả lời ngắn / điền số (0.25đ / câu = 1.5đ)
-      totalQuestions: 28,
-    };
-  }
-  // Môn Toán
-  return {
-    part1Count: 12, // 12 câu trắc nghiệm ABCD (0.25đ / câu = 3.0đ)
-    part2Count: 4,  // 4 câu Đúng/Sai (1.0đ / câu = 4.0đ)
-    part3Count: 6,  // 6 câu Trả lời ngắn / điền số (0.5đ / câu = 3.0đ)
-    totalQuestions: 22,
-  };
+  return resolve2025Counts(subject);
 }
 
 export function CreateExamModal({
@@ -110,6 +99,7 @@ export function CreateExamModal({
   // Chọn từ đề đã soạn sẵn
   const [sourceMode, setSourceMode] = useState<"manual" | "existing_exam">("manual");
   const [selectedExamId, setSelectedExamId] = useState("");
+  const [loadingExamId, setLoadingExamId] = useState<string | null>(null);
   const [searchExamQuery, setSearchExamQuery] = useState("");
 
   // Tính số câu của mẫu phiếu hiện tại
@@ -292,12 +282,14 @@ export function CreateExamModal({
         const subAnswers = [0, 1, 2, 3].map(() => (Math.random() > 0.5 ? "Đ" : "S"));
         randomized[i] = subAnswers.join("-");
       }
-      // Phần 3: Trả lời ngắn / điền số (6 câu)
-      const sampleNumbers = ["15", "-2.5", "0.75", "100", "-8", "4.2"];
-      const startP3 = endP2 + 1;
-      const endP3 = totalQuestions;
-      for (let i = startP3; i <= endP3; i++) {
-        randomized[i] = sampleNumbers[(i - startP3) % sampleNumbers.length];
+      // Phần 3: Trả lời ngắn / điền số (chỉ Toán & KHTN/Địa lí có 6 câu; KHXH/Tin/CN không có)
+      if (counts2025.part3Count > 0) {
+        const sampleNumbers = ["15", "-2.5", "0.75", "100", "-8", "4.2"];
+        const startP3 = endP2 + 1;
+        const endP3 = totalQuestions;
+        for (let i = startP3; i <= endP3; i++) {
+          randomized[i] = sampleNumbers[(i - startP3) % sampleNumbers.length];
+        }
       }
     } else {
       // Phiếu 20, 40, 50 câu ABCD
@@ -329,30 +321,41 @@ export function CreateExamModal({
     }
   };
 
-  // Chọn từ đề đã soạn sẵn trong kho
-  const handleSelectExamFromLibrary = (exam: Exam) => {
+  // Chọn từ đề đã soạn sẵn trong kho (nạp đáp án THẬT từ DB)
+  const handleSelectExamFromLibrary = async (exam: Exam) => {
     setSelectedExamId(exam.id);
     setExamName(`Chấm OMR: ${exam.name}`);
     if (exam.subject) setSubject(exam.subject);
     if (exam.grade) setGrade(exam.grade);
+    setLoadingExamId(exam.id);
 
-    // Tự động phân loại sheetType phù hợp
-    const qCount = exam.question_count || 20;
-    if (qCount <= 20) setSheetType("20");
-    else if (qCount <= 40) setSheetType("40");
-    else setSheetType("50");
-
-    // Nạp đáp án từ đề thi nếu có
-    const choices = ["A", "B", "C", "D"];
-    const generated: Record<number, string> = {};
-    for (let i = 1; i <= qCount; i++) {
-      generated[i] = choices[(i * 3 + 1) % 4];
+    try {
+      const extracted = await extractRealAnswerKeyFromExam(exam.id);
+      setSubject(extracted.subject || exam.subject || subject);
+      setGrade(extracted.grade || exam.grade || grade);
+      setSheetType(extracted.sheetType);
+      setAnswersByCode({
+        "101": extracted.answerKey,
+      });
+      setExamCodes(["101"]);
+      setActiveExamCode("101");
+      showToast(
+        `Đã nạp ${Object.keys(extracted.answerKey).length} đáp án chuẩn từ đề thi!`,
+        "success"
+      );
+    } catch (err: any) {
+      console.warn("[CreateExamModal] extractRealAnswerKeyFromExam fallback:", err);
+      const qCount = exam.question_count || 20;
+      if (qCount <= 20) setSheetType("20");
+      else if (qCount <= 40) setSheetType("40");
+      else setSheetType("50");
+      setAnswersByCode({ "101": {} });
+      setExamCodes(["101"]);
+      setActiveExamCode("101");
+      showToast("Không đọc được chi tiết câu hỏi từ đề thi, vui lòng nhập đáp án.", "warning");
+    } finally {
+      setLoadingExamId(null);
     }
-    setAnswersByCode({
-      "101": generated,
-    });
-    setExamCodes(["101"]);
-    setActiveExamCode("101");
   };
 
   // Lọc danh sách đề thi đã soạn
@@ -521,11 +524,9 @@ export function CreateExamModal({
               </label>
               {sheetType === "2025" && (
                 <span className="text-[11px] text-blue-400 font-medium">
-                  {subject === "Toán"
-                    ? "Môn Toán: 22 câu (12 P1 + 4 P2 + 6 P3)"
-                    : ["Vật lí", "Hóa học", "Sinh học"].includes(subject)
-                    ? `Môn ${subject}: 28 câu (18 P1 + 4 P2 + 6 P3)`
-                    : `${subject}: 28 câu (18 P1 + 4 P2 + 6 P3)`}
+                  {counts2025.part3Count > 0
+                    ? `Môn ${subject}: ${counts2025.totalQuestions} câu (${counts2025.part1Count} P1 + ${counts2025.part2Count} P2 + ${counts2025.part3Count} P3)`
+                    : `Môn ${subject}: ${counts2025.totalQuestions} câu (${counts2025.part1Count} P1 + ${counts2025.part2Count} P2 • Không có Phần III)`}
                 </span>
               )}
             </div>
@@ -538,8 +539,8 @@ export function CreateExamModal({
                 {
                   id: "2025",
                   label: "Form 2025",
-                  desc: "Đúng/Sai + Điền số",
-                  tag: subject === "Toán" ? "22 câu" : "28 câu",
+                  desc: counts2025.part3Count > 0 ? "ABCD + Đúng/Sai + Điền số" : "24 ABCD + 4 Đúng/Sai",
+                  tag: `${counts2025.totalQuestions} câu`,
                 },
               ].map((p) => {
                 const isSelected = sheetType === p.id;
@@ -645,11 +646,15 @@ export function CreateExamModal({
                             {e.subject || "Toán"} • Lớp {e.grade || "12"} • {e.question_count || 20} câu • Chuẩn Bộ GD&ĐT
                           </div>
                         </div>
-                        {isSelected && (
-                          <div className="flex items-center gap-1.5 text-blue-400 font-bold">
-                            <CheckCircle2 className="w-4 h-4" />
-                            <span>Đã chọn</span>
-                          </div>
+                        {loadingExamId === e.id ? (
+                          <span className="text-blue-400 font-bold text-[11px]">Đang nạp đáp án...</span>
+                        ) : (
+                          isSelected && (
+                            <div className="flex items-center gap-1.5 text-blue-400 font-bold">
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>Đã chọn</span>
+                            </div>
+                          )
                         )}
                       </div>
                     );
@@ -993,54 +998,56 @@ export function CreateExamModal({
                 </div>
 
                 {/* ------------------------------------------------- */}
-                {/* PHẦN III: TRẢ LỜI NGẮN / ĐIỀN SỐ (6 CÂU) */}
+                {/* PHẦN III: TRẢ LỜI NGẮN / ĐIỀN SỐ (chỉ Toán & KHTN/Địa lí) */}
                 {/* ------------------------------------------------- */}
-                <div>
-                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800">
-                    <span className="font-bold text-xs uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-[10px] font-black">
-                        III
+                {counts2025.part3Count > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800">
+                      <span className="font-bold text-xs uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-[10px] font-black">
+                          III
+                        </span>
+                        PHẦN III: CÂU TRẢ LỜI NGẮN / ĐIỀN SỐ ({counts2025.part3Count} câu)
                       </span>
-                      PHẦN III: CÂU TRẢ LỜI NGẮN / ĐIỀN SỐ (6 câu)
-                    </span>
-                    <span className="text-[11px] text-slate-400">
-                      Tối đa 4 ký tự OMR (số, dấu âm -, dấu phẩy/chấm)
-                    </span>
-                  </div>
+                      <span className="text-[11px] text-slate-400">
+                        Tối đa 4 ký tự OMR (số, dấu âm -, dấu phẩy/chấm)
+                      </span>
+                    </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-                    {Array.from({ length: counts2025.part3Count }).map((_, cIdx) => {
-                      const qNum = counts2025.part1Count + counts2025.part2Count + cIdx + 1;
-                      const val = currentAnswers[qNum] || "";
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+                      {Array.from({ length: counts2025.part3Count }).map((_, cIdx) => {
+                        const qNum = counts2025.part1Count + counts2025.part2Count + cIdx + 1;
+                        const val = currentAnswers[qNum] || "";
 
-                      return (
-                        <div
-                          key={qNum}
-                          className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 space-y-1.5"
-                        >
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-bold text-slate-300">Câu {qNum}</span>
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              OMR (≤4)
-                            </span>
+                        return (
+                          <div
+                            key={qNum}
+                            className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 space-y-1.5"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-slate-300">Câu {qNum}</span>
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                OMR (≤4)
+                              </span>
+                            </div>
+                            <input
+                              type="text"
+                              maxLength={4}
+                              value={val}
+                              onChange={(e) => {
+                                // Chỉ cho phép số, dấu -, dấu chấm hoặc phẩy
+                                const filtered = e.target.value.replace(/[^0-9\-.,]/g, "");
+                                setAnswerForQuestion(qNum, filtered);
+                              }}
+                              placeholder="VD: 15"
+                              className="w-full text-center font-mono font-bold text-sm bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition tracking-wider"
+                            />
                           </div>
-                          <input
-                            type="text"
-                            maxLength={4}
-                            value={val}
-                            onChange={(e) => {
-                              // Chỉ cho phép số, dấu -, dấu chấm hoặc phẩy
-                              const filtered = e.target.value.replace(/[^0-9\-.,]/g, "");
-                              setAnswerForQuestion(qNum, filtered);
-                            }}
-                            placeholder="VD: 15"
-                            className="w-full text-center font-mono font-bold text-sm bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition tracking-wider"
-                          />
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ) : (
               /* MẪU TRUYỀN THỐNG: 20, 40 HOẶC 50 CÂU ABCD */

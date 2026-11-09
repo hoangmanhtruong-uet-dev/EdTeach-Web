@@ -1,5 +1,5 @@
 """
-EduTest AI OMR (Optical Mark Recognition) Module.
+EduTest OMR (Optical Mark Recognition) Module.
 High performance computer vision grading engine powered by OpenCV.
 """
 

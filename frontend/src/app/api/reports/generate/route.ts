@@ -12,6 +12,7 @@ import {
 import { getBaseUrl } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { isProUser } from "@/lib/payment/plans";
+import { scoreStudentAnswers } from "@/lib/grading/omr-template-resolver";
 
 export async function POST(req: NextRequest) {
   try {
@@ -70,6 +71,7 @@ export async function POST(req: NextRequest) {
       sessionName,
       subject = "Toán",
       grade = "10",
+      sheetType = "20",
       questionCount = 40,
       answerKey = {},
       student,
@@ -87,39 +89,39 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Build question-by-question details array
-    const details: QuestionDetailItem[] = [];
-    const totalQ = Math.max(1, questionCount);
-
-    for (let q = 1; q <= totalQ; q++) {
-      const studentAns = (
-        (student.studentAnswers && student.studentAnswers[q]) ||
-        ""
-      ).toUpperCase().trim();
-      const correctAns = ((answerKey && answerKey[q]) || "A").toUpperCase().trim();
-      const isEmpty = !studentAns || studentAns === "-" || studentAns === "";
-      const isCorrect = !isEmpty && studentAns === correctAns;
-      const cog = classifyCognitiveLevel(q, totalQ);
-
-      details.push({
-        questionNumber: q,
-        studentAnswer: studentAns || "Chưa điền",
-        correctAnswer: correctAns,
-        isCorrect,
-        isEmpty,
+    // 1. Build question-by-question details array (hỗ trợ cả ABCD, Đúng/Sai GDPT 2025 & Trả lời ngắn)
+    const scored = scoreStudentAnswers({
+      sheetType,
+      subject,
+      questionCount,
+      answerKey,
+      studentAnswers: student.studentAnswers || {},
+    });
+    const totalQ = Math.max(1, scored.totalQuestions || questionCount);
+    const details: QuestionDetailItem[] = scored.details.map((d) => {
+      const cog = classifyCognitiveLevel(d.questionNumber, totalQ);
+      return {
+        questionNumber: d.questionNumber,
+        studentAnswer: d.studentAnswer || "Chưa điền",
+        correctAnswer: d.correctAnswer || "A",
+        isCorrect: d.isCorrect,
+        isEmpty: d.isEmpty,
         cognitiveLevel: cog.level,
         cognitiveLabel: cog.label,
-      });
-    }
+      };
+    });
 
     // 2. Calculate GDPT 4-tier competency breakdown
     const competencies = calculateCompetencies(details);
 
     // 3. Compute accuracy percentage
-    const correctCount = student.correctCount ?? details.filter((d) => d.isCorrect).length;
-    const incorrectCount = student.incorrectCount ?? details.filter((d) => !d.isCorrect && !d.isEmpty).length;
-    const emptyCount = student.emptyCount ?? details.filter((d) => d.isEmpty).length;
-    const score = Number(student.score) || 0;
+    const correctCount = student.correctCount ?? scored.correctCount;
+    const incorrectCount = student.incorrectCount ?? scored.incorrectCount;
+    const emptyCount = student.emptyCount ?? scored.emptyCount;
+    const score =
+      student.score !== undefined && student.score !== null
+        ? Number(student.score)
+        : scored.score;
     const accuracyPercent = Math.round((correctCount / totalQ) * 100);
 
     // 4. Generate AI pedagogical comments
@@ -182,6 +184,7 @@ export async function POST(req: NextRequest) {
       reportUrl,
       report: reportData,
       zaloMessage,
+      zaloShareText: zaloMessage,
     });
   } catch (error: any) {
     console.error("API /api/reports/generate error:", error);

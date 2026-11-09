@@ -76,12 +76,15 @@ export async function extractRealAnswerKeyFromExam(examId: string): Promise<{
 
   // Tự động xác định loại phiếu phù hợp
   let sheetType: "20" | "40" | "50" | "2025" = "20";
-  const hasTrueFalseOrShort = rawQuestions.some(
-    (q) =>
-      q.question_type === "true_false_group" ||
-      q.question_type === "true_false" ||
-      q.question_type === "short_answer"
-  );
+  const hasTrueFalseOrShort = rawQuestions.some((q) => {
+    const t = q.question_type || q.type;
+    return (
+      t === "true_false_group" ||
+      t === "true_false" ||
+      t === "short_answer" ||
+      t === "numeric"
+    );
+  });
 
   if (hasTrueFalseOrShort) {
     sheetType = "2025";
@@ -103,17 +106,18 @@ export async function extractRealAnswerKeyFromExam(examId: string): Promise<{
 
   rawQuestions.forEach((q, idx) => {
     const qNum = idx + 1;
-    let rawAns = (q.correct_answer || "").trim();
+    const qType = q.question_type || q.type || "multiple_choice";
+    const rawAns = (q.correct_answer || "").trim();
 
     // 1. Câu hỏi Trắc nghiệm 4 phương án chuẩn (A, B, C, D)
-    if (!q.question_type || q.question_type === "multiple_choice" || q.question_type === "single_choice") {
+    if (qType === "multiple_choice" || qType === "single_choice") {
       // Chuẩn hóa nếu đáp án có dạng "A. ..." hoặc "Đáp án A"
       const match = rawAns.match(/^([A-D])/i);
       const cleanAns = match ? match[1].toUpperCase() : rawAns.slice(0, 1).toUpperCase() || "A";
       answerKey[qNum] = cleanAns;
     }
     // 2. Câu hỏi Đúng/Sai GDPT 2025 (4 ý a, b, c, d)
-    else if (q.question_type === "true_false_group" || q.question_type === "true_false") {
+    else if (qType === "true_false_group" || qType === "true_false") {
       // Chuẩn hóa định dạng "Đ-S-Đ-S" hoặc "T-F-T-F"
       let formatted = rawAns
         .replace(/true/gi, "Đ")
@@ -126,7 +130,7 @@ export async function extractRealAnswerKeyFromExam(examId: string): Promise<{
       answerKey[qNum] = formatted || "Đ-S-Đ-S";
     }
     // 3. Câu hỏi Trả lời ngắn (Short Answer - Điền số)
-    else if (q.question_type === "short_answer" || q.question_type === "numeric") {
+    else if (qType === "short_answer" || qType === "numeric") {
       answerKey[qNum] = rawAns || "0";
     }
     // Mặc định
@@ -136,7 +140,7 @@ export async function extractRealAnswerKeyFromExam(examId: string): Promise<{
 
     questionsSummary.push({
       num: qNum,
-      type: q.question_type || "multiple_choice",
+      type: qType,
       answer: answerKey[qNum],
       content: (q.content || "").replace(/<[^>]+>/g, "").slice(0, 120),
     });
