@@ -1212,10 +1212,6 @@ function GradingPageInner() {
                 <p className="mt-1.5 text-sm text-muted-foreground max-w-2xl leading-relaxed">
                   Tạo kỳ thi, in phiếu cho học sinh tô, rồi chụp phiếu để chấm. Hỗ trợ chuẩn GDPT 2025 (3 phần), phiếu 20, 40, 50 câu và đa mã đề.
                 </p>
-                <div className="mt-2 flex items-center gap-2 text-xs text-emerald-400 font-semibold">
-                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                  <span>Miễn phí 100% — Chấm tự động không giới hạn bằng OpenCV OMR & AI Gemini</span>
-                </div>
               </div>
 
               <div className="flex items-center gap-3 shrink-0 flex-wrap">
@@ -1243,7 +1239,7 @@ function GradingPageInner() {
             </div>
 
             {/* Quick Stats Bar */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div className="rounded-2xl border border-border bg-card p-4 shadow-2xs backdrop-blur-xs">
                 <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Tổng Kỳ Thi</span>
                 <div className="mt-1 flex items-baseline gap-2">
@@ -1257,14 +1253,14 @@ function GradingPageInner() {
               </div>
 
               <div className="rounded-2xl border border-border bg-card p-4 shadow-2xs backdrop-blur-xs">
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Bài Đã Chấm OMR</span>
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Bài Đã Chấm</span>
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className="text-2xl font-black text-blue-400">
                     {sessions.reduce((acc, s) => acc + s.gradedStudents.length, 0)}
                   </span>
                   <span className="text-xs text-muted-foreground">bài thi</span>
                 </div>
-                <p className="text-[11px] text-blue-400/80 font-medium mt-1">Không tốn credit AI</p>
+                <p className="text-[11px] text-muted-foreground font-medium mt-1">Đã lưu vào bảng điểm</p>
               </div>
 
               <div className="rounded-2xl border border-border bg-card p-4 shadow-2xs backdrop-blur-xs">
@@ -1281,15 +1277,6 @@ function GradingPageInner() {
                   <span className="text-xs text-muted-foreground">/ 10</span>
                 </div>
                 <p className="text-[11px] text-purple-400/80 font-medium mt-1">Phổ điểm toàn khóa</p>
-              </div>
-
-              <div className="rounded-2xl border border-border bg-card p-4 shadow-2xs backdrop-blur-xs">
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Độ Chính Xác OMR</span>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-emerald-400">99.2%</span>
-                  <span className="text-xs text-muted-foreground">tự động</span>
-                </div>
-                <p className="text-[11px] text-emerald-400/80 font-medium mt-1">Hỗ trợ sửa tay Review</p>
               </div>
             </div>
 
@@ -1480,14 +1467,6 @@ function GradingPageInner() {
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                             <span>✓ Đã nạp đáp án chuẩn ({examCodeCount} mã đề)</span>
                           </span>
-
-                          {/* Badge Đồng bộ từ Kho đề AI */}
-                          {session.examId && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-950/30 text-purple-300 border border-purple-800/40 font-semibold text-[11px]">
-                              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                              <span>✓ Đồng bộ từ Kho đề AI</span>
-                            </span>
-                          )}
 
                           <span className="text-slate-400">
                             Đã chấm: <strong className="text-slate-200">{totalStudents} bài</strong>

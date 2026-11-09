@@ -98,7 +98,7 @@ export default function LandingPage() {
 
               {/* Trust Badges */}
               <p className="mt-4 text-xs font-semibold text-slate-600 dark:text-slate-400">
-                ✨ Không cần thẻ tín dụng • Tặng 5.000 credits & Chấm trắc nghiệm OMR 100% miễn phí • Mở khóa toàn quyền trải nghiệm 14 ngày
+                ✨ Không cần thẻ tín dụng • Tặng 5.000 credits khi đăng ký • Tạo đề & Quản lý kỳ thi chuẩn GDPT 2025
               </p>
             </div>
           </div>
@@ -469,14 +469,14 @@ export default function LandingPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <h4 className="text-base font-bold text-slate-950 dark:text-white">
-                      Soạn Đề GDPT 2025 & OMR 0đ
+                      Soạn Đề GDPT 2025 & Chấm OMR
                     </h4>
                     <span className="text-[10px] font-black uppercase text-blue-800 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
                       MIỄN PHÍ
                     </span>
                   </div>
                   <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300 font-normal">
-                    Soạn đề chuẩn ma trận 3 phần Bộ GD&ĐT 2025 (Nhiều lựa chọn, Đúng/Sai 4 ý, Trả lời ngắn). Chấm trắc nghiệm OpenCV OMR qua camera điện thoại 100% miễn phí (0 credits) và xuất bảng điểm Excel chuẩn UTF-8.
+                    Soạn đề chuẩn ma trận 3 phần Bộ GD&ĐT 2025 (Nhiều lựa chọn, Đúng/Sai 4 ý, Trả lời ngắn). Hỗ trợ in phiếu A4, chấm phiếu trắc nghiệm qua camera và xuất bảng điểm Excel chuẩn UTF-8.
                   </p>
                 </div>
               </div>
@@ -603,7 +603,7 @@ export default function LandingPage() {
                     </li>
                     <li className="flex items-start gap-2.5">
                       <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                      <span><strong>Chấm trắc nghiệm OpenCV OMR</strong> qua camera 100% miễn phí (0 credits)</span>
+                      <span>Tạo kỳ thi và in <strong>phiếu chấm trắc nghiệm</strong> chuẩn A4 Bộ GD&ĐT</span>
                     </li>
                     <li className="flex items-start gap-2.5">
                       <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />

@@ -641,7 +641,7 @@ export function SessionDetailView({
 
           <div className="mt-6 pt-4 border-t border-border flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Chấm tự động không giới hạn bằng AI & OpenCV OMR (Dành cho Gói PRO & MAX)</span>
+            <span>Quét phiếu trắc nghiệm qua camera điện thoại hoặc tải ảnh lên (Gói PRO & MAX)</span>
           </div>
         </div>
 
@@ -672,7 +672,7 @@ export function SessionDetailView({
 
           <div className="mt-6 pt-4 border-t border-border flex items-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Tự động chấm bằng OpenCV OMR & lưu vào bảng điểm (0 credits)</span>
+            <span>Tự động nhận diện đáp án & lưu vào bảng điểm</span>
           </div>
         </div>
       </div>
