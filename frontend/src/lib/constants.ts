@@ -1,6 +1,6 @@
 /**
  * Centralized Platform Constants & Configuration
- * EdTeach / EduTest AI - Production Hardening
+ * EduTest (MTD Studio) - Production Hardening
  */
 
 // Canonical Application Domain

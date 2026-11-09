@@ -6,7 +6,7 @@
  *     (Đại học Colorado Boulder, https://phet.colorado.edu) và Tongjiang Lab (© 2026 铜匠十点睡觉, https://lab.tongjiang.app).
  *   - Giấy phép: Creative Commons Ghi nhận công của tác giả – Phi thương mại 4.0 Quốc tế (CC BY-NC 4.0).
  *   - Toàn bộ 54 bài mô phỏng thí nghiệm 3D được mở MIỄN PHÍ 100% cho mọi Thầy Cô và Học sinh (không paywall, không thu phí bản quyền).
- *   - Gói PRO / MAX của EduTest AI chỉ thu phí các tính năng giá trị gia tăng độc quyền do EduTest AI phát triển:
+ *   - Gói PRO / MAX của EduTest chỉ thu phí các tính năng giá trị gia tăng độc quyền do MTD Studio phát triển:
  *     1. Trợ lý Sư phạm AI phân tích hiện tượng thí nghiệm.
  *     2. Kính vẽ Bục giảng tương tác (Transparent Whiteboard Overlay).
  *     3. Bộ công cụ tự động sinh Đề kiểm tra / Phiếu bài tập bám sát mô phỏng 3D.
@@ -53,7 +53,7 @@ export const PHET_CC_ATTRIBUTION = {
   tongjiangUrl: "https://lab.tongjiang.app",
   tongjiangName: "Tongjiang Lab (© 2026 铜匠十点睡觉)",
   disclaimer:
-    "Toàn bộ 54 mô phỏng thí nghiệm 3D được cung cấp 100% miễn phí cho mục đích giáo dục phi thương mại theo giấy phép CC BY-NC 4.0. EduTest AI chỉ thu phí các công cụ giá trị gia tăng sư phạm độc quyền.",
+    "Toàn bộ 54 mô phỏng thí nghiệm 3D được cung cấp 100% miễn phí cho mục đích giáo dục phi thương mại theo giấy phép CC BY-NC 4.0. EduTest chỉ thu phí các công cụ giá trị gia tăng sư phạm độc quyền.",
 };
 
 export const LABS: LabLesson[] = [

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { SUPPORT_EMAIL } from "@/lib/constants";
 import {
   FileText,
   Scale,
@@ -16,9 +17,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Điều khoản Sử dụng Dịch vụ — EdTeach & EduTest AI",
+  title: "Điều khoản Sử dụng Dịch vụ — EduTest",
   description:
-    "Điều khoản dịch vụ của nền tảng EdTeach. Quy định về tài khoản, quyền sở hữu trí tuệ, trách nhiệm sư phạm đối với đề thi AI, quy chế chợ đề thi và giải quyết tranh chấp.",
+    "Điều khoản dịch vụ của nền tảng EduTest (phát triển bởi MTD Studio). Quy định về tài khoản, quyền sở hữu trí tuệ, trách nhiệm sư phạm đối với đề thi AI, quy chế chợ đề thi và giải quyết tranh chấp.",
 };
 
 export default function TermsPage() {
@@ -38,10 +39,10 @@ export default function TermsPage() {
               Quy Chế Hoạt Động & Thỏa Thuận Sử Dụng
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-foreground">
-              Điều Khoản Dịch Vụ EdTeach
+              Điều Khoản Dịch Vụ EduTest
             </h1>
             <p className="mt-4 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-3xl">
-              Thỏa thuận pháp lý ràng buộc giữa Quý Thầy/Cô, Học sinh, Đối tác sư phạm và Công ty TNHH Công nghệ Giáo dục EdTeach Việt Nam khi truy cập và khai thác hệ sinh thái EduTest AI.
+              Thỏa thuận giữa Quý Thầy/Cô, Học sinh, Đối tác sư phạm và MTD Studio (đơn vị phát triển sản phẩm EduTest) khi truy cập và khai thác hệ sinh thái EduTest.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
               <span>Hiệu lực từ: <strong>{effectiveDate}</strong></span>
@@ -83,12 +84,12 @@ export default function TermsPage() {
 
                 <div className="mt-6 pt-4 border-t border-border text-[11px] text-muted-foreground space-y-2">
                   <p className="font-semibold text-foreground">Bạn có thắc mắc về điều khoản?</p>
-                  <p>Bộ phận Pháp chế & CSKH sẵn sàng giải đáp mọi câu hỏi của Quý Thầy/Cô.</p>
+                  <p>Đội ngũ hỗ trợ EduTest sẵn sàng giải đáp mọi câu hỏi của Quý Thầy/Cô.</p>
                   <a
-                    href="mailto:support@edteach.vn"
-                    className="inline-flex items-center gap-1 text-primary hover:underline font-bold"
+                    href={`mailto:${SUPPORT_EMAIL}`}
+                    className="inline-flex items-center gap-1 text-primary hover:underline font-bold break-all"
                   >
-                    Gửi thư cho Pháp chế EdTeach
+                    Gửi thư hỗ trợ ({SUPPORT_EMAIL})
                   </a>
                 </div>
               </div>
@@ -102,7 +103,7 @@ export default function TermsPage() {
                   <Scale className="w-4 h-4 text-primary" /> Lưu ý quan trọng trước khi đăng ký
                 </p>
                 <p>
-                  Bằng việc tạo tài khoản, đăng nhập hoặc sử dụng bất kỳ tính năng nào của EdTeach (EduTest AI), bạn xác nhận đã đọc, hiểu rõ và đồng ý bị ràng buộc vô điều kiện bởi các Điều khoản Dịch vụ này cùng Chính sách Bảo mật của chúng tôi. Nếu bạn không đồng ý với bất kỳ điều khoản nào, vui lòng ngừng sử dụng nền tảng.
+                  Bằng việc tạo tài khoản, đăng nhập hoặc sử dụng bất kỳ tính năng nào của EduTest, bạn xác nhận đã đọc, hiểu rõ và đồng ý bị ràng buộc bởi các Điều khoản Dịch vụ này cùng Chính sách Bảo mật của chúng tôi. Nếu bạn không đồng ý với bất kỳ điều khoản nào, vui lòng ngừng sử dụng nền tảng.
                 </p>
               </div>
 
@@ -115,7 +116,7 @@ export default function TermsPage() {
                   Chấp Thuận & Phạm Vi Áp Dụng
                 </h2>
                 <p>
-                  Điều khoản Dịch vụ này điều chỉnh việc sử dụng toàn bộ hệ sinh thái phần mềm giáo dục EdTeach, bao gồm ứng dụng web tại tên miền <code>edteach.vn</code>, các công cụ tạo ma trận đề thi tự động theo chuẩn GDPT 2025, hệ thống chấm trắc nghiệm bằng camera (EduScan OMR), Bục Giảng Số tương tác, phòng thí nghiệm ảo 3D và Chợ đề thi số (Marketplace).
+                  Điều khoản Dịch vụ này điều chỉnh việc sử dụng toàn bộ hệ sinh thái phần mềm giáo dục EduTest (sản phẩm được phát triển bởi MTD Studio), bao gồm các công cụ tạo ma trận đề thi tự động theo chuẩn GDPT 2025, hệ thống chấm trắc nghiệm bằng camera (EduScan OMR), Bục Giảng Số tương tác, phòng thí nghiệm ảo 3D và Chợ đề thi số (Marketplace).
                 </p>
                 <p className="text-muted-foreground">
                   Dịch vụ phục vụ ba nhóm đối tượng chính: <strong>Giáo viên (Teacher)</strong>, <strong>Gia sư / Sinh viên sư phạm (Tutor)</strong> và <strong>Học sinh (Student)</strong>. Từng nhóm người dùng phải tuân thủ đúng chức năng và thẩm quyền được phân quyền trên hệ thống.
@@ -138,7 +139,7 @@ export default function TermsPage() {
                     <li>Cung cấp thông tin chính xác, cập nhật về họ tên, chức danh và đơn vị công tác.</li>
                     <li>Chịu trách nhiệm bảo mật tuyệt đối mật khẩu đăng nhập, mã xác thực 2 bước (TOTP 2FA) và các mã khôi phục dự phòng.</li>
                     <li>Không chia sẻ tài khoản cho người khác hoặc sử dụng chung một tài khoản giữa nhiều cá nhân nhằm lách hạn mức gói cước (sharing account).</li>
-                    <li>Thông báo ngay lập tức cho EdTeach khi phát hiện bất kỳ dấu hiệu truy cập trái phép nào vào tài khoản của mình.</li>
+                    <li>Thông báo ngay lập tức cho EduTest khi phát hiện bất kỳ dấu hiệu truy cập trái phép nào vào tài khoản của mình.</li>
                   </ul>
                   <div className="p-3 rounded-xl bg-card border border-border text-xs text-muted-foreground">
                     <strong>Độ tuổi áp dụng:</strong> Học sinh dưới 15 tuổi khi sử dụng tài khoản học tập cần có sự đồng ý hoặc giám sát của phụ huynh/giáo viên phụ trách theo đúng quy định pháp luật trẻ em.
@@ -160,12 +161,12 @@ export default function TermsPage() {
                       <BookOpen className="w-4 h-4" /> Bản quyền học liệu thuộc về Quý Thầy/Cô
                     </p>
                     <p className="text-muted-foreground">
-                      Thầy/Cô giữ trọn vẹn quyền tác giả và quyền sở hữu đối với các câu hỏi, ma trận đặc tả, đề kiểm tra do chính Thầy/Cô tự biên soạn hoặc tùy biến trên nền tảng. EdTeach <strong>không</strong> đòi hỏi quyền sở hữu đối với các tài liệu mà Thầy/Cô xuất bản sang tệp Word (.docx) hay PDF để phục vụ công tác giảng dạy tại trường lớp.
+                      Thầy/Cô giữ trọn vẹn quyền tác giả và quyền sở hữu đối với các câu hỏi, ma trận đặc tả, đề kiểm tra do chính Thầy/Cô tự biên soạn hoặc tùy biến trên nền tảng. EduTest <strong>không</strong> đòi hỏi quyền sở hữu đối với các tài liệu mà Thầy/Cô xuất bản sang tệp Word (.docx) hay PDF để phục vụ công tác giảng dạy tại trường lớp.
                     </p>
                   </div>
 
                   <p className="text-xs">
-                    <strong>Quyền sở hữu của EdTeach:</strong> Toàn bộ mã nguồn, giao diện đồ họa, thuật toán chấm thi OMR, thuật toán bố cục ma trận đề thi và nhãn hiệu "EdTeach / EduTest AI" là tài sản trí tuệ độc quyền của Công ty TNHH Công nghệ Giáo dục EdTeach Việt Nam, được bảo hộ theo Luật Sở hữu Trí tuệ Việt Nam.
+                    <strong>Quyền sở hữu của MTD Studio:</strong> Toàn bộ mã nguồn, giao diện đồ họa, thuật toán chấm thi OMR, thuật toán bố cục ma trận đề thi và thương hiệu &ldquo;EduTest&rdquo; là tài sản trí tuệ của MTD Studio (đơn vị phát triển sản phẩm EduTest), được bảo hộ theo Luật Sở hữu Trí tuệ Việt Nam.
                   </p>
 
                   <div className="p-4 rounded-xl bg-card border border-border text-xs text-muted-foreground space-y-1.5">
@@ -201,7 +202,7 @@ export default function TermsPage() {
                       <strong className="text-foreground">Hiện tượng suy diễn (AI Hallucination):</strong> Mặc dù hệ thống áp dụng các quy tắc kiểm tra nghiêm ngặt, mô hình AI vẫn có khả năng đưa ra thông số chưa tối ưu hoặc sai sót toán học trong các câu hỏi vận dụng cao.
                     </li>
                     <li>
-                      <strong className="text-foreground">Miễn trừ bồi thường:</strong> EdTeach không chịu trách nhiệm pháp lý đối với bất kỳ khiếu nại, điểm số sai lệch hay thiệt hại phát sinh từ việc sử dụng đề thi chưa qua kiểm duyệt chuyên môn của giáo viên.
+                      <strong className="text-foreground">Miễn trừ bồi thường:</strong> EduTest không chịu trách nhiệm pháp lý đối với bất kỳ khiếu nại, điểm số sai lệch hay thiệt hại phát sinh từ việc sử dụng đề thi chưa qua kiểm duyệt chuyên môn của giáo viên.
                     </li>
                   </ul>
                 </div>
@@ -217,7 +218,7 @@ export default function TermsPage() {
                 </h2>
                 <div className="space-y-3 text-xs text-muted-foreground">
                   <p>
-                    Chợ đề thi sư phạm EdTeach kết nối các giáo viên chia sẻ đề thi chuẩn cấu trúc. Để bảo vệ quyền lợi cả người mua lẫn người bán:
+                    Chợ đề thi sư phạm EduTest kết nối các giáo viên chia sẻ đề thi chuẩn cấu trúc. Để bảo vệ quyền lợi cả người mua lẫn người bán:
                   </p>
                   <div className="p-4 rounded-xl bg-card border border-border space-y-2 text-foreground">
                     <p className="font-bold flex items-center gap-1.5 text-primary">
@@ -290,7 +291,7 @@ export default function TermsPage() {
                 </h2>
                 <div className="space-y-3 text-xs text-muted-foreground">
                   <p>
-                    EdTeach bảo lưu quyền tạm đình chỉ hoặc chấm dứt vĩnh viễn quyền truy cập tài khoản mà không cần báo trước nếu:
+                    EduTest bảo lưu quyền tạm đình chỉ hoặc chấm dứt vĩnh viễn quyền truy cập tài khoản mà không cần báo trước nếu:
                   </p>
                   <ul className="list-disc pl-5 space-y-1">
                     <li>Người dùng vi phạm nghiêm trọng các quy định tại Điều 6 của văn bản này.</li>
@@ -319,7 +320,7 @@ export default function TermsPage() {
                     Các Điều khoản Dịch vụ này được điều chỉnh và giải thích hoàn toàn theo <strong>pháp luật của Nước Cộng hòa Xã hội Chủ nghĩa Việt Nam</strong>.
                   </p>
                   <p className="text-muted-foreground">
-                    Mọi tranh chấp phát sinh liên quan đến việc sử dụng dịch vụ trước hết sẽ được ưu tiên thương lượng, hòa giải trên tinh thần tôn trọng lẫn nhau. Trong trường hợp không đạt được thỏa thuận sau 30 ngày kể từ ngày một bên thông báo bằng văn bản, vụ việc sẽ được đưa ra giải quyết tại <strong>Tòa án Nhân dân có thẩm quyền tại Thành phố Hà Nội</strong>. Phán quyết của Tòa án là chung thẩm và ràng buộc đối với cả hai bên.
+                    Mọi tranh chấp phát sinh liên quan đến việc sử dụng dịch vụ trước hết sẽ được ưu tiên thương lượng, hòa giải trên tinh thần tôn trọng lẫn nhau. Trong trường hợp không đạt được thỏa thuận sau 30 ngày kể từ ngày một bên thông báo bằng văn bản, vụ việc sẽ được đưa ra giải quyết tại <strong>Tòa án Nhân dân có thẩm quyền theo quy định pháp luật Việt Nam</strong>. Phán quyết của Tòa án là chung thẩm và ràng buộc đối với cả hai bên.
                   </p>
                 </div>
               </section>

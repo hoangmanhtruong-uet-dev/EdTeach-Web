@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { SUPPORT_EMAIL } from "@/lib/constants";
 import {
   RefreshCw,
   CreditCard,
@@ -17,9 +18,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Chính sách Hoàn tiền & Đảm bảo Giao dịch — EdTeach & EduTest AI",
+  title: "Chính sách Hoàn tiền & Đảm bảo Giao dịch — EduTest",
   description:
-    "Chính sách hoàn tiền minh bạch cho gói cước PRO/MAX, hoàn trả AI Credits, cơ chế bảo vệ giao dịch chợ đề thi 14-ngày Escrow và quy trình hoàn trả qua VietQR.",
+    "Chính sách hoàn tiền minh bạch của EduTest cho gói cước PRO/MAX, hoàn trả AI Credits, cơ chế bảo vệ giao dịch chợ đề thi 14-ngày Escrow và quy trình hoàn trả qua VietQR.",
 };
 
 export default function RefundPage() {
@@ -42,7 +43,7 @@ export default function RefundPage() {
               Chính Sách Hoàn Tiền Minh Bạch
             </h1>
             <p className="mt-4 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-3xl">
-              Cam kết công bằng, minh bạch của EdTeach đối với mọi giao dịch nạp điểm AI Credits, đăng ký gói cước bản quyền PRO/MAX và mua bán tài liệu trên Chợ đề thi số.
+              Cam kết công bằng, minh bạch của EduTest đối với mọi giao dịch nạp điểm AI Credits, đăng ký gói cước bản quyền PRO/MAX và mua bán tài liệu trên Chợ đề thi số.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
               <span>Hiệu lực từ: <strong>{effectiveDate}</strong></span>
@@ -82,13 +83,13 @@ export default function RefundPage() {
 
                 <div className="mt-6 pt-4 border-t border-border text-[11px] text-muted-foreground space-y-2">
                   <p className="font-semibold text-foreground">Cần hỗ trợ tra soát giao dịch?</p>
-                  <p>Chuẩn bị sẵn Mã giao dịch PayOS và liên hệ đội ngũ tài chính:</p>
+                  <p>Chuẩn bị sẵn Mã giao dịch PayOS và liên hệ qua email hỗ trợ:</p>
                   <a
-                    href="mailto:support@edteach.vn"
-                    className="inline-flex items-center gap-1 text-primary hover:underline font-bold"
+                    href={`mailto:${SUPPORT_EMAIL}`}
+                    className="inline-flex items-center gap-1 text-primary hover:underline font-bold break-all"
                   >
-                    <Mail className="w-3.5 h-3.5" />
-                    support@edteach.vn
+                    <Mail className="w-3.5 h-3.5 shrink-0" />
+                    {SUPPORT_EMAIL}
                   </a>
                 </div>
               </div>
@@ -105,7 +106,7 @@ export default function RefundPage() {
                   Nguyên Tắc Hoàn Tiền Chung
                 </h2>
                 <p>
-                  Nền tảng EdTeach / EduTest AI hoạt động theo nguyên tắc <strong>bảo vệ tối đa quyền lợi chính đáng của Quý Thầy/Cô và Khách hàng</strong>, tuân thủ Luật Bảo vệ Quyền lợi Người tiêu dùng và Nghị định 52/2013/NĐ-CP về Thương mại Điện tử.
+                  Nền tảng EduTest hoạt động theo nguyên tắc <strong>bảo vệ tối đa quyền lợi chính đáng của Quý Thầy/Cô và Khách hàng</strong>, tuân thủ Luật Bảo vệ Quyền lợi Người tiêu dùng và Nghị định 52/2013/NĐ-CP về Thương mại Điện tử.
                 </p>
                 <div className="p-4 rounded-xl bg-card border border-border text-xs space-y-2">
                   <div className="flex items-center gap-2 font-bold text-emerald-600 dark:text-emerald-400">
@@ -113,7 +114,7 @@ export default function RefundPage() {
                     <span>Cam kết chất lượng 100% minh bạch</span>
                   </div>
                   <p className="text-muted-foreground">
-                    Nếu dịch vụ phát sinh lỗi kỹ thuật hệ thống từ phía EdTeach khiến Quý Thầy/Cô không thể sử dụng gói cước hoặc tạo đề thi, chúng tôi cam kết hoàn lại 100% số tiền đã thanh toán hoặc gia hạn thời gian tương đương theo yêu cầu của Thầy/Cô.
+                    Nếu dịch vụ phát sinh lỗi kỹ thuật hệ thống từ phía EduTest khiến Quý Thầy/Cô không thể sử dụng gói cước hoặc tạo đề thi, chúng tôi cam kết hoàn lại 100% số tiền đã thanh toán hoặc gia hạn thời gian tương đương theo yêu cầu của Thầy/Cô.
                   </p>
                 </div>
               </section>
@@ -177,7 +178,7 @@ export default function RefundPage() {
                       Khách hàng được yêu cầu hoàn tiền 100% giá trị gói nạp Credits trong vòng <strong>07 ngày</strong> kể từ thời điểm giao dịch nạp thành công qua PayOS / VietQR, <strong>với điều kiện số Credits trong gói nạp đó chưa được sử dụng lần nào</strong>.
                     </p>
                     <p>
-                      Trường hợp đã sử dụng một phần số Credits trong gói, EdTeach không hỗ trợ hoàn tiền lẻ cho phần Credits còn lại nhưng số Credits này có giá trị sử dụng vĩnh viễn không bao giờ hết hạn.
+                      Trường hợp đã sử dụng một phần số Credits trong gói, EduTest không hỗ trợ hoàn tiền lẻ cho phần Credits còn lại nhưng số Credits này có giá trị sử dụng vĩnh viễn không bao giờ hết hạn.
                     </p>
                   </div>
                 </div>
@@ -197,7 +198,7 @@ export default function RefundPage() {
                     <span>Cơ chế Ký quỹ Tạm giữ Bảo vệ Người mua & Người bán</span>
                   </div>
                   <p className="text-muted-foreground leading-relaxed">
-                    Để đảm bảo chất lượng tài liệu sư phạm trên Marketplace, EdTeach áp dụng cơ chế <strong>Escrow tạm giữ 14 ngày</strong> cho mọi giao dịch mua tài liệu:
+                    Để đảm bảo chất lượng tài liệu sư phạm trên Marketplace, EduTest áp dụng cơ chế <strong>Escrow tạm giữ 14 ngày</strong> cho mọi giao dịch mua tài liệu:
                   </p>
                   <ul className="list-disc pl-5 space-y-1.5 text-muted-foreground">
                     <li>
@@ -207,7 +208,7 @@ export default function RefundPage() {
                       <strong className="text-foreground">Quyền khiếu nại trong 72 giờ:</strong> Người mua có thời gian <strong>72 giờ</strong> kể từ thời điểm tải tệp về để kiểm tra. Nếu phát hiện tệp tài liệu bị hỏng, rỗng nội dung, sai lệch ma trận công bố quá 30% hoặc đạo văn vi phạm bản quyền, người mua có quyền nhấn nút “Yêu cầu khiếu nại & Hoàn tiền”.
                     </li>
                     <li>
-                      <strong className="text-foreground">Đối soát chuyên môn:</strong> Đội ngũ thẩm định sư phạm của EdTeach sẽ kiểm tra trong 24 giờ. Nếu khiếu nại đúng, hệ thống sẽ tự động hoàn trả 100% số tiền vào ví của người mua và gửi cảnh cáo tới người bán.
+                      <strong className="text-foreground">Đối soát chuyên môn:</strong> Đội ngũ thẩm định sư phạm của EduTest sẽ kiểm tra trong 24 giờ. Nếu khiếu nại đúng, hệ thống sẽ tự động hoàn trả 100% số tiền vào ví của người mua và gửi cảnh cáo tới người bán.
                     </li>
                   </ul>
                 </div>
@@ -262,7 +263,7 @@ export default function RefundPage() {
                       <span className="text-xs font-black text-primary px-2 py-0.5 rounded-full bg-primary/10">Bước 1</span>
                       <p className="font-bold text-foreground">Gửi yêu cầu hoàn tiền</p>
                       <p className="text-muted-foreground text-[11px]">
-                        Gửi email tới <a href="mailto:support@edteach.vn" className="text-primary hover:underline">support@edteach.vn</a> ghi rõ: Email tài khoản, Mã đơn hàng PayOS, Lý do yêu cầu kèm ảnh chụp lỗi (nếu có).
+                        Gửi email tới <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline break-all">{SUPPORT_EMAIL}</a> ghi rõ: Email tài khoản, Mã đơn hàng PayOS, Lý do yêu cầu kèm ảnh chụp lỗi (nếu có).
                       </p>
                     </div>
 

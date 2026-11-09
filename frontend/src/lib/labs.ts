@@ -6,7 +6,7 @@
  * International License (CC BY-NC 4.0).
  *
  * Proprietary value-add features (Pedagogical Whiteboard Overlay, AI Simulation Assistant,
- * and Automated Quiz/Worksheet Generator) are monetized under EduTest AI PRO.
+ * and Automated Quiz/Worksheet Generator) are monetized under EduTest PRO.
  */
 
 export * from "@/data/labs";

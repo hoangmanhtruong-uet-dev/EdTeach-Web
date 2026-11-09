@@ -190,7 +190,7 @@ export function ReportView({ report }: ReportViewProps) {
             <div className="truncate">
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-sm tracking-tight text-neutral-900 dark:text-white">
-                  EduTest AI
+                  EduTest
                 </span>
                 <span className="text-[10px] uppercase font-extrabold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
                   Tutor OS
@@ -273,7 +273,7 @@ export function ReportView({ report }: ReportViewProps) {
                 )}
               </div>
               <p className="text-[11px] text-neutral-500 dark:text-slate-400 mt-1">
-                Phiếu phân tích kết quả điện tử được cấp phát và đồng bộ tự động từ hệ thống chấm thi EduTest AI.
+                Phiếu phân tích kết quả điện tử được cấp phát và đồng bộ tự động từ hệ thống chấm thi EduTest.
               </p>
             </div>
           </div>
@@ -770,7 +770,7 @@ export function ReportView({ report }: ReportViewProps) {
         {/* 9. FOOTER STAMP */}
         <footer className="text-center text-xs text-neutral-400 dark:text-slate-500 py-6 space-y-1">
           <p className="font-semibold text-neutral-600 dark:text-slate-300">
-            Hệ thống Báo cáo Khảo thí & Chăm sóc Phụ huynh Toàn diện — Nền tảng chuyên sâu dành cho Giáo viên — EduTest AI Tutor OS
+            Hệ thống Báo cáo Khảo thí & Chăm sóc Phụ huynh Toàn diện — Nền tảng chuyên sâu dành cho Giáo viên — EduTest Tutor OS
           </p>
           <p className="text-[11px]">
             Phiếu số: #{report.token} · Đồng bộ tự động theo thời gian thực

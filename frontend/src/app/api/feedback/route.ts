@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Cảm ơn Thầy/Cô và các bạn đã gửi góp ý! Đội ngũ kỹ thuật EduTest AI sẽ xử lý trong thời gian sớm nhất.",
+      message: "Cảm ơn Thầy/Cô và các bạn đã gửi góp ý! Đội ngũ kỹ thuật EduTest sẽ xử lý trong thời gian sớm nhất.",
       feedback: feedbackItem,
     });
   } catch (err: any) {

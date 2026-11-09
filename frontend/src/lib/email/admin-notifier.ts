@@ -78,7 +78,7 @@ export async function notifyAdminNewVerification(params: TeacherVerificationNoti
             <a href="${reviewUrl}" class="button">Vào Trang Quản Trị Phê Duyệt Ngay &rarr;</a>
           </div>
           <div class="footer">
-            <p>Hệ thống thông báo tự động từ Nền tảng Giáo dục EdTeach (EduTest AI v2.0).</p>
+            <p>Hệ thống thông báo tự động từ Nền tảng Giáo dục EduTest v2.0 (MTD Studio).</p>
           </div>
         </div>
       </body>

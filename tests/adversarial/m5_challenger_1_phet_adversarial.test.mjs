@@ -279,7 +279,7 @@ runTest("3.3 UI Attribution Elements: Attribution bar, CC badges, and details di
   assert.match(labViewerContent, /PHET_CC_ATTRIBUTION\.tongjiangUrl/);
   assert.match(labViewerContent, /PHET_CC_ATTRIBUTION\.licenseUrl/);
   assert.match(labViewerContent, /Three\.js \(MIT License\)/);
-  assert.match(labViewerContent, /EduTest AI Team/);
+  assert.match(labViewerContent, /EduTest Team \(MTD Studio\)/);
 });
 
 // ============================================================================

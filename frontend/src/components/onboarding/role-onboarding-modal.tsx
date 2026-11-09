@@ -76,11 +76,11 @@ export function RoleOnboardingModal({
         <div className="text-center space-y-3 relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-xs font-bold text-indigo-700 dark:text-indigo-300">
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Chào mừng Thầy Cô & Học Sinh đến với EduTest AI</span>
+            <span>Chào mừng Thầy Cô & Học Sinh đến với EduTest</span>
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-            Bạn sử dụng EduTest AI với vai trò chính là gì?
+            Bạn sử dụng EduTest với vai trò chính là gì?
           </h2>
 
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto">

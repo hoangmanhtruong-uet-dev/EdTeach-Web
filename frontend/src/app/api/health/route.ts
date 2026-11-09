@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     {
       status: isHealthy ? "healthy" : "degraded",
       version: "2.0.0-final",
-      name: "EduTest AI — Tutor OS",
+      name: "EduTest — Tutor OS",
       timestamp: new Date().toISOString(),
       uptimeSeconds: Math.floor(process.uptime()),
       totalLatencyMs: Date.now() - startTime,

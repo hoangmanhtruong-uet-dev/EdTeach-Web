@@ -70,7 +70,7 @@ export function WelcomeOnboardingModal({ isOpen, onClose }: WelcomeOnboardingMod
                 Chào mừng Thầy/Cô!
               </span>
               <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">
-                Làm chủ đề thi với EduTest AI
+                Làm chủ đề thi với EduTest
               </h2>
             </div>
 

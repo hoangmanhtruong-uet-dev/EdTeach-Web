@@ -2,6 +2,7 @@
 
 import React from "react";
 import { X, ShieldCheck, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { SUPPORT_EMAIL } from "@/lib/constants";
 
 interface RefundPolicyModalProps {
   isOpen: boolean;
@@ -95,9 +96,12 @@ export function RefundPolicyModal({ isOpen, onClose }: RefundPolicyModalProps) {
             </p>
           </div>
 
-          <div className="pt-2 border-t border-border flex items-center justify-between">
+          <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
             <span className="text-[11px] text-muted-foreground">
-              Hỗ trợ khẩn cấp: <strong>Zalo OA EduTest AI</strong>
+              Hỗ trợ qua Email:{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary font-semibold hover:underline">
+                {SUPPORT_EMAIL}
+              </a>
             </span>
             <button
               type="button"

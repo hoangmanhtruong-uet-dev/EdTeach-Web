@@ -148,7 +148,7 @@ export function GuideTab() {
             Cẩm Nang Hướng Dẫn Sử Dụng
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Làm chủ nền tảng EduTest AI
+            Làm chủ nền tảng EduTest
           </h2>
           <p className="mt-1 text-sm text-muted-foreground max-w-2xl leading-relaxed">
             Tài liệu hướng dẫn trực quan từng bước giúp Thầy/Cô khai thác tối đa sức mạnh của AI trong soạn đề chuẩn 2025, trộn 4 mã đề, in phiếu A4 và tự động hóa khâu chấm thi.
@@ -834,7 +834,7 @@ export function GuideTab() {
             <div className="rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900 p-4 sm:p-5 text-xs text-indigo-950 dark:text-indigo-200 space-y-2">
               <p className="font-bold flex items-center gap-1.5 text-indigo-700 dark:text-indigo-300">
                 <Sparkles className="w-4 h-4 text-amber-500" />
-                <span>Ưu điểm định dạng bảng điểm EduTest AI:</span>
+                <span>Ưu điểm định dạng bảng điểm EduTest:</span>
               </p>
               <ul className="space-y-1 text-slate-700 dark:text-slate-300 list-disc list-inside">
                 <li>

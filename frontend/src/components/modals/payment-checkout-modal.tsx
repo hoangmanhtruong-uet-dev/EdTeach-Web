@@ -537,7 +537,7 @@ export function PaymentCheckoutModal({
                     </div>
                     {supportMessageSent ? (
                       <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
-                        Đã ghi nhận yêu cầu đối soát cho mã đơn <strong>{order?.order_code}</strong>. Đội ngũ kỹ thuật đang kiểm tra và sẽ phản hồi qua số {supportPhone || "hotline"}!
+                        Đã ghi nhận yêu cầu đối soát cho mã đơn <strong>{order?.order_code}</strong>. Đội ngũ kỹ thuật đang kiểm tra và sẽ phản hồi qua số {supportPhone || "điện thoại"}!
                       </p>
                     ) : (
                       <div className="space-y-2">

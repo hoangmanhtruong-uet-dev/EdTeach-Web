@@ -1199,7 +1199,7 @@ export function GeneralTab({
     try {
       const exportData = {
         meta: {
-          app: "EduTest AI",
+          app: "EduTest",
           exportDate: new Date().toISOString(),
           regulation: "Nghị định 13/2023/NĐ-CP về Bảo vệ Dữ liệu Cá nhân",
         },
@@ -1240,7 +1240,7 @@ export function GeneralTab({
   const handleExportCsvData = () => {
     try {
       const rows: string[][] = [
-        ["EDUTEST AI - BÁO CÁO DỮ LIỆU CÁ NHÂN VÀ HOẠT ĐỘNG SƯ PHẠM"],
+        ["EDUTEST - BÁO CÁO DỮ LIỆU CÁ NHÂN VÀ HOẠT ĐỘNG SƯ PHẠM"],
         ["Thời gian trích xuất", new Date().toLocaleString("vi-VN")],
         ["Căn cứ pháp lý", "Nghị định 13/2023/NĐ-CP về Bảo vệ Dữ liệu Cá nhân"],
         [],

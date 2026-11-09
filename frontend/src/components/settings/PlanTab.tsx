@@ -11,10 +11,11 @@ import {
   ShieldCheck,
   ChevronDown,
   MessageCircle,
-  Phone,
+  Mail,
   ArrowRight,
   Info,
 } from "lucide-react";
+import { SUPPORT_EMAIL } from "@/lib/constants";
 import { useAuth } from "@/context/auth-context";
 import { PaymentCheckoutModal } from "@/components/modals/payment-checkout-modal";
 import { PlanCard } from "./PlanCard";
@@ -294,7 +295,7 @@ export function PlanTab() {
               1. Tự động gia hạn:
             </strong>
             <p className="leading-relaxed">
-              <strong>Không tự động trừ tiền.</strong> EduTest AI sử dụng thanh toán VietQR từng lần, không lưu thông tin thẻ ngân hàng. Chúng tôi gửi thông báo nhắc trước 7 ngày khi gói sắp hết hạn.
+              <strong>Không tự động trừ tiền.</strong> EduTest sử dụng thanh toán VietQR từng lần, không lưu thông tin thẻ ngân hàng. Chúng tôi gửi thông báo nhắc trước 7 ngày khi gói sắp hết hạn.
             </p>
           </div>
 
@@ -737,7 +738,7 @@ export function PlanTab() {
             </button>
             {openFaqIndex === 3 && (
               <div className="px-4 pb-4 pt-1 text-xs text-muted-foreground pl-10 leading-relaxed border-t border-border/50 animate-in fade-in">
-                <strong>Hoàn toàn không tự trừ tiền.</strong> EduTest AI tôn trọng quyền tự chủ của Thầy Cô: chúng tôi chỉ gửi thông báo nhắc trước 7 ngày khi gói sắp hết hạn. Nếu Thầy Cô không có nhu cầu dùng tiếp, chỉ cần không quét mã thanh toán thì gói sẽ tự động dừng mà không phát sinh bất kỳ khoản phí nào.
+                <strong>Hoàn toàn không tự trừ tiền.</strong> EduTest tôn trọng quyền tự chủ của Thầy Cô: chúng tôi chỉ gửi thông báo nhắc trước 7 ngày khi gói sắp hết hạn. Nếu Thầy Cô không có nhu cầu dùng tiếp, chỉ cần không quét mã thanh toán thì gói sẽ tự động dừng mà không phát sinh bất kỳ khoản phí nào.
               </div>
             )}
           </div>
@@ -829,7 +830,7 @@ export function PlanTab() {
                   Với đơn vị Trường học, Tổ chuyên môn hoặc Trung tâm mua từ 5 tài khoản trở lên, chúng tôi áp dụng chính sách chiết khấu đối tác giáo dục từ <strong>25% đến 40%</strong>, kèm phân quyền Quản lý tổ bộ môn và hỗ trợ cài đặt biểu mẫu đề theo barem riêng của trường.
                 </p>
                 <p>
-                  Vui lòng bấm nút Chat hỗ trợ hoặc gọi Hotline để nhận báo giá chi tiết và hợp đồng mẫu.
+                  Vui lòng bấm nút Chat hỗ trợ hoặc gửi Email để nhận báo giá chi tiết và hợp đồng mẫu.
                 </p>
               </div>
             )}
@@ -845,7 +846,7 @@ export function PlanTab() {
             >
               <span className="flex items-center gap-2">
                 <HelpCircle className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-                <span>EduTest AI có hỗ trợ xuất hóa đơn điện tử VAT cho Trường học không?</span>
+                <span>EduTest có hỗ trợ xuất hóa đơn điện tử VAT cho Trường học không?</span>
               </span>
               <ChevronDown
                 className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${
@@ -857,7 +858,7 @@ export function PlanTab() {
             {openFaqIndex === 7 && (
               <div className="px-4 pb-4 pt-1 text-xs text-muted-foreground pl-10 leading-relaxed border-t border-border/50 animate-in fade-in space-y-2">
                 <p>
-                  Có. EduTest AI xuất Hóa đơn điện tử VAT hợp pháp cho mọi giao dịch phục vụ thanh quyết toán ngân sách nhà trường hoặc quỹ trung tâm.
+                  Có. EduTest xuất Hóa đơn điện tử VAT hợp pháp cho mọi giao dịch phục vụ thanh quyết toán ngân sách nhà trường hoặc quỹ trung tâm.
                 </p>
                 <button
                   type="button"
@@ -883,7 +884,7 @@ export function PlanTab() {
                 Thầy Cô cần tư vấn thêm về gói cước?
               </p>
               <p className="text-xs text-muted-foreground">
-                Đội ngũ sư phạm & kỹ thuật trực tuyến 24/7 qua Zalo Official Account.
+                Đội ngũ phát triển hỗ trợ qua Email chính thức ({SUPPORT_EMAIL}).
               </p>
             </div>
           </div>
@@ -899,11 +900,11 @@ export function PlanTab() {
               <span>Chat Zalo hỗ trợ</span>
             </a>
             <a
-              href="tel:19000000"
+              href={`mailto:${SUPPORT_EMAIL}`}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-card text-foreground hover:bg-muted font-semibold text-xs transition cursor-pointer"
             >
-              <Phone className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Hotline 24/7</span>
+              <Mail className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Email hỗ trợ</span>
             </a>
           </div>
         </div>

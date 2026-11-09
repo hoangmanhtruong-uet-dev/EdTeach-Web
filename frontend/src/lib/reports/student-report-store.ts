@@ -300,7 +300,7 @@ export async function generateAIPedagogicalInsight(params: {
 
   try {
     const prompt = `
-Bạn là Trợ lý Sư phạm AI của Hệ điều hành Giáo dục EduTest AI Tutor OS.
+Bạn là Trợ lý Sư phạm AI của Hệ điều hành Giáo dục EduTest Tutor OS.
 Nhiệm vụ: Viết phiếu đánh giá sư phạm chi tiết, ân cần, mang tính khích lệ để gửi cho Phụ huynh học sinh qua Zalo.
 
 Thông tin bài thi:

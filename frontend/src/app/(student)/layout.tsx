@@ -74,7 +74,7 @@ export default function StudentLayout({
             </div>
             <div>
               <span className="text-base font-black tracking-tight text-slate-900 dark:text-white">
-                Edu<span className="text-emerald-600 dark:text-emerald-400">Test</span> AI
+                Edu<span className="text-emerald-600 dark:text-emerald-400">Test</span>
               </span>
               <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                 Cổng Học Sinh

@@ -666,7 +666,7 @@ export function LabViewer({ lab }: { lab: LabLesson }) {
                 <strong>Thư viện đồ họa:</strong> Three.js (MIT License)
               </div>
               <div>
-                <strong>Việt hóa & Công cụ sư phạm:</strong> EduTest AI Team
+                <strong>Việt hóa & Công cụ sư phạm:</strong> EduTest Team (MTD Studio)
               </div>
             </div>
 

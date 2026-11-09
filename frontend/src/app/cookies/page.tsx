@@ -48,7 +48,7 @@ export default function CookiesPage() {
               Chính Sách Cookie Riêng Biệt
             </h1>
             <p className="mt-4 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-3xl">
-              Giải thích chi tiết các loại cookie, bộ nhớ cục bộ (LocalStorage) được sử dụng trên EdTeach và quyền chủ động kiểm soát của Quý Thầy/Cô theo Nghị định 13/2023/NĐ-CP và ePrivacy Directive.
+              Giải thích chi tiết các loại cookie, bộ nhớ cục bộ (LocalStorage) được sử dụng trên EduTest và quyền chủ động kiểm soát của Quý Thầy/Cô theo Nghị định 13/2023/NĐ-CP và ePrivacy Directive.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
               <span>Hiệu lực từ: <strong>01/07/2023</strong></span>
@@ -127,7 +127,7 @@ export default function CookiesPage() {
                   <strong>Cookie</strong> là một tệp văn bản nhỏ được lưu trữ trên trình duyệt của máy tính hoặc điện thoại khi bạn truy cập một trang web. Cookie cho phép trang web nhận diện thiết bị của bạn, ghi nhớ trạng thái đăng nhập, ghi nhớ ngôn ngữ hiển thị và giúp hệ thống vận hành trơn tru hơn giữa các lần tải trang.
                 </p>
                 <p className="text-muted-foreground text-xs">
-                  Ngoài cookie truyền thống, EdTeach còn sử dụng công nghệ lưu trữ trình duyệt tương đương như <strong>LocalStorage</strong> và <strong>SessionStorage</strong> để lưu các tùy chọn hiển thị cá nhân (chế độ nền tối Dark Mode, cỡ chữ, trạng thái bộ lọc bài giảng) mà không truyền tải lên máy chủ mỗi khi gửi yêu cầu.
+                  Ngoài cookie truyền thống, EduTest còn sử dụng công nghệ lưu trữ trình duyệt tương đương như <strong>LocalStorage</strong> và <strong>SessionStorage</strong> để lưu các tùy chọn hiển thị cá nhân (chế độ nền tối Dark Mode, cỡ chữ, trạng thái bộ lọc bài giảng) mà không truyền tải lên máy chủ mỗi khi gửi yêu cầu.
                 </p>
               </section>
 
@@ -227,21 +227,21 @@ export default function CookiesPage() {
                       <tr>
                         <td className="p-3 font-mono font-semibold text-foreground">eduteach_cookie_consent</td>
                         <td className="p-3 text-emerald-600 dark:text-emerald-400 font-bold">Thiết yếu</td>
-                        <td className="p-3 text-muted-foreground">EdTeach</td>
+                        <td className="p-3 text-muted-foreground">EduTest</td>
                         <td className="p-3 text-muted-foreground">Lưu trạng thái đồng ý cookie (`accepted` hoặc `essential`)</td>
                         <td className="p-3 text-muted-foreground">1 năm (31536000s)</td>
                       </tr>
                       <tr>
                         <td className="p-3 font-mono font-semibold text-foreground">eduteach_target_role</td>
                         <td className="p-3 text-blue-600 dark:text-blue-400 font-bold">Chức năng</td>
-                        <td className="p-3 text-muted-foreground">EdTeach</td>
+                        <td className="p-3 text-muted-foreground">EduTest</td>
                         <td className="p-3 text-muted-foreground">Ghi nhớ vai trò người dùng (Giáo viên, Gia sư, Học sinh) khi OAuth</td>
                         <td className="p-3 text-muted-foreground">1 giờ</td>
                       </tr>
                       <tr>
                         <td className="p-3 font-mono font-semibold text-foreground">app_theme (LocalStorage)</td>
                         <td className="p-3 text-blue-600 dark:text-blue-400 font-bold">Chức năng</td>
-                        <td className="p-3 text-muted-foreground">EdTeach</td>
+                        <td className="p-3 text-muted-foreground">EduTest</td>
                         <td className="p-3 text-muted-foreground">Ghi nhớ giao diện Sáng / Tối do người dùng chọn</td>
                         <td className="p-3 text-muted-foreground">Vĩnh viễn cho đến khi xóa cache</td>
                       </tr>
@@ -255,7 +255,7 @@ export default function CookiesPage() {
                       <tr>
                         <td className="p-3 font-mono font-semibold text-foreground">edutest_ref_code</td>
                         <td className="p-3 text-blue-600 dark:text-blue-400 font-bold">Giới thiệu</td>
-                        <td className="p-3 text-muted-foreground">EdTeach</td>
+                        <td className="p-3 text-muted-foreground">EduTest</td>
                         <td className="p-3 text-muted-foreground">Ghi nhận mã giới thiệu từ đồng nghiệp để tặng credits</td>
                         <td className="p-3 text-muted-foreground">30 ngày</td>
                       </tr>
@@ -302,7 +302,7 @@ export default function CookiesPage() {
                   </div>
                 </div>
                 <p className="text-xs text-amber-600 dark:text-amber-400 italic">
-                  * Xin lưu ý: Nếu bạn chọn tắt toàn bộ cookie thiết yếu trên trình duyệt, bạn sẽ không thể duy trì trạng thái đăng nhập hoặc sử dụng các tính năng tạo đề thi của EdTeach.
+                  * Xin lưu ý: Nếu bạn chọn tắt toàn bộ cookie thiết yếu trên trình duyệt, bạn sẽ không thể duy trì trạng thái đăng nhập hoặc sử dụng các tính năng tạo đề thi của EduTest.
                 </p>
               </section>
 
@@ -315,7 +315,7 @@ export default function CookiesPage() {
                   Thay Đổi Tùy Chọn Bất Kỳ Lúc Nào
                 </h2>
                 <p>
-                  EdTeach tôn trọng tuyệt đối quyền tự quyết dữ liệu. Quý Thầy/Cô có thể điều chỉnh lại sự đồng ý của mình bất kỳ lúc nào bằng cách nhấn nút <strong>"Cài đặt lại Tùy chọn Cookie"</strong> ở thanh bên hoặc tại chân trang.
+                  EduTest tôn trọng tuyệt đối quyền tự quyết dữ liệu. Quý Thầy/Cô có thể điều chỉnh lại sự đồng ý của mình bất kỳ lúc nào bằng cách nhấn nút <strong>"Cài đặt lại Tùy chọn Cookie"</strong> ở thanh bên hoặc tại chân trang.
                 </p>
                 <div className="p-4 rounded-xl bg-card border border-border flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="space-y-1">

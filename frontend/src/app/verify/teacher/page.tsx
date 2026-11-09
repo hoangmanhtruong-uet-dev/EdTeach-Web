@@ -141,7 +141,7 @@ export default function TeacherVerificationPage() {
             </div>
             <div>
               <span className="text-2xl font-black tracking-tight text-white">
-                Edu<span className="text-blue-400">Test</span> AI
+                Edu<span className="text-blue-400">Test</span>
               </span>
               <p className="text-[11px] font-medium text-slate-400 uppercase tracking-widest">
                 Xác thực Danh tính Chuyên môn

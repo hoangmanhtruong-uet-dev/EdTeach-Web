@@ -135,7 +135,7 @@ export function FeedbackModal({ defaultOpen = false }: FeedbackModalProps) {
                     Hòm Thư Góp Ý & Báo Lỗi
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Phản hồi của Thầy/Cô và các bạn giúp EduTest AI hoàn thiện hơn!
+                    Phản hồi của Thầy/Cô và các bạn giúp EduTest hoàn thiện hơn!
                   </p>
                 </div>
               </div>
@@ -182,7 +182,7 @@ export function FeedbackModal({ defaultOpen = false }: FeedbackModalProps) {
                   Cảm ơn bạn rất nhiều!
                 </div>
                 <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                  Đội ngũ phát triển EduTest AI đã tiếp nhận và sẽ xem xét xử lý ngay trong ngày.
+                  Đội ngũ phát triển EduTest đã tiếp nhận và sẽ xem xét xử lý ngay trong ngày.
                 </p>
               </div>
             ) : (

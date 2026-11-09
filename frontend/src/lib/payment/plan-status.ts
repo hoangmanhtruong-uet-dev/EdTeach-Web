@@ -1,6 +1,6 @@
 /**
  * Quản lý trạng thái gói cước, CTA matrix và tính toán giá chu kỳ chuẩn
- * Đáp ứng các quy tắc S2, S3, S4, S7 - EduTest AI
+ * Đáp ứng các quy tắc S2, S3, S4, S7 - EduTest
  */
 
 import { IS_BETA_ALL_FEATURES_UNLOCKED } from "./plans";

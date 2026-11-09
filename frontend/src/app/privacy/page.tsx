@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { SUPPORT_EMAIL } from "@/lib/constants";
 import {
   ShieldCheck,
   Lock,
@@ -17,9 +18,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Chính sách Bảo mật — EdTeach & EduTest AI",
+  title: "Chính sách Bảo mật — EduTest (MTD Studio)",
   description:
-    "Chính sách bảo mật và bảo vệ dữ liệu cá nhân của EdTeach, tuân thủ nghiêm ngặt Nghị định 13/2023/NĐ-CP và tiêu chuẩn quốc tế GDPR/CCPA.",
+    "Chính sách bảo mật và bảo vệ dữ liệu cá nhân của nền tảng EduTest (phát triển bởi MTD Studio), tuân thủ nghiêm ngặt Nghị định 13/2023/NĐ-CP và tiêu chuẩn quốc tế GDPR/CCPA.",
 };
 
 export default function PrivacyPage() {
@@ -42,7 +43,7 @@ export default function PrivacyPage() {
               Chính Sách Bảo Mật Dữ Liệu Cá Nhân
             </h1>
             <p className="mt-4 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-3xl">
-              Cam kết của Nền tảng Giáo dục EdTeach (EduTest AI) về việc bảo vệ quyền riêng tư, an toàn dữ liệu và quyền tự quyết dữ liệu cá nhân của Quý Thầy/Cô, Học sinh và Đối tác sư phạm.
+              Cam kết của Nền tảng EduTest (sản phẩm được phát triển bởi MTD Studio) về việc bảo vệ quyền riêng tư, an toàn dữ liệu và quyền tự quyết dữ liệu cá nhân của Quý Thầy/Cô, Học sinh và Đối tác sư phạm.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
               <span>Ngày có hiệu lực: <strong>{effectiveDate}</strong></span>
@@ -72,7 +73,7 @@ export default function PrivacyPage() {
                     { id: "dieu-7", label: "7. Bên thứ ba & Chuyển giao dữ liệu" },
                     { id: "dieu-8", label: "8. Biện pháp an ninh & Mã hóa kỹ thuật" },
                     { id: "dieu-9", label: "9. Tuân thủ quốc tế (GDPR & CCPA)" },
-                    { id: "dieu-10", label: "10. Đầu mối liên hệ DPO & Khiếu nại" },
+                    { id: "dieu-10", label: "10. Đầu mối liên hệ Hỗ trợ & Khiếu nại" },
                   ].map((item) => (
                     <a
                       key={item.id}
@@ -87,7 +88,7 @@ export default function PrivacyPage() {
                 <div className="mt-6 pt-4 border-t border-border text-[11px] text-muted-foreground space-y-2">
                   <p className="font-semibold text-foreground">Bạn có quyền yêu cầu xóa dữ liệu?</p>
                   <p>
-                    Vào phần Cài đặt &gt; Bảo mật &gt; Yêu cầu xóa tài khoản hoặc liên hệ trực tiếp DPO.
+                    Vào phần Cài đặt &gt; Bảo mật &gt; Yêu cầu xóa tài khoản hoặc liên hệ trực tiếp qua email hỗ trợ.
                   </p>
                   <Link
                     href="/settings?tab=account&section=security"
@@ -109,7 +110,7 @@ export default function PrivacyPage() {
                   <span>Lời Mở Đầu & Tôn Chỉ Hoạt Động</span>
                 </div>
                 <p className="text-muted-foreground">
-                  Nền tảng EdTeach / EduTest AI tôn trọng tuyệt đối quyền riêng tư và quyền bảo vệ dữ liệu cá nhân theo Hiến pháp nước CHXHCN Việt Nam, <strong>Nghị định số 13/2023/NĐ-CP</strong> ngày 17/04/2023 của Chính phủ về Bảo vệ Dữ liệu Cá nhân, Luật An ninh Mạng 2018 và các chuẩn mực bảo mật toàn cầu (GDPR, ISO/IEC 27001). Văn bản này giải thích minh bạch cách thức chúng tôi thu thập, sử dụng, lưu trữ và bảo vệ dữ liệu của bạn.
+                  Nền tảng EduTest tôn trọng tuyệt đối quyền riêng tư và quyền bảo vệ dữ liệu cá nhân theo Hiến pháp nước CHXHCN Việt Nam, <strong>Nghị định số 13/2023/NĐ-CP</strong> ngày 17/04/2023 của Chính phủ về Bảo vệ Dữ liệu Cá nhân, Luật An ninh Mạng 2018 và các chuẩn mực bảo mật toàn cầu (GDPR, ISO/IEC 27001). Văn bản này giải thích minh bạch cách thức chúng tôi thu thập, sử dụng, lưu trữ và bảo vệ dữ liệu của bạn.
                 </p>
               </div>
 
@@ -122,14 +123,16 @@ export default function PrivacyPage() {
                   Bên Kiểm Soát & Xử Lý Dữ Liệu Cá Nhân
                 </h2>
                 <p>
-                  Căn cứ theo Điều 2 Nghị định 13/2023/NĐ-CP, pháp nhân đồng thời giữ vai trò <strong>Bên Kiểm soát Dữ liệu</strong> (Data Controller) và <strong>Bên Xử lý Dữ liệu</strong> (Data Processor) đối với dịch vụ EdTeach là:
+                  Căn cứ theo Điều 2 Nghị định 13/2023/NĐ-CP, đơn vị phát triển và vận hành giữ vai trò <strong>Bên Kiểm soát Dữ liệu</strong> (Data Controller) và <strong>Bên Xử lý Dữ liệu</strong> (Data Processor) đối với sản phẩm EduTest là:
                 </p>
                 <div className="rounded-xl border border-border bg-card p-4 space-y-2 text-xs">
-                  <p><strong>Tên tổ chức:</strong> Công ty TNHH Công nghệ Giáo dục EdTeach Việt Nam</p>
-                  <p><strong>Mã số doanh nghiệp (MST):</strong> 0110826928 do Sở KH&ĐT TP. Hà Nội cấp</p>
-                  <p><strong>Địa chỉ trụ sở:</strong> Tầng 5, Tòa nhà Công nghệ, Phố Duy Tân, Phường Dịch Vọng Hậu, Quận Cầu Giấy, Hà Nội</p>
-                  <p><strong>Hotline hỗ trợ:</strong> 1900 6825 (8:00 - 18:00 các ngày làm việc)</p>
-                  <p><strong>Email đầu mối bảo vệ dữ liệu (DPO):</strong> dpo@edteach.vn / support@edteach.vn</p>
+                  <p><strong>Đơn vị phát triển sản phẩm:</strong> MTD Studio (Sản phẩm EduTest)</p>
+                  <p>
+                    <strong>Email hỗ trợ & bảo vệ dữ liệu:</strong>{" "}
+                    <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary font-semibold hover:underline">
+                      {SUPPORT_EMAIL}
+                    </a>
+                  </p>
                 </div>
               </section>
 
@@ -142,7 +145,7 @@ export default function PrivacyPage() {
                   Mục Đích Thu Thập & Xử Lý Dữ Liệu
                 </h2>
                 <p>
-                  EdTeach chỉ thu thập và xử lý các trường dữ liệu cá nhân theo nguyên tắc <strong>Tối thiểu hóa dữ liệu (Data Minimization)</strong> nhằm phục vụ các mục đích rõ ràng, hợp pháp sau:
+                  EduTest chỉ thu thập và xử lý các trường dữ liệu cá nhân theo nguyên tắc <strong>Tối thiểu hóa dữ liệu (Data Minimization)</strong> nhằm phục vụ các mục đích rõ ràng, hợp pháp sau:
                 </p>
                 <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
                   <li>
@@ -199,7 +202,7 @@ export default function PrivacyPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground italic">
-                  * EdTeach <strong>tuyệt đối không</strong> lưu giữ mật khẩu ngân hàng, mã OTP SMS, số CVV/CVC của thẻ quốc tế. Mọi giao dịch tài chính đều được ủy quyền bảo mật trực tiếp qua cổng thanh toán được Ngân hàng Nhà nước cấp phép.
+                  * EduTest <strong>tuyệt đối không</strong> lưu giữ mật khẩu ngân hàng, mã OTP SMS, số CVV/CVC của thẻ quốc tế. Mọi giao dịch tài chính đều được ủy quyền bảo mật trực tiếp qua cổng thanh toán được Ngân hàng Nhà nước cấp phép.
                 </p>
               </section>
 
@@ -212,7 +215,7 @@ export default function PrivacyPage() {
                   Cơ Sở Pháp Lý Xử Lý Dữ Liệu
                 </h2>
                 <p>
-                  Theo Điều 11, 12 và 13 Nghị định 13/2023/NĐ-CP, việc xử lý dữ liệu của EdTeach dựa trên các căn cứ pháp lý:
+                  Theo Điều 11, 12 và 13 Nghị định 13/2023/NĐ-CP, việc xử lý dữ liệu của EduTest dựa trên các căn cứ pháp lý:
                 </p>
                 <div className="space-y-2 text-xs">
                   <div className="flex items-start gap-2 p-3 rounded-xl bg-card border border-border">
@@ -270,7 +273,7 @@ export default function PrivacyPage() {
                     <strong>7. Quyền rút lại sự đồng ý:</strong> Hủy đăng ký nhận email tin tức hoặc điều chỉnh tùy chọn cookie bất kỳ lúc nào.
                   </div>
                   <div className="p-3 rounded-xl bg-card border border-border">
-                    <strong>8. Quyền khiếu nại:</strong> Gửi khiếu nại tới DPO hoặc Cục An ninh Mạng (Bộ Công an) nếu phát hiện hành vi vi phạm.
+                    <strong>8. Quyền khiếu nại:</strong> Gửi khiếu nại tới đội ngũ hỗ trợ qua email {SUPPORT_EMAIL} hoặc Cục An ninh Mạng (Bộ Công an) nếu phát hiện hành vi vi phạm.
                   </div>
                 </div>
               </section>
@@ -307,7 +310,7 @@ export default function PrivacyPage() {
                   Các Bên Thứ Ba Hợp Tác & Chuyển Giao Dữ Liệu
                 </h2>
                 <p>
-                  EdTeach <strong>tuyệt đối không bán, trao đổi hoặc cho thuê</strong> dữ liệu cá nhân cho bên thứ ba vì mục đích tiếp thị hoặc thương mại. Chúng tôi chỉ hợp tác với các nhà cung cấp dịch vụ hạ tầng đám mây uy tín có cam kết bảo mật theo hợp đồng DPA (Data Processing Agreement):
+                  EduTest <strong>tuyệt đối không bán, trao đổi hoặc cho thuê</strong> dữ liệu cá nhân cho bên thứ ba vì mục đích tiếp thị hoặc thương mại. Chúng tôi chỉ hợp tác với các nhà cung cấp dịch vụ hạ tầng đám mây uy tín có cam kết bảo mật theo hợp đồng DPA (Data Processing Agreement):
                 </p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border border-border rounded-xl overflow-hidden">
@@ -371,7 +374,7 @@ export default function PrivacyPage() {
                       <Server className="w-3.5 h-3.5 text-primary" /> Mã hóa truyền tải SSL/TLS 1.3
                     </strong>
                     <p className="text-muted-foreground">
-                      100% kết nối giữa trình duyệt và máy chủ EdTeach đều được mã hóa bằng giao thức HTTPS/TLS 1.3 với tiêu chuẩn HSTS bắt buộc.
+                      100% kết nối giữa trình duyệt và máy chủ EduTest đều được mã hóa bằng giao thức HTTPS/TLS 1.3 với tiêu chuẩn HSTS bắt buộc.
                     </p>
                   </div>
                   <div className="p-3 rounded-xl bg-card border border-border space-y-1">
@@ -403,14 +406,14 @@ export default function PrivacyPage() {
                 </h2>
                 <div className="p-4 rounded-xl bg-card border border-border space-y-3 text-xs text-muted-foreground">
                   <p>
-                    Đối với Quý Thầy/Cô, du học sinh hoặc cộng đồng giáo dục sử dụng EdTeach từ Liên minh Châu Âu (EU) hoặc bang California (Hoa Kỳ):
+                    Đối với Quý Thầy/Cô, du học sinh hoặc cộng đồng giáo dục sử dụng EduTest từ Liên minh Châu Âu (EU) hoặc bang California (Hoa Kỳ):
                   </p>
                   <ul className="list-disc pl-4 space-y-1">
                     <li>
-                      <strong className="text-foreground">GDPR (EU Regulation 2016/679):</strong> EdTeach đóng vai trò Data Controller và tuân thủ các quyền theo Điều 15-22 GDPR, bao gồm quyền hạn chế xử lý (Right to Restriction), quyền phản đối (Right to Object) và chuyển giao dữ liệu (Data Portability).
+                      <strong className="text-foreground">GDPR (EU Regulation 2016/679):</strong> EduTest (phát triển bởi MTD Studio) đóng vai trò Data Controller và tuân thủ các quyền theo Điều 15-22 GDPR, bao gồm quyền hạn chế xử lý (Right to Restriction), quyền phản đối (Right to Object) và chuyển giao dữ liệu (Data Portability).
                     </li>
                     <li>
-                      <strong className="text-foreground">CCPA / CPRA Notice:</strong> EdTeach long trọng tuyên bố: <em>“We do NOT sell or share your personal information with third parties for cross-context behavioral advertising.”</em> (Chúng tôi không bán hoặc chia sẻ thông tin cá nhân của bạn cho bất kỳ bên thứ ba nào).
+                      <strong className="text-foreground">CCPA / CPRA Notice:</strong> EduTest long trọng tuyên bố: <em>“We do NOT sell or share your personal information with third parties for cross-context behavioral advertising.”</em> (Chúng tôi không bán hoặc chia sẻ thông tin cá nhân của bạn cho bất kỳ bên thứ ba nào).
                     </li>
                   </ul>
                 </div>
@@ -422,16 +425,19 @@ export default function PrivacyPage() {
                   <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary text-xs font-black">
                     10
                   </span>
-                  Đầu Mối Liên Hệ DPO & Giải Quyết Khiếu Nại
+                  Đầu Mối Liên Hệ Hỗ Trợ & Giải Quyết Khiếu Nại
                 </h2>
                 <p>
                   Mọi thắc mắc, đề nghị thực hiện quyền chủ thể dữ liệu (tra cứu, trích xuất, chỉnh sửa, xóa dữ liệu) hoặc phản ánh về bảo mật, xin vui lòng gửi về:
                 </p>
                 <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-2 text-xs">
-                  <p><strong>Bộ phận Bảo vệ Dữ liệu Cá nhân (DPO) — EdTeach Việt Nam</strong></p>
-                  <p>📧 Email tiếp nhận chính thức: <a href="mailto:dpo@edteach.vn" className="text-primary font-bold hover:underline">dpo@edteach.vn</a></p>
-                  <p>☎️ Hotline xử lý sự cố khẩn cấp: <span className="font-bold text-foreground">1900 6825</span> / <span className="font-bold text-foreground">0988 123 456</span></p>
-                  <p>🏢 Địa chỉ văn phòng: Tầng 5, Tòa nhà Công nghệ, Phố Duy Tân, Cầu Giấy, Hà Nội</p>
+                  <p><strong>MTD Studio — Đội ngũ Phát triển & Hỗ trợ EduTest</strong></p>
+                  <p>
+                    📧 Email tiếp nhận chính thức:{" "}
+                    <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary font-bold hover:underline break-all">
+                      {SUPPORT_EMAIL}
+                    </a>
+                  </p>
                   <p className="text-muted-foreground pt-1">
                     Thời gian phản hồi cam kết: Tối đa <strong>72 giờ làm việc</strong> kể từ khi tiếp nhận yêu cầu hợp lệ của chủ thể dữ liệu theo luật định.
                   </p>

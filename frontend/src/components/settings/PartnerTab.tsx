@@ -198,7 +198,7 @@ export function PartnerTab() {
 
   // QR Modal: Copy message template
   const handleCopyMessageTemplate = () => {
-    const template = `Kính gửi Quý Thầy/Cô, tôi đang sử dụng nền tảng EduTest AI để soạn đề thi chuẩn GDPT 2025 và chấm trắc nghiệm bằng camera điện thoại rất hiệu quả. Kính mời Thầy/Cô đăng ký trải nghiệm nhận ngay 5.000 Credits miễn phí tại: ${shareUrl} (Mã giới thiệu: ${referralCode}).`;
+    const template = `Kính gửi Quý Thầy/Cô, tôi đang sử dụng nền tảng EduTest để soạn đề thi chuẩn GDPT 2025 và chấm trắc nghiệm bằng camera điện thoại rất hiệu quả. Kính mời Thầy/Cô đăng ký trải nghiệm nhận ngay 5.000 Credits miễn phí tại: ${shareUrl} (Mã giới thiệu: ${referralCode}).`;
     navigator.clipboard.writeText(template);
     showToast("✓ Đã sao chép mẫu tin nhắn giới thiệu!");
   };
@@ -234,7 +234,7 @@ export function PartnerTab() {
 
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 32px system-ui, -apple-system, sans-serif";
-      ctx.fillText("EduTest AI — Khảo Thí Thông Minh", 360, 130);
+      ctx.fillText("EduTest — Khảo Thí Thông Minh", 360, 130);
 
       ctx.fillStyle = "#94a3b8";
       ctx.font = "18px system-ui, -apple-system, sans-serif";
@@ -787,7 +787,7 @@ export function PartnerTab() {
                             type="button"
                             onClick={() => {
                               navigator.clipboard.writeText(
-                                `Thầy/Cô ơi, đừng quên tạo đề thi đầu tiên trên EduTest AI để nhận thêm 10.000 Credits nhé! Link: ${shareUrl}`
+                                `Thầy/Cô ơi, đừng quên tạo đề thi đầu tiên trên EduTest để nhận thêm 10.000 Credits nhé! Link: ${shareUrl}`
                               );
                               showToast("✓ Đã sao chép tin nhắn nhắc nhở kích hoạt!");
                             }}

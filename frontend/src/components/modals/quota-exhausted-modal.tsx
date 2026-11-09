@@ -54,7 +54,7 @@ export function QuotaExhaustedModal({
 
   const origin = typeof window !== "undefined" ? window.location.origin : APP_URL;
   const shareUrl = `${origin}?ref=${referralCode}`;
-  const prewrittenMsg = `Thầy/cô ơi, em vừa dùng thử EduTest AI soạn đề thi chuẩn Bộ GD&ĐT nhanh và chuẩn ma trận lắm. Đăng ký qua link này thì cả hai thầy cô cùng được tặng thêm ${REFERRAL_BONUS_CREDITS.toLocaleString("vi-VN")} credits miễn phí (tương đương 4 đề thi Flash) nhé: ${shareUrl}`;
+  const prewrittenMsg = `Thầy/cô ơi, em vừa dùng thử EduTest soạn đề thi chuẩn Bộ GD&ĐT nhanh và chuẩn ma trận lắm. Đăng ký qua link này thì cả hai thầy cô cùng được tặng thêm ${REFERRAL_BONUS_CREDITS.toLocaleString("vi-VN")} credits miễn phí (tương đương 4 đề thi Flash) nhé: ${shareUrl}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -99,7 +99,7 @@ export function QuotaExhaustedModal({
 
   const bankId = process.env.NEXT_PUBLIC_PAYMENT_BANK_ID || "MB";
   const accountNo = process.env.NEXT_PUBLIC_PAYMENT_ACCOUNT_NO || "0988888888";
-  const accountName = process.env.NEXT_PUBLIC_PAYMENT_ACCOUNT_NAME || "EDUTEST AI";
+  const accountName = process.env.NEXT_PUBLIC_PAYMENT_ACCOUNT_NAME || "EDUTEST";
 
   const transferAmount = selectedPlan === "pack19" ? 19000 : 149000;
   const transferContent = `EDUPAY ${userId.slice(0, 6).toUpperCase()}`;

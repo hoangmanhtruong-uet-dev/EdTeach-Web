@@ -153,7 +153,7 @@ export async function performTeacherCardOCR(
   }
 
   const prompt = `
-Bạn là Hệ thống AI Chuyên gia Giám định Thẻ ngành & Văn bằng Giáo dục Việt Nam của EduTest AI Tutor OS.
+Bạn là Hệ thống AI Chuyên gia Giám định Thẻ ngành & Văn bằng Giáo dục Việt Nam của EduTest Tutor OS.
 Nhiệm vụ: Phân tích ảnh chụp thẻ ngành/thẻ sinh viên/bằng cấp giáo viên được cung cấp và trích xuất dữ liệu xác thực danh tính.
 
 Các loại thẻ hợp lệ:

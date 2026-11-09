@@ -157,7 +157,7 @@ export function PracticeView({ initialSheet }: PracticeViewProps) {
             <div className="truncate">
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-sm tracking-tight text-neutral-900 dark:text-white">
-                  EduTest AI
+                  EduTest
                 </span>
                 <span className="text-[10px] uppercase font-extrabold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded">
                   Remediation

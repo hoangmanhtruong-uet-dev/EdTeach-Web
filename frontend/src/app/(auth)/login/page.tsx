@@ -203,7 +203,7 @@ export default function LoginPage() {
             </div>
             <div>
               <span className="text-2xl font-black tracking-tight text-white">
-                Edu<span className="text-blue-400">Test</span> AI
+                Edu<span className="text-blue-400">Test</span>
               </span>
               <p className="text-[11px] font-medium text-slate-400 uppercase tracking-widest">
                 Tutor OS & Khảo Thí Thông Minh
@@ -254,7 +254,7 @@ export default function LoginPage() {
 
         {/* Footer Meta */}
         <div className="relative z-10 flex items-center justify-between text-xs text-slate-400 pt-6 border-t border-slate-800/80">
-          <span>© 2025 EduTest AI Platform</span>
+          <span>© 2025 - 2026 EduTest · MTD Studio</span>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1 text-emerald-400">
               <CheckCircle2 className="w-3.5 h-3.5" /> Chuẩn bảo mật SSL
@@ -278,7 +278,7 @@ export default function LoginPage() {
                 <BookOpen className="w-4 h-4" />
               </div>
               <span className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                Edu<span className="text-primary">Test</span> AI
+                Edu<span className="text-primary">Test</span>
               </span>
             </Link>
           </div>

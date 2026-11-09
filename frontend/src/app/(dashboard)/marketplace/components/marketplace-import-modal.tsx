@@ -133,7 +133,7 @@ export function MarketplaceImportModal({ onClose }: MarketplaceImportModalProps)
             )}
 
             <div className="text-[11px] text-muted-foreground bg-muted/40 p-3 rounded-xl border border-border leading-relaxed">
-              💡 <strong>Gợi ý:</strong> Bạn có thể copy link bài tập, đề kiểm tra hoặc ngân hàng câu hỏi công khai trên internet để AI tự động chuyển đổi sang định dạng EduTest AI.
+              💡 <strong>Gợi ý:</strong> Bạn có thể copy link bài tập, đề kiểm tra hoặc ngân hàng câu hỏi công khai trên internet để AI tự động chuyển đổi sang định dạng EduTest.
             </div>
 
             <button

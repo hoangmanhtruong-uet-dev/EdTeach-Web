@@ -67,7 +67,7 @@ export function TwoFactorModal({ isOpen, onClose, onSuccess }: TwoFactorModalPro
         const supabase = createClient();
         const { data, error } = await supabase.auth.mfa.enroll({
           factorType: "totp",
-          issuer: "EduTest AI",
+          issuer: "EduTest",
         });
 
         if (error) {
@@ -76,7 +76,7 @@ export function TwoFactorModal({ isOpen, onClose, onSuccess }: TwoFactorModalPro
           setSecretKey(fallbackSecret);
           setQrCodeUrl(
             `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-              `otpauth://totp/EduTest%20AI?secret=${fallbackSecret}&issuer=EduTest%20AI`
+              `otpauth://totp/EduTest?secret=${fallbackSecret}&issuer=EduTest`
             )}`
           );
           setFactorId("mock_factor_" + Date.now());
@@ -98,7 +98,7 @@ export function TwoFactorModal({ isOpen, onClose, onSuccess }: TwoFactorModalPro
         setSecretKey(fallbackSecret);
         setQrCodeUrl(
           `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-            `otpauth://totp/EduTest%20AI?secret=${fallbackSecret}&issuer=EduTest%20AI`
+            `otpauth://totp/EduTest?secret=${fallbackSecret}&issuer=EduTest`
           )}`
         );
       } finally {
@@ -125,7 +125,7 @@ export function TwoFactorModal({ isOpen, onClose, onSuccess }: TwoFactorModalPro
   };
 
   const handleDownloadBackupCodes = () => {
-    const text = `EDUTEST AI - MÃ DỰ PHÒNG XÁC THỰC 2 BƯỚC (2FA RECOVERY CODES)\nNgày tạo: ${new Date().toLocaleString(
+    const text = `EDUTEST - MÃ DỰ PHÒNG XÁC THỰC 2 BƯỚC (2FA RECOVERY CODES)\nNgày tạo: ${new Date().toLocaleString(
       "vi-VN"
     )}\n\nLưu ý: Mỗi mã chỉ sử dụng được 1 lần khi không thể truy cập ứng dụng Authenticator.\n\n${backupCodes.join(
       "\n"

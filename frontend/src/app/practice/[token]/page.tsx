@@ -16,12 +16,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!sheet) {
     return {
-      title: "Không tìm thấy phiếu luyện bù | EduTest AI",
+      title: "Không tìm thấy phiếu luyện bù | EduTest",
       description: "Đường dẫn phiếu bài tập không tồn tại hoặc đã hết hạn truy cập.",
     };
   }
 
-  const title = `Luyện bù lỗ hổng: ${sheet.studentName} — ${sheet.examTitle} | EduTest AI`;
+  const title = `Luyện bù lỗ hổng: ${sheet.studentName} — ${sheet.examTitle} | EduTest`;
   const description = `Phiếu củng cố kiến thức cá nhân hóa theo các câu làm sai môn ${sheet.subject} dành cho em ${sheet.studentName}.`;
 
   return {
@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title,
       description,
       type: "article",
-      siteName: "EduTest AI — Tutor OS",
+      siteName: "EduTest — Tutor OS",
     },
   };
 }
@@ -58,7 +58,7 @@ export default async function PracticePage({ params }: PageProps) {
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Về trang chủ EduTest AI</span>
+            <span>Về trang chủ EduTest</span>
           </Link>
         </div>
       </div>

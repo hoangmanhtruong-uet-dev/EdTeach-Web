@@ -419,7 +419,7 @@ export function CommandPalette() {
               <kbd className="font-mono bg-muted px-1 rounded">↵</kbd> để chọn
             </span>
           </div>
-          <span>EduTest AI Power Search</span>
+          <span>EduTest Power Search</span>
         </div>
       </div>
     </div>

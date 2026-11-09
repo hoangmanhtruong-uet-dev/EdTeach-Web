@@ -271,7 +271,7 @@ export async function exportRemediationToDocx(
             alignment: AlignmentType.CENTER,
             children: [
               new TextRun({
-                text: `--- BẢN QUYỀN THUỘC VỀ ${tutorName.toUpperCase()} · PHÁT HÀNH QUA EDUTEST AI TUTOR OS ---`,
+                text: `--- BẢN QUYỀN THUỘC VỀ ${tutorName.toUpperCase()} · PHÁT HÀNH QUA EDUTEST TUTOR OS ---`,
                 italics: true,
                 size: 16,
                 color: "888888",

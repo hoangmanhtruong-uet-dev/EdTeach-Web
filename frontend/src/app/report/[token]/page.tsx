@@ -16,12 +16,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!report) {
     return {
-      title: "Không tìm thấy phiếu báo cáo | EduTest AI",
+      title: "Không tìm thấy phiếu báo cáo | EduTest",
       description: "Đường dẫn báo cáo không tồn tại hoặc đã hết hạn truy cập.",
     };
   }
 
-  const title = `Báo cáo kết quả: ${report.studentName} — Điểm ${report.score}/10 | EduTest AI`;
+  const title = `Báo cáo kết quả: ${report.studentName} — Điểm ${report.score}/10 | EduTest`;
   const description = `Phiếu phân tích kết quả bài kiểm tra "${report.sessionName}" (Môn ${report.subject}) của em ${report.studentName}. Xếp hạng #${report.rank}/${report.totalStudents}.`;
 
   return {
@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title,
       description,
       type: "article",
-      siteName: "EduTest AI — Tutor OS",
+      siteName: "EduTest — Tutor OS",
     },
     twitter: {
       card: "summary_large_image",
@@ -63,7 +63,7 @@ async function ReportContent({ params }: PageProps) {
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Về trang chủ EduTest AI</span>
+            <span>Về trang chủ EduTest</span>
           </Link>
         </div>
       </div>

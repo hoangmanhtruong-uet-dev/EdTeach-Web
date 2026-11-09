@@ -47,7 +47,7 @@ export function PedagogicalViralFooter({
           <div className="space-y-3 text-center md:text-left flex-1">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800/80 border border-indigo-200/60 dark:border-indigo-800/60 text-xs font-semibold text-indigo-700 dark:text-indigo-300 shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Bảo chứng sư phạm số bởi EduTest AI</span>
+              <span>Bảo chứng sư phạm số bởi EduTest</span>
             </div>
 
             <div className="space-y-1">
@@ -69,7 +69,7 @@ export function PedagogicalViralFooter({
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-lg leading-relaxed">
               Phiếu đánh giá năng lực & bài tập củng cố được thực hiện trên nền tảng{" "}
               <strong className="text-indigo-600 dark:text-indigo-400 font-semibold">
-                EduTest AI — Tutor OS
+                EduTest — Tutor OS
               </strong>
               . Trợ lý đắc lực cho Thầy Cô và Gia sư thế hệ mới.
             </p>

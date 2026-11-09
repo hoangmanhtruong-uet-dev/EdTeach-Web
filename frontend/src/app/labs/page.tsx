@@ -111,7 +111,7 @@ export default function LabsPage() {
               Thầy cô đang cần ra đề & giao bài tập?
             </h2>
             <p className="mt-1 text-sm opacity-90">
-              EduTest AI giúp tạo đề thi chuẩn Bộ GD&ĐT và chấm bài viết tay bằng AI — thử miễn phí.
+              EduTest giúp tạo đề thi chuẩn Bộ GD&ĐT và chấm bài viết tay bằng AI — thử miễn phí.
             </p>
           </div>
           <Link

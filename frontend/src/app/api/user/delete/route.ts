@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/server-user";
+import { SUPPORT_EMAIL } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: "Đã xảy ra sự cố khi ghi nhận yêu cầu xóa tài khoản. Vui lòng liên hệ DPO (dpo@edteach.vn).",
+        error: `Đã xảy ra sự cố khi ghi nhận yêu cầu xóa tài khoản. Vui lòng liên hệ hỗ trợ (${SUPPORT_EMAIL}).`,
       },
       { status: 500 }
     );

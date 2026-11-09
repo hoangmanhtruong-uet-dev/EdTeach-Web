@@ -291,7 +291,7 @@ export function CreditsTab() {
 
     setReceiptData({
       orderCode: (txn as any).reference_id || `PAYOS-${txn.id.slice(0, 8).toUpperCase()}`,
-      description: txn.description || "Thanh toán gói dịch vụ EduTest AI",
+      description: txn.description || "Thanh toán gói dịch vụ EduTest",
       amountVnd: priceText,
       credits: txn.amount,
       date: new Date(txn.created_at).toLocaleString("vi-VN", {

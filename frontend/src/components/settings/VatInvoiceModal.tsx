@@ -103,7 +103,7 @@ export function VatInvoiceModal({ isOpen, onClose }: VatInvoiceModalProps) {
                   Đã tiếp nhận yêu cầu xuất hóa đơn!
                 </h4>
                 <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto leading-relaxed">
-                  Bộ phận Kế toán EduTest AI sẽ lập và gửi Hóa đơn điện tử VAT hợp lệ tới email{" "}
+                  Đội ngũ hỗ trợ EduTest sẽ lập và gửi Hóa đơn điện tử VAT hợp lệ tới email{" "}
                   <strong className="text-foreground">{email}</strong> trong vòng 24–48 giờ làm việc.
                 </p>
               </div>
@@ -199,7 +199,7 @@ export function VatInvoiceModal({ isOpen, onClose }: VatInvoiceModalProps) {
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Ví dụ: Xuất hóa đơn dịch vụ phần mềm Giáo dục EduTest AI..."
+                  placeholder="Ví dụ: Xuất hóa đơn dịch vụ phần mềm Giáo dục EduTest..."
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-hidden focus:ring-2 focus:ring-primary"

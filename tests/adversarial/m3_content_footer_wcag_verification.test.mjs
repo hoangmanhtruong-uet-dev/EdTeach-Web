@@ -6,18 +6,18 @@ import path from "node:path";
 const rootDir = process.cwd();
 
 describe("Milestone 3 — Content Authenticity, Corporate Identity & WCAG AA Verification", () => {
-  it("Item 1: Footer contains verified corporate identity & all 4 legal links", () => {
+  it("Item 1: Footer contains MTD Studio attribution, real support email & all 4 legal links", () => {
     const footerPath = path.join(rootDir, "frontend/src/components/layout/footer.tsx");
     assert.ok(fs.existsSync(footerPath), "footer.tsx must exist");
     const content = fs.readFileSync(footerPath, "utf-8");
 
-    // Corporate info
-    assert.ok(content.includes("Công ty TNHH Công nghệ Giáo dục EdTeach Việt Nam"), "Must include corporate business name");
-    assert.ok(content.includes("0110826928"), "Must include MST");
-    assert.ok(content.includes("Tầng 5, Tòa nhà FPT, Phố Duy Tân, Phường Dịch Vọng Hậu, Cầu Giấy, Hà Nội"), "Must include physical address");
-    assert.ok(content.includes("1900 6825"), "Must include official hotline");
-    assert.ok(content.includes("support@edteach.vn"), "Must include official support email");
-    assert.ok(content.includes("dpo@edteach.vn"), "Must include DPO contact email");
+    const constantsPath = path.join(rootDir, "frontend/src/lib/constants.ts");
+    const constantsContent = fs.readFileSync(constantsPath, "utf-8");
+
+    // Developer attribution & official support email
+    assert.ok(content.includes("Sản phẩm được phát triển bởi MTD Studio"), "Must attribute product to MTD Studio");
+    assert.ok(content.includes("SUPPORT_EMAIL"), "Must reference centralized SUPPORT_EMAIL");
+    assert.ok(constantsContent.includes("developerhoangtruong@gmail.com"), "SUPPORT_EMAIL must be developerhoangtruong@gmail.com");
 
     // All 4 legal page links
     assert.ok(content.includes('href="/terms"'), "Must link to /terms");
@@ -25,8 +25,12 @@ describe("Milestone 3 — Content Authenticity, Corporate Identity & WCAG AA Ver
     assert.ok(content.includes('href="/cookies"'), "Must link to /cookies");
     assert.ok(content.includes('href="/refund"'), "Must link to /refund");
 
-    // No personal developer gmail
-    assert.ok(!content.includes("developerhoangtruong@gmail.com"), "Must NOT include personal gmail");
+    // Must not use legacy brand or fabricated corporate details
+    assert.ok(!content.includes("EduTest AI"), "Must NOT contain legacy AI suffix brand");
+    assert.ok(!content.includes("Công ty TNHH"), "Must NOT include fabricated company name");
+    assert.ok(!content.includes("0110826928"), "Must NOT include fabricated MST");
+    assert.ok(!content.includes("1900 6825"), "Must NOT include fabricated hotline");
+    assert.ok(!content.includes("dpo@edteach.vn"), "Must NOT include DPO email");
   });
 
   it("Item 2: Purged superlative and unverified claims across codebase", () => {

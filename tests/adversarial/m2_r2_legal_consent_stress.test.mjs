@@ -202,8 +202,8 @@ describe("Milestone 2 - Reviewer 2 Adversarial & Quality Stress Tests", () => {
         file: "frontend/src/app/privacy/page.tsx",
         checks: [
           /Nghị định 13\/2023\/NĐ-CP/,
-          /0110826928/, // MST
-          /dpo@edteach\.vn/,
+          /MTD Studio/,
+          /SUPPORT_EMAIL/,
           /GDPR/,
           /CCPA/,
           /14 ngày/,
