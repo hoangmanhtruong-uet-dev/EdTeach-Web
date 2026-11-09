@@ -769,8 +769,8 @@ export function ReportView({ report }: ReportViewProps) {
 
         {/* 9. FOOTER STAMP */}
         <footer className="text-center text-xs text-neutral-400 dark:text-slate-500 py-6 space-y-1">
-          <p className="font-semibold text-neutral-500 dark:text-slate-400">
-            Hệ thống Báo cáo Khảo thí & Chăm sóc Phụ huynh số 1 Việt Nam — EduTest AI Tutor OS
+          <p className="font-semibold text-neutral-600 dark:text-slate-300">
+            Hệ thống Báo cáo Khảo thí & Chăm sóc Phụ huynh Toàn diện — Nền tảng chuyên sâu dành cho Giáo viên — EduTest AI Tutor OS
           </p>
           <p className="text-[11px]">
             Phiếu số: #{report.token} · Đồng bộ tự động theo thời gian thực

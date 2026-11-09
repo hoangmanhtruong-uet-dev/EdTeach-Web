@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   } catch (err: any) {
     console.error("[API Admin Affiliate] GET error:", err);
     return NextResponse.json(
-      { error: err.message || "Lỗi lấy danh sách rút tiền." },
+      { error: "Không thể lấy danh sách yêu cầu rút tiền. Vui lòng thử lại sau." },
       { status: 500 }
     );
   }
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("[API Admin Affiliate] POST error:", err);
     return NextResponse.json(
-      { error: err.message || "Lỗi xử lý yêu cầu." },
+      { error: "Đã xảy ra lỗi khi xử lý yêu cầu rút tiền. Vui lòng thử lại sau." },
       { status: 500 }
     );
   }

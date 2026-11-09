@@ -53,8 +53,8 @@ export const REFERRAL_BONUS_CREDITS = 2000;
 // Branding & Administrative Constants
 export const PLATFORM_NAME = "EduTest";
 export const PLATFORM_SHORT_NAME = "EdTeach";
-export const MASTER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || process.env.ADMIN_EMAIL || "admin@edteach.vn";
-export const ADMIN_EMAIL_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_EMAIL_DOMAIN || "@admin.edteach.vn";
+export const MASTER_ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@edteach.vn";
+export const ADMIN_EMAIL_DOMAIN = process.env.ADMIN_EMAIL_DOMAIN || "@admin.edteach.vn";
 
 // Credits & Economics Constants
 export const MARKETPLACE_CREDIT_RATE_VND = 100; // 1 Credit = 100 VNĐ

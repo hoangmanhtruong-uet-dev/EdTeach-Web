@@ -155,6 +155,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error("Lỗi POST /api/marketplace/clone-to-studio:", err);
-    return NextResponse.json({ error: "Lỗi sao chép đề: " + err.message }, { status: 500 });
+    return NextResponse.json({ error: "Không thể sao chép đề thi vào kho cá nhân. Vui lòng thử lại sau." }, { status: 500 });
   }
 }

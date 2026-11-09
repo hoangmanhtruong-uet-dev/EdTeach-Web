@@ -114,6 +114,7 @@ export function QuotaExhaustedModal({
         <div className="relative bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-5 text-white">
           <button
             onClick={onClose}
+            aria-label="Đóng"
             className="absolute top-4 right-4 rounded-full p-1 text-white/80 hover:bg-white/20 hover:text-white"
           >
             <X className="h-5 w-5" />
@@ -288,25 +289,25 @@ export function QuotaExhaustedModal({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={qrUrl}
-                    alt="VietQR Payment"
+                    alt="Mã QR thanh toán VietQR Napas247"
                     className="h-48 w-48 object-contain"
                   />
                 </div>
 
-                <div className="mt-3 w-full space-y-1.5 text-left text-xs text-slate-600 max-w-xs">
+                <div className="mt-3 w-full space-y-1.5 text-left text-xs text-slate-700 max-w-xs">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Số tiền:</span>
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">Số tiền:</span>
                     <span className="font-bold text-blue-600">{transferAmount.toLocaleString()}đ</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Nội dung CK:</span>
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">Nội dung CK:</span>
                     <span className="font-mono font-bold text-slate-800 bg-slate-200/70 px-1 rounded">
                       {transferContent}
                     </span>
                   </div>
                 </div>
 
-                <p className="mt-3 text-[11px] text-slate-400 flex items-center gap-1">
+                <p className="mt-3 text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-1 font-medium">
                   <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
                   Hệ thống tự động kích hoạt lượt sau khi nhận chuyển khoản
                 </p>

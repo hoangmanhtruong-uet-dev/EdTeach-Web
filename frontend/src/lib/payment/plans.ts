@@ -94,7 +94,7 @@ export const MAX_SEMESTER: PricingPlan = {
   period: "/học kỳ (5 tháng)",
   billingCycle: "semester",
   badge: "Tiết kiệm 246.000đ",
-  description: "Giải pháp tối thượng cho cả mùa ôn thi tuyển sinh & đại học",
+  description: "Giải pháp toàn diện cho cả mùa ôn thi tuyển sinh & đại học",
   features: [
     "Toàn bộ đặc quyền của Gói Luyện Thi MAX",
     "Cộng +500.000 Credits khổng lồ vào ví",

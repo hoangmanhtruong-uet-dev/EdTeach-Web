@@ -205,11 +205,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = async () => {
+    // 1. Invalidate client auth session via Supabase GoTrue SDK
     try {
       await supabase.auth.signOut();
     } catch (err) {
       console.warn("Supabase sign out error:", err);
     }
+
+    // 2. Call Server API to clear HttpOnly SSR cookies
+    try {
+      await fetch("/api/auth/signout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (err) {
+      console.warn("Server signout endpoint error:", err);
+    }
+
     setUser(null);
     setProfile(null);
     setWallet(null);

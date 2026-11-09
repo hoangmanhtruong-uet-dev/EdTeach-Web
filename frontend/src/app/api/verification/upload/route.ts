@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  MAX_VERIFICATION_FILE_SIZE,
+  isAllowedImageMime,
+  validateImageBuffer,
+} from "@/lib/security/upload-guard";
+import {
   performTeacherCardOCR,
   performTutorDualCardOCR,
   isNameMatching,
@@ -62,23 +67,48 @@ export async function POST(req: NextRequest) {
     const roleCategory = ((formData.get("roleCategory") as string) || "teacher").toLowerCase();
     const documentType = (formData.get("documentType") as any) || (roleCategory === "tutor" ? "student_card" : "teacher_card");
 
-    // Helper to extract base64 and mime from file or base64 string
+    // Helper to extract base64 and mime from file or base64 string with strict security validation
     const extractImage = async (fileObj: File | null, base64Field: string | null) => {
       if (fileObj) {
+        if (fileObj.size > MAX_VERIFICATION_FILE_SIZE) {
+          throw new Error("Dung lượng ảnh vượt quá giới hạn 5MB.");
+        }
+        if (!isAllowedImageMime(fileObj.type)) {
+          throw new Error("Định dạng tệp không được hỗ trợ. Chỉ chấp nhận ảnh JPG, PNG hoặc WebP.");
+        }
         const bytes = await fileObj.arrayBuffer();
         const buffer = Buffer.from(bytes);
+        const check = validateImageBuffer(buffer, fileObj.type || "image/jpeg", MAX_VERIFICATION_FILE_SIZE);
+        if (!check.valid) {
+          throw new Error(check.error || "Ảnh tải lên không hợp lệ.");
+        }
         return {
           base64: buffer.toString("base64"),
-          mimeType: fileObj.type || "image/jpeg",
+          mimeType: check.detectedMime || fileObj.type || "image/jpeg",
         };
       }
       if (base64Field) {
+        if (base64Field.length > MAX_VERIFICATION_FILE_SIZE * 1.37) {
+          throw new Error("Dung lượng chuỗi ảnh Base64 vượt quá giới hạn 5MB.");
+        }
         let mime = "image/jpeg";
-        const match = base64Field.match(/^data:(image\/[a-zA-Z0-9.-]+);base64,/);
-        if (match) mime = match[1];
+        let rawBase64 = base64Field;
+        const match = base64Field.match(/^data:(image\/[a-zA-Z0-9.-]+);base64,(.+)$/);
+        if (match) {
+          mime = match[1];
+          rawBase64 = match[2];
+        }
+        if (!isAllowedImageMime(mime)) {
+          throw new Error("Định dạng ảnh Base64 không được hỗ trợ. Chỉ chấp nhận JPG, PNG hoặc WebP.");
+        }
+        const buffer = Buffer.from(rawBase64, "base64");
+        const check = validateImageBuffer(buffer, mime, MAX_VERIFICATION_FILE_SIZE);
+        if (!check.valid) {
+          throw new Error(check.error || "Ảnh Base64 tải lên không hợp lệ.");
+        }
         return {
-          base64: base64Field.replace(/^data:image\/[a-z]+;base64,/, ""),
-          mimeType: mime,
+          base64: rawBase64,
+          mimeType: check.detectedMime || mime,
         };
       }
       return null;
@@ -236,9 +266,18 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("API /api/verification/upload error:", error);
+    const clientMsg =
+      error?.message &&
+      (error.message.includes("Dung lượng") ||
+        error.message.includes("Định dạng") ||
+        error.message.includes("không hợp lệ") ||
+        error.message.includes("yêu cầu tải lên"))
+        ? error.message
+        : "Đã xảy ra lỗi khi xác thực hồ sơ. Vui lòng thử lại sau.";
+    const status = error?.message?.includes("Dung lượng") ? 413 : 400;
     return NextResponse.json(
-      { error: "Đã xảy ra lỗi khi xác thực hồ sơ: " + error.message },
-      { status: 500 }
+      { error: clientMsg },
+      { status: clientMsg.includes("thử lại sau") ? 500 : status }
     );
   }
 }

@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.error("API /api/admin/verifications GET error:", error);
     return NextResponse.json(
-      { error: "Lỗi hệ thống khi tải danh sách hồ sơ: " + error.message },
+      { error: "Không thể tải danh sách hồ sơ xác thực. Vui lòng thử lại sau." },
       { status: 500 }
     );
   }
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("API /api/admin/verifications POST error:", error);
     return NextResponse.json(
-      { error: "Lỗi hệ thống khi duyệt hồ sơ: " + error.message },
+      { error: "Không thể phê duyệt hồ sơ xác thực vào lúc này. Vui lòng thử lại sau." },
       { status: 500 }
     );
   }

@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (existingTxn) {
-        console.log(`[PayOS Webhook] Giao dịch ${transactionRefId} đã được xử lý trước đó. Bỏ qua để tránh cộng tiền lặp.`);
+        console.log("[PayOS Webhook] Giao dịch đã được xử lý trước đó. Bỏ qua duplicate.");
         return NextResponse.json({
           success: true,
           message: "Transaction already processed",
@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
               })
               .eq("id", userId);
           }
-          console.log(`[PayOS Webhook] Đã nâng cấp tài khoản user ${userId} lên gói LUYỆN THI MAX (Hạn đến ${expiresAtIso})!`);
+          console.log("[PayOS Webhook] Đã nâng cấp tài khoản lên gói LUYỆN THI MAX.");
         } catch (tierErr) {
           console.warn("Lỗi update tier MAX:", tierErr);
         }
@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
               updated_at: nowIso 
             })
             .eq("id", userId);
-          console.log(`[PayOS Webhook] Đã nâng cấp tài khoản user ${userId} lên gói PRO (Hạn đến ${expiresAtIso})!`);
+          console.log("[PayOS Webhook] Đã nâng cấp tài khoản lên gói PRO.");
         } catch (tierErr) {
           console.warn("Lỗi update tier PRO:", tierErr);
         }
@@ -226,14 +226,14 @@ export async function POST(req: NextRequest) {
             paidAmount,
             0.2 // 20% hoa hồng trọn đời
           );
-          console.log(`[PayOS Webhook] Đã trích 20% hoa hồng (${Math.round(paidAmount * 0.2)}đ) cho inviter ${payingUser.referred_by}`);
+          console.log("[PayOS Webhook] Đã trích hoa hồng affiliate thành công.");
         }
       } catch (affiliateErr) {
         console.warn("[PayOS Webhook] Lỗi trích hoa hồng affiliate:", affiliateErr);
       }
     }
 
-    console.log(`[PayOS Webhook] Thành công xử lý đơn ${orderCodeStr}, cộng ${creditsToAdd} credits cho user ${userId}`);
+    console.log("[PayOS Webhook] Thành công xử lý webhook, nạp credits và cập nhật trạng thái đơn hàng.");
 
     return NextResponse.json({
       success: true,
@@ -242,7 +242,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("PayOS webhook error:", err);
     return NextResponse.json(
-      { error: err.message || "Lỗi xử lý webhook PayOS." },
+      { error: "Lỗi xử lý webhook PayOS. Vui lòng liên hệ hỗ trợ kỹ thuật." },
       { status: 500 }
     );
   }

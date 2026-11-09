@@ -152,7 +152,7 @@ export function AvatarCropModal({
           <button
             type="button"
             onClick={onCancel}
-            aria-label="Đóng cửa sổ"
+            aria-label="Đóng"
             className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
           >
             <X className="w-4 h-4" />

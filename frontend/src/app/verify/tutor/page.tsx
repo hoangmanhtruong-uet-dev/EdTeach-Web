@@ -358,14 +358,23 @@ export default function TutorVerificationPage() {
 
                   {!studentCardPreview ? (
                     <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label="Tải lên ảnh Thẻ sinh viên hoặc Bằng đại học"
                       onClick={() => studentInputRef.current?.click()}
-                      className="border-2 border-dashed border-violet-200 dark:border-violet-800/80 hover:border-violet-400 bg-violet-50/30 dark:bg-violet-950/20 hover:bg-violet-50/60 rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 min-h-[140px]"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          studentInputRef.current?.click();
+                        }
+                      }}
+                      className="border-2 border-dashed border-violet-200 dark:border-violet-800/80 hover:border-violet-400 bg-violet-50/30 dark:bg-violet-950/20 hover:bg-violet-50/60 rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 min-h-[140px] focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none"
                     >
                       <Upload className="w-6 h-6 text-violet-600 dark:text-violet-400" />
                       <span className="text-xs font-bold text-violet-950 dark:text-violet-200">
                         Tải ảnh Thẻ sinh viên
                       </span>
-                      <span className="text-[11px] text-slate-400">JPG, PNG tối đa 10MB</span>
+                      <span className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">JPG, PNG tối đa 10MB</span>
                       <input
                         ref={studentInputRef}
                         type="file"
@@ -415,14 +424,23 @@ export default function TutorVerificationPage() {
 
                   {!cccdPreview ? (
                     <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label="Tải lên ảnh CCCD mặt trước"
                       onClick={() => cccdInputRef.current?.click()}
-                      className="border-2 border-dashed border-violet-200 dark:border-violet-800/80 hover:border-violet-400 bg-violet-50/30 dark:bg-violet-950/20 hover:bg-violet-50/60 rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 min-h-[140px]"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          cccdInputRef.current?.click();
+                        }
+                      }}
+                      className="border-2 border-dashed border-violet-200 dark:border-violet-800/80 hover:border-violet-400 bg-violet-50/30 dark:bg-violet-950/20 hover:bg-violet-50/60 rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 min-h-[140px] focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none"
                     >
                       <Upload className="w-6 h-6 text-violet-600 dark:text-violet-400" />
                       <span className="text-xs font-bold text-violet-950 dark:text-violet-200">
                         Tải ảnh CCCD mặt trước
                       </span>
-                      <span className="text-[11px] text-slate-400">JPG, PNG tối đa 10MB</span>
+                      <span className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">JPG, PNG tối đa 10MB</span>
                       <input
                         ref={cccdInputRef}
                         type="file"

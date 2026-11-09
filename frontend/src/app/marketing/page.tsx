@@ -147,9 +147,10 @@ Bấm 1 nút trên EdTeach:
               <a
                 href="/marketing/edteach_flagship_demo.mp4"
                 download="edteach_flagship_demo.mp4"
-                className="text-blue-400 hover:underline font-bold flex items-center gap-1"
+                aria-label="Tải video hướng dẫn thực hành EdTeach định dạng MP4"
+                className="text-blue-400 hover:underline font-bold flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded-sm"
               >
-                <Download className="w-3.5 h-3.5" /> Bấm vào đây để tải file video về máy
+                <Download className="w-3.5 h-3.5" /> Tải video hướng dẫn thực hành (MP4)
               </a>
             </div>
           </div>
@@ -187,7 +188,8 @@ Bấm 1 nút trên EdTeach:
                     <a
                       href={b.src}
                       download={`${b.id}.png`}
-                      className="inline-flex items-center gap-1.5 text-blue-400 hover:text-blue-300 font-semibold"
+                      aria-label={`Tải ảnh gốc banner ${b.title}`}
+                      className="inline-flex items-center gap-1.5 text-blue-400 hover:text-blue-300 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded-sm"
                     >
                       <Download className="w-3.5 h-3.5" /> Tải ảnh gốc
                     </a>

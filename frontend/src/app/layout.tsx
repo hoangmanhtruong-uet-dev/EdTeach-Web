@@ -5,8 +5,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/auth-context";
 import { ToastProvider } from "@/context/toast-context";
 import { ConfirmDialogProvider } from "@/context/confirm-dialog-context";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { CookieConsentBanner } from "@/components/legal/CookieConsentBanner";
 import { ReferralTracker } from "@/components/referral/referral-tracker";
 import { APP_URL } from "@/lib/constants";
 
@@ -62,8 +61,7 @@ export default function RootLayout({
                 <ReferralTracker />
               </Suspense>
               {children}
-              <Analytics />
-              <SpeedInsights />
+              <CookieConsentBanner />
             </ConfirmDialogProvider>
           </ToastProvider>
         </AuthProvider>

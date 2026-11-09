@@ -11,7 +11,7 @@ import {
   Zap,
   AlertCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -20,6 +20,46 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [lockoutRemainingSec, setLockoutRemainingSec] = useState<number>(0);
+
+  const MAX_FAILED_ATTEMPTS = 5;
+  const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 phút
+  const STORAGE_KEY_ATTEMPTS = "eduteach_login_failed_attempts";
+  const STORAGE_KEY_LOCKED_UNTIL = "eduteach_login_locked_until";
+
+  // Kiểm tra trạng thái khóa tạm thời khi mở trang
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const lockedUntilStr = localStorage.getItem(STORAGE_KEY_LOCKED_UNTIL);
+    if (lockedUntilStr) {
+      const lockedUntil = parseInt(lockedUntilStr, 10);
+      const remaining = Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000));
+      if (remaining > 0) {
+        setLockoutRemainingSec(remaining);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_LOCKED_UNTIL);
+        localStorage.removeItem(STORAGE_KEY_ATTEMPTS);
+      }
+    }
+  }, []);
+
+  // Đếm ngược thời gian khóa tạm thời
+  useEffect(() => {
+    if (lockoutRemainingSec <= 0) return;
+    const interval = setInterval(() => {
+      setLockoutRemainingSec((prev) => {
+        if (prev <= 1) {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem(STORAGE_KEY_LOCKED_UNTIL);
+            localStorage.removeItem(STORAGE_KEY_ATTEMPTS);
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutRemainingSec]);
 
   const supabase = createClient();
 
@@ -65,6 +105,14 @@ export default function LoginPage() {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (lockoutRemainingSec > 0) {
+      const minutes = Math.ceil(lockoutRemainingSec / 60);
+      setErrorMessage(
+        `Tài khoản đang bị khóa tạm thời do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau ${minutes} phút.`
+      );
+      return;
+    }
+
     if (!email || !password) {
       setErrorMessage("Vui lòng điền đầy đủ email và mật khẩu.");
       return;
@@ -80,14 +128,39 @@ export default function LoginPage() {
       });
 
       if (error) {
+        let attempts = 0;
+        if (typeof window !== "undefined") {
+          attempts = parseInt(localStorage.getItem(STORAGE_KEY_ATTEMPTS) || "0", 10) + 1;
+          localStorage.setItem(STORAGE_KEY_ATTEMPTS, String(attempts));
+
+          if (attempts >= MAX_FAILED_ATTEMPTS) {
+            const lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+            localStorage.setItem(STORAGE_KEY_LOCKED_UNTIL, String(lockedUntil));
+            setLockoutRemainingSec(Math.ceil(LOCKOUT_DURATION_MS / 1000));
+            setErrorMessage(
+              "Bạn đã nhập sai thông tin 5 lần liên tiếp. Để bảo vệ tài khoản, chức năng đăng nhập bị tạm khóa trong 15 phút."
+            );
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        const remainingAttempts = Math.max(0, MAX_FAILED_ATTEMPTS - attempts);
         setErrorMessage(
           error.message === "Invalid login credentials"
-            ? "Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại."
+            ? `Email hoặc mật khẩu không chính xác. Bạn còn ${remainingAttempts} lần thử trước khi bị tạm khóa 15 phút.`
             : error.message
         );
         setIsLoading(false);
         return;
       }
+
+      // Đăng nhập thành công -> Xóa dữ liệu lockout
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(STORAGE_KEY_ATTEMPTS);
+        localStorage.removeItem(STORAGE_KEY_LOCKED_UNTIL);
+      }
+      setLockoutRemainingSec(0);
 
       if (authResult?.user) {
         // Tự động kiểm tra vai trò (role) từ database để điều hướng chính xác
@@ -264,11 +337,15 @@ export default function LoginPage() {
               </p>
 
               <button
-                className="form-btn focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                className="form-btn focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || lockoutRemainingSec > 0}
               >
-                {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
+                {lockoutRemainingSec > 0
+                  ? `Tạm khóa (${Math.floor(lockoutRemainingSec / 60)}:${(lockoutRemainingSec % 60).toString().padStart(2, "0")})`
+                  : isLoading
+                  ? "Đang đăng nhập..."
+                  : "Đăng nhập"}
               </button>
             </form>
 

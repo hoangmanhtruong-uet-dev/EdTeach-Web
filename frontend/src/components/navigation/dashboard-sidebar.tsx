@@ -190,7 +190,7 @@ export function DashboardSidebar() {
             {profile?.avatar_url ? (
               <img
                 src={profile.avatar_url}
-                alt="Avatar"
+                alt={profile?.name || (profile as any)?.full_name ? `Ảnh đại diện của ${profile?.name || (profile as any)?.full_name}` : "Ảnh đại diện người dùng"}
                 width={36}
                 height={36}
                 className="h-9 w-9 rounded-full object-cover border border-primary/30 shrink-0"
@@ -401,7 +401,7 @@ export function DashboardSidebar() {
                     <img
                       key={profile.avatar_url}
                       src={profile.avatar_url}
-                      alt="Avatar"
+                      alt={profile?.name || (profile as any)?.full_name ? `Ảnh đại diện của ${profile?.name || (profile as any)?.full_name}` : "Ảnh đại diện người dùng"}
                       width={32}
                       height={32}
                       className="h-8 w-8 rounded-full object-cover border border-primary/40 shrink-0"
@@ -469,7 +469,7 @@ export function DashboardSidebar() {
                     {profile?.avatar_url ? (
                       <img
                         src={profile.avatar_url}
-                        alt="Avatar"
+                        alt={profile?.name || (profile as any)?.full_name ? `Ảnh đại diện của ${profile?.name || (profile as any)?.full_name}` : "Ảnh đại diện người dùng"}
                         width={40}
                         height={40}
                         className="h-10 w-10 rounded-full object-cover border border-primary/40 shrink-0"
@@ -537,7 +537,7 @@ export function DashboardSidebar() {
                 {profile?.avatar_url ? (
                   <img
                     src={profile.avatar_url}
-                    alt="Avatar tài khoản"
+                    alt={profile?.name || (profile as any)?.full_name ? `Ảnh đại diện của ${profile?.name || (profile as any)?.full_name}` : "Ảnh đại diện người dùng"}
                     width={34}
                     height={34}
                     className="h-8.5 w-8.5 rounded-full object-cover border border-primary/30 shrink-0"

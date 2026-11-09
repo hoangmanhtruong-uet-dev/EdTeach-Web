@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isValidUUID } from "@/lib/security/validation";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,8 +20,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { item_id, expected_price } = body;
 
-    if (!item_id || typeof item_id !== "string") {
-      return NextResponse.json({ error: "Thiếu mã đề thi." }, { status: 400 });
+    if (!item_id || !isValidUUID(item_id)) {
+      return NextResponse.json({ error: "Mã đề thi không hợp lệ." }, { status: 400 });
     }
 
     // Call atomic PostgreSQL stored procedure marketplace_purchase_item_v2
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     if (rpcError) {
       console.error("[Marketplace Buy] RPC marketplace_purchase_item_v2 execution failed:", rpcError);
       return NextResponse.json(
-        { error: "Lỗi thực thi giao dịch cơ sở dữ liệu: " + rpcError.message },
+        { error: "Không thể thực hiện giao dịch mở khóa đề thi. Vui lòng thử lại sau." },
         { status: 500 }
       );
     }
@@ -109,7 +110,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("Lỗi POST /api/marketplace/buy:", err);
     return NextResponse.json(
-      { error: "Lỗi giao dịch: " + err.message },
+      { error: "Đã xảy ra lỗi trong quá trình thực hiện giao dịch. Vui lòng thử lại sau." },
       { status: 500 }
     );
   }

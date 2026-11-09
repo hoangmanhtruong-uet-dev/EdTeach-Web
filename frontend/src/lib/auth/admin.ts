@@ -7,7 +7,6 @@ import { User, SupabaseClient } from "@supabase/supabase-js";
 export function getAdminEmails(): string[] {
   const envEmails =
     process.env.ADMIN_EMAILS ||
-    process.env.NEXT_PUBLIC_ADMIN_EMAILS ||
     process.env.ADMIN_EMAIL ||
     "";
   return envEmails

@@ -867,7 +867,7 @@ export default function MobileScanPage({ params }: ScanPageProps) {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={sheet.imageBase64}
-                          alt="Thumbnail"
+                          alt={sheet.detectedSbd ? `Ảnh chụp bài thi học sinh SBD ${sheet.detectedSbd}` : "Ảnh chụp bài thi học sinh cần quét điểm"}
                           className="w-full h-full object-cover"
                         />
                       </div>

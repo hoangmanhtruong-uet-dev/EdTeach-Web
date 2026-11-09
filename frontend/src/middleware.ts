@@ -3,6 +3,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Database } from "@/types/database";
 
 export async function middleware(request: NextRequest) {
+  // 1. Production HTTP -> HTTPS Redirection (Defense-in-depth)
+  if (
+    process.env.NODE_ENV === "production" &&
+    request.headers.get("x-forwarded-proto") === "http"
+  ) {
+    const httpsUrl = new URL(request.url);
+    httpsUrl.protocol = "https:";
+    return NextResponse.redirect(httpsUrl, 301);
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -25,7 +35,11 @@ export async function middleware(request: NextRequest) {
             request,
           });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, {
+              ...options,
+              secure: process.env.NODE_ENV === "production",
+              sameSite: "lax",
+            })
           );
         },
       },
@@ -62,14 +76,50 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
+  // 2. Admin RBAC Guard: Kiểm tra phân quyền truy cập trang quản trị /admin/**
+  if (user && pathname.startsWith("/admin")) {
+    const appRole = (user.app_metadata as Record<string, unknown> | undefined)?.role;
+
+    const configuredAdmins = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    const userEmail = user.email?.toLowerCase().trim() || "";
+    const isEmailAdmin = Boolean(userEmail && configuredAdmins.includes(userEmail));
+    const isAdmin = appRole === "admin" || isEmailAdmin;
+
+    if (!isAdmin) {
+      // Người dùng không có quyền quản trị -> Chuyển hướng an toàn về /dashboard
+      const dashboardUrl = new URL("/dashboard", request.url);
+      dashboardUrl.searchParams.set("unauthorized", "admin_required");
+      return NextResponse.redirect(dashboardUrl);
+    }
+  }
+
   // Nếu đã đăng nhập và truy cập trang /login hoặc /register -> Chuyển vào trang đích hoặc /dashboard
   if (user && isAuthRoute) {
     const destination =
       request.nextUrl.searchParams.get("redirectTo") ||
       request.nextUrl.searchParams.get("next");
-    if (destination && destination.startsWith("/") && !destination.startsWith("//")) {
-      return NextResponse.redirect(new URL(destination, request.url));
+
+    if (
+      destination &&
+      typeof destination === "string" &&
+      destination.startsWith("/") &&
+      !destination.startsWith("//") &&
+      !destination.includes("\\")
+    ) {
+      try {
+        const targetUrl = new URL(destination, request.url);
+        if (targetUrl.origin === request.nextUrl.origin) {
+          return NextResponse.redirect(targetUrl);
+        }
+      } catch {
+        // Fallback to /dashboard
+      }
     }
+
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

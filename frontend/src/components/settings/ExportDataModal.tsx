@@ -51,8 +51,19 @@ export function ExportDataModal({
 
     checkCooldown();
     const interval = setInterval(checkCooldown, 1000);
-    return () => clearInterval(interval);
-  }, [isOpen]);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -95,6 +106,7 @@ export function ExportDataModal({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Đóng"
             className="rounded-lg p-1 text-muted-foreground hover:bg-muted transition cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -112,8 +124,17 @@ export function ExportDataModal({
           </label>
 
           <div
+            role="button"
+            tabIndex={0}
+            aria-label="Chọn định dạng Bảng tính Excel CSV"
             onClick={() => setFormat("csv")}
-            className={`rounded-xl border p-3.5 cursor-pointer transition flex items-start gap-3 ${
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setFormat("csv");
+              }
+            }}
+            className={`rounded-xl border p-3.5 cursor-pointer transition flex items-start gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
               format === "csv"
                 ? "border-primary bg-primary/5 ring-1 ring-primary shadow-xs"
                 : "border-border hover:bg-muted/50"
@@ -136,8 +157,17 @@ export function ExportDataModal({
           </div>
 
           <div
+            role="button"
+            tabIndex={0}
+            aria-label="Chọn định dạng Tệp Kỹ thuật JSON"
             onClick={() => setFormat("json")}
-            className={`rounded-xl border p-3.5 cursor-pointer transition flex items-start gap-3 ${
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setFormat("json");
+              }
+            }}
+            className={`rounded-xl border p-3.5 cursor-pointer transition flex items-start gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
               format === "json"
                 ? "border-primary bg-primary/5 ring-1 ring-primary shadow-xs"
                 : "border-border hover:bg-muted/50"

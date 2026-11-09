@@ -234,7 +234,7 @@ export async function exportMarketplaceExamToDocx(exam: MarketplaceItem) {
       alignment: AlignmentType.CENTER,
       children: [
         new TextRun({
-          text: `Được tạo bởi Nền tảng EduTest AI - Chợ đề thi số 1 cho Giáo viên`,
+          text: `Được tạo bởi Nền tảng EduTest AI - Thư viện đề thi chia sẻ uy tín cho Giáo viên`,
           italics: true,
           size: 18,
           color: "666666",

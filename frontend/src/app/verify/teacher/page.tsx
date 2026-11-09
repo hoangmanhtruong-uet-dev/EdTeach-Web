@@ -330,17 +330,26 @@ export default function TeacherVerificationPage() {
             <div className="space-y-5">
               {!preview ? (
                 <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Tải lên ảnh thẻ giáo viên hoặc minh chứng"
                   onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={handleDrop}
-                  className="border-2 border-dashed border-blue-200 dark:border-blue-800/80 hover:border-blue-400 dark:hover:border-blue-600 bg-blue-50/40 dark:bg-blue-950/20 hover:bg-blue-50/70 dark:hover:bg-blue-950/40 rounded-3xl p-8 sm:p-10 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-3 group"
+                  className="border-2 border-dashed border-blue-200 dark:border-blue-800/80 hover:border-blue-400 dark:hover:border-blue-600 bg-blue-50/40 dark:bg-blue-950/20 hover:bg-blue-50/70 dark:hover:bg-blue-950/40 rounded-3xl p-8 sm:p-10 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-3 group focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                 >
                   <div className="w-16 h-16 rounded-2xl bg-blue-100 dark:bg-blue-900/60 group-hover:scale-110 flex items-center justify-center text-blue-600 dark:text-blue-300 transition duration-200 shadow-md">
                     <Upload className="w-7 h-7" />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-blue-950 dark:text-blue-200">
-                      Bấm vào đây để tải ảnh thẻ ngành hoặc kéo thả tệp
+                      Tải lên ảnh thẻ giáo viên hoặc kéo thả tệp minh chứng
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       Hỗ trợ định dạng JPG, PNG, WEBP tối đa 10MB

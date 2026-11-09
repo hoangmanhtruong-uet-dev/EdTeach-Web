@@ -274,7 +274,7 @@ export function GuideTab() {
 
                 {/* Mini UI Mockup */}
                 <div className="p-3 bg-slate-950 text-slate-200 rounded-xl border border-slate-800 text-[11px] font-mono space-y-1.5 shadow-inner">
-                  <div className="text-[10px] text-slate-400 font-sans font-bold">MINI UI PREVIEW:</div>
+                  <div className="text-[10px] text-slate-300 font-sans font-bold">MINI UI PREVIEW:</div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="px-2 py-0.5 rounded-md bg-blue-900/60 text-blue-300 border border-blue-700/50">
                       Môn: Toán ▼
@@ -336,7 +336,7 @@ export function GuideTab() {
 
                 {/* Mini UI Mockup */}
                 <div className="p-3 bg-slate-950 text-slate-200 rounded-xl border border-slate-800 text-[11px] font-mono space-y-1.5 shadow-inner">
-                  <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                  <div className="flex items-center gap-1 text-[10px] text-slate-300 font-medium">
                     <span>Studio:</span>
                     <span className="text-indigo-400">[f(x) KaTeX]</span>
                     <span className="text-pink-400">[Bảng BT]</span>
@@ -416,7 +416,7 @@ export function GuideTab() {
                 </div>
 
                 <div className="p-3 bg-slate-950 text-slate-200 rounded-xl border border-slate-800 text-[11px] font-mono space-y-1.5 shadow-inner">
-                  <div className="text-[10px] text-slate-400 font-sans font-bold">MINI UI PREVIEW:</div>
+                  <div className="text-[10px] text-slate-300 font-sans font-bold">MINI UI PREVIEW:</div>
                   <div className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-center text-xs">
                     ⚡ Trộn bộ 4 mã đề (.docx)
                   </div>
@@ -467,7 +467,7 @@ export function GuideTab() {
                     <Download className="w-3.5 h-3.5 text-blue-400" />
                     <span>de_thi_4_ma_de.docx</span>
                   </div>
-                  <div className="text-[10px] text-slate-400">Trang cuối: Ma trận đối chiếu</div>
+                  <div className="text-[10px] text-slate-300 font-medium">Trang cuối: Ma trận đối chiếu</div>
                 </div>
               </div>
             </div>
@@ -539,7 +539,7 @@ export function GuideTab() {
                 </div>
 
                 <div className="p-3 bg-slate-950 text-slate-200 rounded-xl border border-slate-800 text-[10px] space-y-1 shadow-inner">
-                  <div className="text-slate-400 font-bold">MẪU PHIẾU HỖ TRỢ:</div>
+                  <div className="text-slate-300 font-bold">MẪU PHIẾU HỖ TRỢ:</div>
                   <div className="grid grid-cols-2 gap-1 text-[10px]">
                     <span className="p-1 rounded bg-slate-900 border border-slate-800 text-center">20 câu</span>
                     <span className="p-1 rounded bg-slate-900 border border-slate-800 text-center">40 câu</span>
@@ -668,7 +668,7 @@ export function GuideTab() {
                     <QrCode className="w-3.5 h-3.5" />
                     <span>Quét QR kết nối điện thoại</span>
                   </div>
-                  <div className="text-slate-400">Không cần cài app, chạy trực tiếp Web</div>
+                  <div className="text-slate-300 font-medium">Không cần cài app, chạy trực tiếp Web</div>
                 </div>
               </div>
 
@@ -710,7 +710,7 @@ export function GuideTab() {
 
                 <div className="p-3 bg-slate-950 text-slate-200 rounded-xl border border-slate-800 text-[10px] space-y-1 shadow-inner">
                   <div className="text-emerald-400 font-bold">Điểm số: 8.75 / 10</div>
-                  <div className="text-slate-400">Đúng: 24/28 • Sai: 3 • Bỏ: 1</div>
+                  <div className="text-slate-300 font-medium">Đúng: 24/28 • Sai: 3 • Bỏ: 1</div>
                 </div>
               </div>
             </div>

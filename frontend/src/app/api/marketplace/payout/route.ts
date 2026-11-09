@@ -114,7 +114,7 @@ export async function GET() {
     });
   } catch (err: any) {
     console.error("Lỗi GET /api/marketplace/payout:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: "Không thể tải thông tin rút tiền. Vui lòng thử lại sau." }, { status: 500 });
   }
 }
 
@@ -252,7 +252,7 @@ export async function POST(req: NextRequest) {
     if (payoutError) {
       console.error("Lỗi insert payout_requests:", payoutError);
       return NextResponse.json(
-        { error: "Lỗi tạo yêu cầu rút tiền: " + payoutError.message },
+        { error: "Không thể tạo yêu cầu rút tiền vào lúc này. Vui lòng thử lại sau." },
         { status: 500 }
       );
     }
@@ -266,6 +266,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error("Lỗi POST /api/marketplace/payout:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: "Đã xảy ra lỗi khi xử lý yêu cầu rút tiền. Vui lòng thử lại sau." }, { status: 500 });
   }
 }

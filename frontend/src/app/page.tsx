@@ -644,7 +644,7 @@ export default function LandingPage() {
 
                   <h3 className="text-xl font-bold text-slate-950 dark:text-white">Gói Giáo Viên PRO</h3>
                   <p className="text-xs text-slate-600 dark:text-slate-300">
-                    Biến máy chiếu lớp học thành Bục Giảng Số tương tác đỉnh cao & 54+ Phòng TN 3D.
+                    Biến máy chiếu lớp học thành Bục Giảng Số tương tác trực quan & hiệu quả cùng 54+ Phòng TN 3D.
                   </p>
 
                   <div className="pt-2">
@@ -717,7 +717,7 @@ export default function LandingPage() {
 
                   <h3 className="text-xl font-bold text-slate-950 dark:text-white">Gói Luyện Thi MAX</h3>
                   <p className="text-xs text-slate-600 dark:text-slate-300">
-                    Giải pháp tối thượng cho giáo viên dạy đội tuyển, dạy thêm và trung tâm luyện thi.
+                    Giải pháp toàn diện và chuyên sâu cho giáo viên dạy đội tuyển, dạy thêm và trung tâm luyện thi.
                   </p>
 
                   <div className="pt-2">

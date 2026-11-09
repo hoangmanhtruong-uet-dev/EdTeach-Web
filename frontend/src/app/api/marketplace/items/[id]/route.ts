@@ -112,6 +112,11 @@ export async function GET(
       },
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("Lỗi tải thông tin đề thi:", err);
+    // Sanitize error: do not return error: err.message
+    return NextResponse.json(
+      { error: "Không thể tải thông tin đề thi. Vui lòng thử lại sau." },
+      { status: 500 }
+    );
   }
 }

@@ -34,7 +34,9 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   
-  const [agreeTerms, setAgreeTerms] = useState(true);
+  // Consent checkboxes per Decree 13/2023/ND-CP - strictly un-checked by default
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [refCode, setRefCode] = useState<string | null>(null);
@@ -63,6 +65,11 @@ export default function RegisterPage() {
   };
 
   const handleGoogleRegister = async () => {
+    if (!agreeTerms || !agreePrivacy) {
+      setErrorMessage("Vui lòng tích chọn đồng ý với Điều khoản dịch vụ và Chính sách bảo mật (Nghị định 13/2023/NĐ-CP) ở biểu mẫu bên dưới trước khi đăng ký bằng Google.");
+      return;
+    }
+
     setIsLoading(true);
     setErrorMessage("");
     setTargetRoleCookie(activeRole);
@@ -110,8 +117,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!agreeTerms) {
-      setErrorMessage("Bạn cần đồng ý với Điều khoản sử dụng và Chính sách bảo mật.");
+    if (!agreeTerms || !agreePrivacy) {
+      setErrorMessage("Vui lòng tích chọn đồng ý với cả Điều khoản sử dụng dịch vụ và Chính sách bảo mật (Nghị định 13/2023/NĐ-CP).");
       return;
     }
 
@@ -386,19 +393,29 @@ export default function RegisterPage() {
             )}
           </div>
 
-          <div className="rounded-2xl bg-white/[0.04] backdrop-blur-md border border-white/10 p-4 max-w-lg">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
-                ED
+          <div className="rounded-2xl bg-white/[0.04] backdrop-blur-md border border-white/10 p-4 max-w-lg space-y-2.5">
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+              <ShieldCheck className="w-4 h-4 shrink-0" />
+              <span>Nền Tảng Sư Phạm Chuẩn Quy Chuẩn Bộ GD&ĐT</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span>Soạn đề GDPT 2025 chuẩn ma trận BGD</span>
               </div>
-              <div>
-                <p className="text-xs font-bold text-white">Cộng đồng 50.000+ Thầy Cô & Học Sinh</p>
-                <p className="text-[11px] text-slate-400">Hơn 1.200.000 đề thi đã được tạo tự động</p>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span>Chấm trắc nghiệm tự động bằng camera</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span>Xuất phôi Word định dạng chuẩn đẹp</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span>Bảo vệ dữ liệu chuẩn Nghị định 13/2023</span>
               </div>
             </div>
-            <p className="text-xs text-slate-300 italic">
-              &ldquo;Giao diện trực quan, tính năng phân quyền rõ ràng giữa Học sinh và Thầy Cô giúp trải nghiệm học và thi thuận tiện tối đa.&rdquo;
-            </p>
           </div>
         </div>
 
@@ -632,26 +649,53 @@ export default function RegisterPage() {
               <span>Xác nhận mật khẩu</span>
             </label>
 
-            {/* Terms Checkbox */}
-            <label className="flex items-start gap-2 text-xs cursor-pointer select-none py-1">
-              <input
-                type="checkbox"
-                checked={agreeTerms}
-                onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary cursor-pointer shrink-0"
-              />
-              <span className="text-slate-500 dark:text-slate-400 text-xs leading-normal">
-                Tôi đồng ý với{" "}
-                <Link href="/terms" className="text-primary hover:underline font-bold">
-                  Điều khoản
-                </Link>{" "}
-                và{" "}
-                <Link href="/privacy" className="text-primary hover:underline font-bold">
-                  Bảo mật
-                </Link>
-                .
-              </span>
-            </label>
+            {/* Notice of Purpose per Decree 13/2023/ND-CP */}
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 p-2.5 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+              <p className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-primary shrink-0" />
+                Mục đích thu thập dữ liệu (Nghị định 13/2023/NĐ-CP)
+              </p>
+              <p className="leading-relaxed">
+                EdTeach chỉ thu thập Họ tên và Email nhằm định danh tài khoản, bảo vệ phiên đăng nhập và xuất phôi đề thi sư phạm theo yêu cầu của Thầy/Cô.
+              </p>
+            </div>
+
+            {/* Terms and Privacy Checkboxes (Unbundled & Un-checked by Default) */}
+            <div className="space-y-2 py-1">
+              <label className="flex items-start gap-2.5 text-xs cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  required
+                  checked={agreeTerms}
+                  onChange={(e) => setAgreeTerms(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary cursor-pointer shrink-0"
+                />
+                <span className="text-slate-600 dark:text-slate-300 text-xs leading-normal">
+                  Tôi đồng ý với{" "}
+                  <Link href="/terms" target="_blank" className="text-primary hover:underline font-bold">
+                    Điều khoản sử dụng dịch vụ EdTeach
+                  </Link>
+                  .
+                </span>
+              </label>
+
+              <label className="flex items-start gap-2.5 text-xs cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  required
+                  checked={agreePrivacy}
+                  onChange={(e) => setAgreePrivacy(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary cursor-pointer shrink-0"
+                />
+                <span className="text-slate-600 dark:text-slate-300 text-xs leading-normal">
+                  Tôi đã đọc, hiểu rõ{" "}
+                  <Link href="/privacy" target="_blank" className="text-primary hover:underline font-bold">
+                    Chính sách bảo mật
+                  </Link>{" "}
+                  và đồng ý cho phép EdTeach xử lý dữ liệu cá nhân của tôi theo Nghị định 13/2023/NĐ-CP.
+                </span>
+              </label>
+            </div>
 
             {/* Loading step */}
             {isLoading && loadingStep && (

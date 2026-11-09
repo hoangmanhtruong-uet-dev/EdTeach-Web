@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (err: any) {
     console.error("Lỗi GET /api/marketplace/items:", err);
-    return NextResponse.json({ error: "Lỗi tải danh sách đề thi: " + err.message }, { status: 500 });
+    return NextResponse.json({ error: "Không thể tải danh sách đề thi. Vui lòng thử lại sau." }, { status: 500 });
   }
 }
 
@@ -301,6 +301,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error("Lỗi POST /api/marketplace/items:", err);
-    return NextResponse.json({ error: "Lỗi đăng bán đề thi: " + err.message }, { status: 500 });
+    return NextResponse.json({ error: "Không thể đăng bán đề thi. Vui lòng thử lại sau." }, { status: 500 });
   }
 }

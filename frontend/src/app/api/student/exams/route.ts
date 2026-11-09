@@ -4,24 +4,21 @@ import { getStudentExams } from "@/lib/student/student-store";
 
 export async function GET() {
   try {
-    // Resolve student identity: real user if authenticated, fallback for guest / test runner fixtures
-    // Note: Returns 401 only if strict authentication mode is explicitly required
-    let studentId = 'demo-student-id';
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authErr,
+    } = await supabase.auth.getUser();
 
-    try {
-      const supabase = await createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (user?.id) {
-        studentId = user.id;
-      }
-    } catch (authErr) {
-      console.warn("[Student Exams API] Auth session check failed, using fallback:", authErr);
+    // Ngăn chặn IDOR: Loại bỏ hoàn toàn fallback demo-student-id, yêu cầu xác thực phiên đăng nhập
+    if (authErr || !user) {
+      return NextResponse.json(
+        { success: false, error: "Vui lòng đăng nhập để xem danh sách bài thi của học sinh." },
+        { status: 401 }
+      );
     }
 
-    const exams = await getStudentExams(studentId);
+    const exams = await getStudentExams(user.id);
 
     return NextResponse.json({
       success: true,
@@ -29,9 +26,8 @@ export async function GET() {
     });
   } catch (err: unknown) {
     console.error("[Student Exams API] Error:", err);
-    const message = err instanceof Error ? err.message : "Lỗi lấy danh sách bài thi.";
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: "Không thể tải danh sách bài thi. Vui lòng thử lại sau." },
       { status: 500 }
     );
   }

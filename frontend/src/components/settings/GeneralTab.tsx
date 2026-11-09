@@ -18,6 +18,7 @@ import {
   Laptop,
   KeyRound,
   Trash2,
+  RotateCcw,
   X,
   Sparkles,
   Copy,
@@ -965,6 +966,22 @@ export function GeneralTab({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteEmailConfirm, setDeleteEmailConfirm] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deletionPending, setDeletionPending] = useState(false);
+  const [scheduledPurgeDate, setScheduledPurgeDate] = useState<string | null>(null);
+  const [cancellingDeletion, setCancellingDeletion] = useState(false);
+
+  // Sync deletion status on mount
+  useEffect(() => {
+    fetch("/api/user/delete")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.pending) {
+          setDeletionPending(true);
+          setScheduledPurgeDate(data.scheduledDate);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Sync 2FA state from localStorage on load
   useEffect(() => {
@@ -1309,17 +1326,53 @@ export function GeneralTab({
 
     setDeletingAccount(true);
     try {
-      // Create request in backend or notify admin
+      const res = await fetch("/api/user/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: deleteEmailConfirm.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Không thể gửi yêu cầu xóa tài khoản.");
+      }
+
+      setDeletionPending(true);
+      setScheduledPurgeDate(data.scheduledDate);
       showToast(
-        "Yêu cầu xóa tài khoản đã được ghi nhận. Thời gian chờ ân hạn 14 ngày trước khi xóa vĩnh viễn.",
+        data.message ||
+          "Yêu cầu xóa tài khoản đã được ghi nhận. Thời gian chờ ân hạn 14 ngày trước khi xóa vĩnh viễn.",
         "warning",
         8000
       );
       setShowDeleteModal(false);
+      setDeleteEmailConfirm("");
     } catch (err: any) {
-      showToast("Không thể gửi yêu cầu xóa tài khoản.", "error");
+      showToast(err.message || "Không thể gửi yêu cầu xóa tài khoản.", "error");
     } finally {
       setDeletingAccount(false);
+    }
+  };
+
+  const handleCancelDeleteAccount = async () => {
+    setCancellingDeletion(true);
+    try {
+      const res = await fetch("/api/user/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cancel" }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Không thể hủy yêu cầu xóa.");
+      }
+
+      setDeletionPending(false);
+      setScheduledPurgeDate(null);
+      showToast(data.message || "Đã hủy yêu cầu xóa tài khoản thành công.", "success");
+    } catch (err: any) {
+      showToast(err.message || "Không thể hủy yêu cầu xóa tài khoản.", "error");
+    } finally {
+      setCancellingDeletion(false);
     }
   };
 
@@ -3123,26 +3176,66 @@ export function GeneralTab({
               </div>
 
               {/* Sub-card 6: Khu vực nguy hiểm (Xóa tài khoản) */}
-              <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 sm:p-6 shadow-xs space-y-3">
+              <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 sm:p-6 shadow-xs space-y-4">
                 <div className="flex items-start gap-2.5 text-destructive">
                   <Trash2 className="w-5 h-5 shrink-0 mt-0.5" />
                   <div>
                     <h3 className="text-sm font-bold">Khu vực nguy hiểm: Xóa tài khoản vĩnh viễn</h3>
                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                      Toàn bộ dữ liệu đề thi, ma trận đặc tả, điểm số học sinh và số dư credits còn lại sẽ bị hủy vĩnh viễn. Có thời gian ân hạn phục hồi 14 ngày.
+                      Toàn bộ dữ liệu đề thi, ma trận đặc tả, điểm số học sinh và số dư credits còn lại sẽ bị hủy vĩnh viễn. Có thời gian ân hạn phục hồi 14 ngày theo Nghị định 13/2023/NĐ-CP.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-2">
-                  <button
-                    type="button"
-                    onClick={handleRequestDeleteAccount}
-                    className="px-4 py-2 text-xs font-bold rounded-xl border border-destructive/40 text-destructive hover:bg-destructive/10 transition cursor-pointer"
-                  >
-                    Yêu cầu xóa tài khoản…
-                  </button>
-                </div>
+                {deletionPending ? (
+                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                          Tài khoản đang trong thời gian chờ ân hạn xóa (14 ngày)
+                        </p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          Yêu cầu xóa tài khoản đã được tiếp nhận và xử lý. Tài khoản và toàn bộ dữ liệu sẽ bị thanh lọc vĩnh viễn vào ngày:{" "}
+                          <strong className="text-foreground">
+                            {scheduledPurgeDate
+                              ? new Date(scheduledPurgeDate).toLocaleDateString("vi-VN", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "sau 14 ngày kể từ ngày yêu cầu"}
+                          </strong>
+                          . Thầy/Cô có thể hủy yêu cầu bất cứ lúc nào trước thời hạn này.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={handleCancelDeleteAccount}
+                        disabled={cancellingDeletion}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl bg-background border border-amber-500/40 text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-50"
+                      >
+                        {cancellingDeletion ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                        <span>Hủy yêu cầu xóa tài khoản</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={handleRequestDeleteAccount}
+                      className="px-4 py-2 text-xs font-bold rounded-xl border border-destructive/40 text-destructive hover:bg-destructive/10 transition cursor-pointer"
+                    >
+                      Yêu cầu xóa tài khoản…
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

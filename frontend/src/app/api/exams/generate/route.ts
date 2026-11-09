@@ -3,6 +3,8 @@ import { getGeminiApiKey } from "@/lib/ai/gemini-client";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getClientIp } from "@/lib/security/client-ip";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -266,10 +268,26 @@ export async function POST(req: NextRequest) {
 
   try {
     // 0. Kiểm tra IP rate-limit để chống bot cày tài khoản ảo
-    const clientIp =
-      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-      req.headers.get("x-real-ip") ||
-      "127.0.0.1";
+    const clientIp = getClientIp(req);
+    const ipRateLimit = checkRateLimit(`exam_gen:ip:${clientIp}`, 10, 60000);
+    if (!ipRateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: "TOO_MANY_REQUESTS",
+          message: `Địa chỉ IP đã gửi quá nhiều yêu cầu tạo đề. Vui lòng thử lại sau ${ipRateLimit.retryAfterSeconds || 60} giây.`,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(ipRateLimit.retryAfterSeconds || 60),
+          },
+        }
+      );
+    }
+    // Cloudflare cf-connecting-ip prioritized above
+
+
+
 
     const supabase = await createClient();
     const todayStr = new Date().toISOString().slice(0, 10);
@@ -305,6 +323,22 @@ export async function POST(req: NextRequest) {
       );
     }
     currentUser = user;
+
+    const userRateLimit = checkRateLimit(`exam_gen:user:${user.id}`, 10, 60000);
+    if (!userRateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: "TOO_MANY_REQUESTS",
+          message: `Tài khoản đã gửi quá nhiều yêu cầu tạo đề. Vui lòng thử lại sau ${userRateLimit.retryAfterSeconds || 60} giây.`,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(userRateLimit.retryAfterSeconds || 60),
+          },
+        }
+      );
+    }
 
     const body = await req.json();
     const {
@@ -501,13 +535,9 @@ export async function POST(req: NextRequest) {
     exam = createdExam;
 
     if (examError || !exam) {
-      const isFkey = examError?.code === "23503" || examError?.message?.includes("foreign key");
+      console.error("Lỗi khởi tạo đề thi DB:", examError);
       return NextResponse.json(
-        {
-          error: isFkey
-            ? "Tài khoản chưa được đồng bộ vào bảng users. Vui lòng chạy file migration 'supabase/migrations/20261025_sync_users_and_fix_rls.sql' trên Supabase SQL Editor."
-            : "Lỗi khởi tạo đề thi: " + examError?.message,
-        },
+        { error: "Không thể khởi tạo đề thi vào lúc này. Vui lòng thử lại sau." },
         { status: 500 }
       );
     }
@@ -656,7 +686,7 @@ export async function POST(req: NextRequest) {
             "gemini-3.8-flash",
           ];
 
-          console.log(`[Exam Generator] Invoking AI for ${subject} Lớp ${safeGradeNum}, Key: ${geminiKey ? geminiKey.slice(0, 8) + "..." : "NONE"}`);
+          // Secure execution without logging API key secrets
           for (const model of modelsToTry) {
             try {
               const controller = new AbortController();
@@ -805,8 +835,9 @@ export async function POST(req: NextRequest) {
         console.warn("Auto-refund warning:", refundErr);
       }
     }
+    console.error("[Exam Generator] Fatal error:", err);
     return NextResponse.json(
-      { error: err.message || "Lỗi máy chủ trong quá trình sinh đề thi." },
+      { error: "Đã xảy ra lỗi máy chủ trong quá trình sinh đề thi. Vui lòng thử lại sau." },
       { status: 500 }
     );
   }
